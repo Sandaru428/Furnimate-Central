@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -39,15 +39,13 @@ import {
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
     FormMessage,
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -55,12 +53,14 @@ import { format } from 'date-fns';
 import { initialMasterData } from '@/app/dashboard/data/master-data/page';
 import { initialSuppliers } from '../suppliers/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+
 
 const lineItemSchema = z.object({
-  itemId: z.string(),
-  quantity: z.coerce.number().int().positive(),
-  unitPrice: z.number(),
-  totalValue: z.number(),
+  itemId: z.string().min(1, "Item selection is required."),
+  quantity: z.coerce.number().int().positive("Quantity must be a positive number."),
+  unitPrice: z.coerce.number(),
+  totalValue: z.coerce.number(),
 });
 
 const purchaseOrderSchema = z.object({
@@ -74,11 +74,12 @@ const purchaseOrderSchema = z.object({
 
 const createPurchaseOrderSchema = z.object({
     supplierName: z.string().min(1, "Please select a supplier."),
-    items: z.string().min(1, "Please add at least one item."),
+    lineItems: z.array(lineItemSchema).min(1, "Please add at least one item."),
 });
 
 
 type PurchaseOrder = z.infer<typeof purchaseOrderSchema>;
+type CreatePurchaseOrder = z.infer<typeof createPurchaseOrderSchema>;
 
 const initialPurchaseOrders: PurchaseOrder[] = [
     {
@@ -93,67 +94,97 @@ const initialPurchaseOrders: PurchaseOrder[] = [
     },
 ];
 
+// Temporary component for adding items - will be moved to its own file later if needed
+const AddItemForm = ({ onAddItem }: { onAddItem: (item: z.infer<typeof lineItemSchema>) => void }) => {
+    const [selectedItemCode, setSelectedItemCode] = useState('');
+    const [quantity, setQuantity] = useState(1);
+    const item = initialMasterData.find(i => i.itemCode === selectedItemCode);
+
+    const handleAddItem = () => {
+        if (item && quantity > 0) {
+            onAddItem({
+                itemId: item.itemCode,
+                quantity: quantity,
+                unitPrice: item.unitPrice,
+                totalValue: item.unitPrice * quantity,
+            });
+            setSelectedItemCode('');
+            setQuantity(1);
+        }
+    }
+
+    return (
+        <div className="flex items-end gap-2 p-2 border rounded-lg">
+            <div className="flex-1">
+                <Label htmlFor="item-select">Raw Material</Label>
+                 <Select value={selectedItemCode} onValueChange={setSelectedItemCode}>
+                    <SelectTrigger id="item-select">
+                        <SelectValue placeholder="Select an item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {initialMasterData.map(item => (
+                            <SelectItem key={item.itemCode} value={item.itemCode}>
+                                {item.name} ({item.itemCode})
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="w-24">
+                <Label htmlFor="item-quantity">Quantity</Label>
+                <Input
+                    id="item-quantity"
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                    min="1"
+                />
+            </div>
+            <Button type="button" onClick={handleAddItem} disabled={!item}>Add</Button>
+        </div>
+    );
+};
+
+
 export default function PurchaseOrdersPage() {
     const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
 
-    const form = useForm<z.infer<typeof createPurchaseOrderSchema>>({
+    const form = useForm<CreatePurchaseOrder>({
         resolver: zodResolver(createPurchaseOrderSchema),
         defaultValues: {
           supplierName: '',
-          items: '',
+          lineItems: [],
         },
     });
 
-    function onSubmit(values: z.infer<typeof createPurchaseOrderSchema>) {
-        try {
-            const parsedLineItems = values.items.split('\n').map(line => {
-                const [itemId, quantityStr] = line.split(',');
-                if (!itemId || !quantityStr || isNaN(parseInt(quantityStr.trim()))) {
-                    throw new Error(`Invalid line item format: ${line}. Use 'ITEM-ID,quantity'.`);
-                }
-                const quantity = parseInt(quantityStr.trim());
-                const item = initialMasterData.find(i => i.itemCode === itemId.trim());
-                if (!item) {
-                    throw new Error(`Item with code ${itemId.trim()} not found in master data.`);
-                }
-                return { 
-                    itemId: itemId.trim(), 
-                    quantity,
-                    unitPrice: item.unitPrice,
-                    totalValue: quantity * item.unitPrice,
-                };
-            });
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "lineItems",
+    });
 
-            const totalAmount = parsedLineItems.reduce((acc, item) => acc + item.totalValue, 0);
-            
-            const nextId = purchaseOrders.length > 0 ? Math.max(...purchaseOrders.map(po => parseInt(po.id.split('-')[1]))) + 1 : 1;
-            const newPO: PurchaseOrder = {
-                id: `PO-${String(nextId).padStart(3, '0')}`,
-                supplierName: values.supplierName,
-                date: format(new Date(), 'yyyy-MM-dd'),
-                status: 'Draft',
-                lineItems: parsedLineItems,
-                totalAmount: totalAmount,
-            };
+    function onSubmit(values: CreatePurchaseOrder) {
+        const totalAmount = values.lineItems.reduce((acc, item) => acc + item.totalValue, 0);
+        const nextId = purchaseOrders.length > 0 ? Math.max(...purchaseOrders.map(po => parseInt(po.id.split('-')[1]))) + 1 : 1;
+        
+        const newPO: PurchaseOrder = {
+            id: `PO-${String(nextId).padStart(3, '0')}`,
+            supplierName: values.supplierName,
+            date: format(new Date(), 'yyyy-MM-dd'),
+            status: 'Draft',
+            lineItems: values.lineItems,
+            totalAmount: totalAmount,
+        };
 
-            setPurchaseOrders([newPO, ...purchaseOrders]);
-            toast({
-              title: 'Purchase Order Created',
-              description: `Purchase Order ${newPO.id} has been saved as a draft.`,
-            });
-            form.reset();
-            setIsDialogOpen(false);
-
-        } catch (error: any) {
-             toast({
-                variant: "destructive",
-                title: 'Error Creating Purchase Order',
-                description: error.message,
-            });
-        }
+        setPurchaseOrders([newPO, ...purchaseOrders]);
+        toast({
+            title: 'Purchase Order Created',
+            description: `Purchase Order ${newPO.id} has been saved as a draft.`,
+        });
+        form.reset();
+        setIsDialogOpen(false);
     }
 
     const filteredPurchaseOrders = purchaseOrders.filter(po =>
@@ -185,14 +216,17 @@ export default function PurchaseOrdersPage() {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
+                        setIsDialogOpen(isOpen);
+                        if (!isOpen) form.reset();
+                    }}>
                         <DialogTrigger asChild>
                             <Button>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Create New PO
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-2xl">
                             <DialogHeader>
                                 <DialogTitle>Create New Purchase Order</DialogTitle>
                             </DialogHeader>
@@ -222,26 +256,39 @@ export default function PurchaseOrdersPage() {
                                             </FormItem>
                                         )}
                                     />
+                                    
+                                    <div>
+                                        <FormLabel>Line Items</FormLabel>
+                                        <div className="space-y-2 mt-2">
+                                            {fields.map((field, index) => {
+                                                const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId);
+                                                return (
+                                                <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md">
+                                                    <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div>
+                                                    <div className="w-20 text-sm">Qty: {field.quantity}</div>
+                                                    <div className="w-24 text-sm text-right">@ ${field.unitPrice.toFixed(2)}</div>
+                                                    <div className="w-24 text-sm font-semibold text-right">${field.totalValue.toFixed(2)}</div>
+                                                    <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
+                                                        <Trash2 className="h-4 w-4 text-destructive"/>
+                                                    </Button>
+                                                </div>
+                                            )})}
+                                        </div>
+                                         {fields.length === 0 && (
+                                            <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
+                                        )}
+                                        <FormMessage>{form.formState.errors.lineItems?.message}</FormMessage>
+                                    </div>
+                                    
+                                    <AddItemForm onAddItem={append} />
 
-                                    <FormField
-                                    control={form.control}
-                                    name="items"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Items (Item Code, Quantity)</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="e.g.&#10;WD-001,30&#10;MTL-002,10" {...field} rows={4} />
-                                        </FormControl>
-                                        <FormDescription>
-                                            Enter one item per line. The Unit Price is automatically fetched from Master Data.
-                                        </FormDescription>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
+                                    <div className="text-right font-bold text-lg">
+                                        Total Amount: ${form.watch('lineItems').reduce((acc, item) => acc + item.totalValue, 0).toFixed(2)}
+                                    </div>
+
                                     <DialogFooter>
                                         <DialogClose asChild>
-                                            <Button variant="outline">Cancel</Button>
+                                            <Button variant="outline" type="button">Cancel</Button>
                                         </DialogClose>
                                         <Button type="submit">Create PO</Button>
                                     </DialogFooter>
@@ -272,7 +319,7 @@ export default function PurchaseOrdersPage() {
                     <TableCell>{po.date}</TableCell>
                     <TableCell className="text-right">${po.totalAmount.toFixed(2)}</TableCell>
                     <TableCell>
-                      <Badge variant={po.status === 'Draft' ? 'secondary' : 'default'}>
+                      <Badge variant={po.status === 'Draft' ? 'secondary' : po.status === 'Sent' ? 'default' : 'outline'}>
                         {po.status}
                       </Badge>
                     </TableCell>
