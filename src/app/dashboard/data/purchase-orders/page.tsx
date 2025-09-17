@@ -420,10 +420,12 @@ export default function PurchaseOrdersPage() {
                                     </div>
                                     <AddItemForm onAddItem={createAppend} />
                                     <DialogFooter>
-                                        <DialogClose asChild>
-                                            <Button variant="outline" type="button">Cancel</Button>
-                                        </DialogClose>
-                                        <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
+                                        <div className='flex gap-2'>
+                                            <DialogClose asChild>
+                                                <Button variant="outline" type="button">Cancel</Button>
+                                            </DialogClose>
+                                            <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
+                                        </div>
                                     </DialogFooter>
                                 </form>
                             </Form>
