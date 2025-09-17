@@ -56,7 +56,7 @@ const quotationSchema = z.object({
     customer: z.string().min(1, "Customer name is required"),
     date: z.string(),
     total: z.coerce.number().min(0, "Total must be a non-negative number"),
-    status: z.enum(['Draft', 'Sent', 'Approved', 'Rejected']),
+    status: z.enum(['Draft', 'Sent', 'Approved', 'Rejected', 'Converted']),
 });
 
 type Quotation = z.infer<typeof quotationSchema>;
@@ -88,8 +88,9 @@ const initialQuotations: Quotation[] = [
 const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "outline"} = {
     'Sent': 'default',
     'Draft': 'secondary',
-    'Approved': 'outline', // Success-like variant
-    'Rejected': 'destructive'
+    'Approved': 'outline', 
+    'Rejected': 'destructive',
+    'Converted': 'default'
 }
 
 
@@ -122,6 +123,16 @@ export default function QuotationsPage() {
         form.reset();
         setIsDialogOpen(false);
     }
+    
+    const handleConvertToOrder = (quotationId: string) => {
+        setQuotations(quotations.map(q => 
+            q.id === quotationId ? { ...q, status: 'Converted' } : q
+        ));
+        toast({
+            title: 'Quotation Converted',
+            description: `Quotation ${quotationId} has been converted to an order.`,
+        });
+    };
 
 
   return (
@@ -211,7 +222,12 @@ export default function QuotationsPage() {
                     <TableCell>{quote.date}</TableCell>
                     <TableCell className="text-right">${quote.total.toFixed(2)}</TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant[quote.status] || 'secondary'}>{quote.status}</Badge>
+                      <Badge 
+                        variant={statusVariant[quote.status] || 'secondary'}
+                        className={quote.status === 'Converted' ? 'bg-green-600 text-white' : ''}
+                      >
+                        {quote.status}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                         <DropdownMenu>
@@ -223,7 +239,12 @@ export default function QuotationsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                             <DropdownMenuItem>View/Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Convert to Order</DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => handleConvertToOrder(quote.id)}
+                                disabled={quote.status === 'Converted'}
+                            >
+                                Convert to Order
+                            </DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>

@@ -86,7 +86,7 @@ const developmentChecklist = [
     heading: 'Sales Flow',
     items: [
       { id: 'sales-1', label: 'Quotation creation and management', checked: true },
-      { id: 'sales-2', label: 'Order conversion and real-time tracking' },
+      { id: 'sales-2', label: 'Order conversion and real-time tracking', checked: true },
     ],
   },
 ];
