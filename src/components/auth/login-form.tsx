@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,7 @@ const formSchema = z.object({
 
 export function LoginForm() {
   const { toast } = useToast();
+  const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -44,12 +46,16 @@ export function LoginForm() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    // TODO: Implement actual login logic
-    toast({
-      title: "Login Submitted",
-      description: "This is a placeholder. Login functionality is not yet implemented.",
-    });
+    // This is a mock login.
+    if (values.email === "trader@futurestream.com" && values.password === "password") {
+      router.push("/dashboard");
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Invalid login",
+        description: "Please check your email and password.",
+      });
+    }
   }
 
   return (
@@ -57,7 +63,7 @@ export function LoginForm() {
       <CardHeader>
         <CardTitle className="text-2xl font-headline">Log In</CardTitle>
         <CardDescription>
-          Enter your email below to log in to your account.
+          Enter your email below to log in to your account. <br/> Use <strong>trader@futurestream.com</strong> and <strong>password</strong>
         </CardDescription>
       </CardHeader>
       <CardContent>
