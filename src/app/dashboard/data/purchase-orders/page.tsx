@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -53,7 +53,7 @@ import { format } from 'date-fns';
 import { initialMasterData } from '@/app/dashboard/data/master-data/page';
 import { initialSuppliers } from '../suppliers/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 
 const lineItemSchema = z.object({
@@ -184,6 +184,7 @@ export default function PurchaseOrdersPage() {
             description: `Purchase Order ${newPO.id} has been saved as a draft.`,
         });
         form.reset();
+        remove(); // remove all field array items
         setIsDialogOpen(false);
     }
 
@@ -218,7 +219,10 @@ export default function PurchaseOrdersPage() {
                     />
                     <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
                         setIsDialogOpen(isOpen);
-                        if (!isOpen) form.reset();
+                        if (!isOpen) {
+                            form.reset();
+                            remove();
+                        };
                     }}>
                         <DialogTrigger asChild>
                             <Button>
@@ -277,7 +281,7 @@ export default function PurchaseOrdersPage() {
                                          {fields.length === 0 && (
                                             <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
                                         )}
-                                        <FormMessage>{form.formState.errors.lineItems?.message}</FormMessage>
+                                        <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
                                     </div>
                                     
                                     <AddItemForm onAddItem={append} />
@@ -348,5 +352,3 @@ export default function PurchaseOrdersPage() {
     </>
   );
 }
-
-    
