@@ -95,6 +95,7 @@ export const initialMasterData: MasterDataItem[] = [
 export default function MasterDataPage() {
     const [masterData, setMasterData] = useState<MasterDataItem[]>(initialMasterData);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
 
     const form = useForm<MasterDataItem>({
@@ -118,6 +119,13 @@ export default function MasterDataPage() {
         setIsDialogOpen(false);
       }
 
+    const filteredMasterData = masterData.filter(
+        (item) =>
+          item.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.type.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
   return (
     <>
       <header className="flex items-center p-4 border-b">
@@ -135,7 +143,12 @@ export default function MasterDataPage() {
                     </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Input placeholder="Search items..." className="w-64" />
+                    <Input
+                      placeholder="Search items..."
+                      className="w-64"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
                             <Button>
@@ -240,7 +253,7 @@ export default function MasterDataPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {masterData.map((item) => (
+                {filteredMasterData.map((item) => (
                   <TableRow key={item.itemCode}>
                     <TableCell className="font-mono">{item.itemCode}</TableCell>
                     <TableCell className="font-medium">{item.name}</TableCell>

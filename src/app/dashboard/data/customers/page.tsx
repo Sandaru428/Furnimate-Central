@@ -82,6 +82,7 @@ const initialCustomers: Customer[] = [
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   const form = useForm<Customer>({
@@ -104,6 +105,14 @@ export default function CustomersPage() {
     setIsDialogOpen(false);
   }
 
+  const filteredCustomers = customers.filter(
+    (customer) =>
+      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.phone.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+
   return (
     <>
       <header className="flex items-center p-4 border-b">
@@ -119,7 +128,12 @@ export default function CustomersPage() {
                 <CardDescription>Manage your customer information.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Input placeholder="Search customers..." className="w-64" />
+                <Input
+                  placeholder="Search customers..."
+                  className="w-64"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
@@ -196,7 +210,7 @@ export default function CustomersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {customers.map((customer) => (
+                {filteredCustomers.map((customer) => (
                   <TableRow key={customer.id}>
                     <TableCell className="font-medium">{customer.name}</TableCell>
                     <TableCell>{customer.email}</TableCell>

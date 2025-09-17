@@ -83,6 +83,7 @@ const initialSuppliers: Supplier[] = [
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   const form = useForm<Supplier>({
@@ -104,6 +105,12 @@ export default function SuppliersPage() {
     setIsDialogOpen(false);
   }
 
+  const filteredSuppliers = suppliers.filter(
+    (supplier) =>
+      supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.contact.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <>
       <header className="flex items-center p-4 border-b">
@@ -121,7 +128,12 @@ export default function SuppliersPage() {
                     </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Input placeholder="Search suppliers..." className="w-64" />
+                    <Input
+                      placeholder="Search suppliers..."
+                      className="w-64"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
                             <Button>
@@ -184,7 +196,7 @@ export default function SuppliersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {suppliers.map((supplier) => (
+                {filteredSuppliers.map((supplier) => (
                   <TableRow key={supplier.id}>
                     <TableCell className="font-medium">{supplier.name}</TableCell>
                     <TableCell>{supplier.contact}</TableCell>
