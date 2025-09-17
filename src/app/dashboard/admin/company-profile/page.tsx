@@ -105,7 +105,7 @@ export default function CompanyProfilePage() {
             />
             <Button type="submit">Save Changes</Button>
           </form>
-        </F>
+        </Form>
       </CardContent>
     </Card>
   );
