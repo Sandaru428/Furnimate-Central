@@ -61,7 +61,7 @@ const developmentChecklist = [
       {
         id: 'core-1',
         label: 'Smart Reference Number Generator (Cloud Function)',
-        checked: false,
+        checked: true,
       },
       {
         id: 'core-2',
@@ -193,6 +193,7 @@ export default function DashboardPage() {
                       <Checkbox
                         id={item.id}
                         checked={item.checked || false}
+                        disabled
                       />
                       <label
                         htmlFor={item.id}
