@@ -139,7 +139,7 @@ const initialPurchaseOrders: PurchaseOrder[] = [
 
 const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
     const [selectedItemCode, setSelectedItemCode] = useState('');
-    const [quantity, setQuantity] = useState<number | ''>(1);
+    const [quantity, setQuantity] = useState<number | ''>('');
     const item = initialMasterData.find(i => i.itemCode === selectedItemCode);
 
     const handleAddItem = () => {
@@ -150,7 +150,7 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof line
                 quantity: numQuantity,
             });
             setSelectedItemCode('');
-            setQuantity(1);
+            setQuantity('');
         }
     }
 
@@ -524,7 +524,30 @@ export default function PurchaseOrdersPage() {
                  <Form {...paymentForm}>
                     <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)} className="space-y-4 py-4">
                        <FormField control={paymentForm.control} name="amount" render={({ field }) => ( <FormItem> <FormLabel>Amount</FormLabel> <FormControl> <Input type="number" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-                        <FormField control={paymentForm.control} name="method" render={({ field }) => ( <FormItem> <FormLabel>Payment Method</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Select a payment method" /> </SelectTrigger> </FormControl> <SelectContent> {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => ( <SelectItem key={method} value={method}> {method} </SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+                        <FormField
+                            control={paymentForm.control}
+                            name="method"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Payment Method</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a payment method" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (
+                                            <SelectItem key={method} value={method}>
+                                                {method}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         {paymentMethod === 'Card' && ( <FormField control={paymentForm.control} name="cardLast4" render={({ field }) => ( <FormItem> <FormLabel>Last 4 Digits of Card</FormLabel> <FormControl> <Input placeholder="1234" maxLength={4} {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> )}
                         {paymentMethod === 'Online' && ( <div className="grid grid-cols-2 gap-4"> <div className="space-y-2 col-span-2 sm:col-span-1"> <h4 className="font-medium text-sm">From</h4> <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} /> </div> <div className="space-y-2 col-span-2 sm:col-span-1"> <h4 className="font-medium text-sm">To</h4> <FormField control={paymentForm.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} /> </div> </div> )}
                         {paymentMethod === 'Cheque' && ( <div className="space-y-4"> <FormField control={paymentForm.control} name="chequeBank" render={({ field }) => ( <FormItem> <FormLabel>Bank Name</FormLabel> <FormControl> <Input placeholder="e.g. National Bank" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> <FormField control={paymentForm.control} name="chequeNumber" render={({ field }) => ( <FormItem> <FormLabel>Cheque Number</FormLabel> <FormControl> <Input placeholder="e.g. 987654" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> <FormField control={paymentForm.control} name="chequeDate" render={({ field }) => ( <FormItem> <FormLabel>Cheque Date</FormLabel> <FormControl> <Input type="date" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> </div> )}
@@ -536,5 +559,3 @@ export default function PurchaseOrdersPage() {
     </>
   );
 }
-
-    
