@@ -33,6 +33,7 @@ export default function CompanyProfilePage() {
       companyName: '',
       email: '',
       phone: '',
+      logo: undefined,
     },
   });
 
@@ -43,6 +44,9 @@ export default function CompanyProfilePage() {
       description: 'Your company profile has been saved.',
     });
   }
+
+  // We need to manage the file input specially
+  const logoRef = form.register("logo");
 
   return (
     <>
@@ -104,7 +108,7 @@ export default function CompanyProfilePage() {
                     <FormItem>
                       <FormLabel>Company Logo</FormLabel>
                       <FormControl>
-                        <Input type="file" {...field} />
+                        <Input type="file" {...logoRef} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
