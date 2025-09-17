@@ -122,7 +122,7 @@ const initialPurchaseOrders: PurchaseOrder[] = [
       totalAmount: 750,
       status: 'Fulfilled',
       lineItems: [
-        { itemId: 'WD-001', quantity: 30, unitPrice: 25 },
+        { itemId: 'WD-001', quantity: 30, unitPrice: 25, totalValue: 750 },
       ],
     },
      {
@@ -208,7 +208,11 @@ export default function PurchaseOrdersPage() {
         },
     });
 
-    const receiveForm = useForm<ReceiveItemsForm>();
+    const receiveForm = useForm<ReceiveItemsForm>({
+        defaultValues: {
+            lineItems: []
+        }
+    });
 
     const paymentForm = useForm<PaymentFormValues>({
         resolver: zodResolver(paymentSchema),
@@ -231,9 +235,26 @@ export default function PurchaseOrdersPage() {
 
     function handleCreateOrUpdateSubmit(values: CreatePurchaseOrder) {
         if (editingPO) {
+            // Calculate total amount based on line items, assuming unitPrice can be found in masterData
+            const totalAmount = values.lineItems.reduce((acc, item) => {
+                const masterItem = masterData.find(md => md.itemCode === item.itemId);
+                const price = masterItem?.unitPrice || 0;
+                return acc + (price * item.quantity);
+            }, 0);
+
+            const updatedLineItems = values.lineItems.map(item => {
+                const masterItem = masterData.find(md => md.itemCode === item.itemId);
+                return {
+                    ...item,
+                    unitPrice: masterItem?.unitPrice || 0,
+                    totalValue: (masterItem?.unitPrice || 0) * item.quantity
+                }
+            })
+
+
             setPurchaseOrders(prevPOs => prevPOs.map(po => 
                 po.id === editingPO.id
-                ? { ...po, ...values, lineItems: values.lineItems, status: 'Draft' }
+                ? { ...po, ...values, lineItems: updatedLineItems, totalAmount: totalAmount, status: 'Draft' }
                 : po
             ));
             toast({ title: 'Purchase Order Updated', description: `Purchase Order ${editingPO.id} has been updated.` });
@@ -245,7 +266,7 @@ export default function PurchaseOrdersPage() {
                 date: format(new Date(), 'yyyy-MM-dd'),
                 status: 'Draft',
                 lineItems: values.lineItems,
-                totalAmount: 0,
+                totalAmount: 0, // Total amount is 0 for draft as prices are not final
             };
             setPurchaseOrders([newPO, ...purchaseOrders]);
             toast({ title: 'Purchase Order Created', description: `Purchase Order ${newPO.id} has been saved as a draft.` });
@@ -281,7 +302,7 @@ export default function PurchaseOrdersPage() {
 
     function onPaymentSubmit(values: PaymentFormValues) {
         if (!selectedPO) return;
-        const currentAmountPaid = payments.filter(p => p.orderId === selectedPO.id).reduce((acc, p) => acc + p.amount, 0);
+        const currentAmountPaid = payments.filter(p => p.orderId === selectedPO.id && p.type === 'expense').reduce((acc, p) => acc + p.amount, 0);
         if (values.amount > selectedPO.totalAmount - currentAmountPaid) {
             toast({ variant: 'destructive', title: 'Invalid Amount', description: `Payment exceeds remaining balance. Max payable: $${(selectedPO.totalAmount - currentAmountPaid).toFixed(2)}` });
             return;
@@ -317,13 +338,13 @@ export default function PurchaseOrdersPage() {
 
     const openReceiveDialog = (po: PurchaseOrder) => {
         setSelectedPO(po);
-        receiveForm.reset({ lineItems: po.lineItems.map(item => ({ ...item, unitPrice: '' as any, totalValue: item.totalValue ?? 0 })) });
+        receiveForm.reset({ lineItems: po.lineItems.map(item => ({ ...item, unitPrice: '' as any, totalValue: 0 })) });
         setIsReceiveDialogOpen(true);
     };
 
     const openPaymentDialog = (po: PurchaseOrder) => {
         setSelectedPO(po);
-        const currentAmountPaid = payments.filter(p => p.orderId === po.id).reduce((acc, p) => acc + p.amount, 0);
+        const currentAmountPaid = payments.filter(p => p.orderId === po.id && p.type === 'expense').reduce((acc, p) => acc + p.amount, 0);
         const currentRemainingAmount = po.totalAmount - currentAmountPaid;
         paymentForm.reset({ amount: currentRemainingAmount > 0 ? currentRemainingAmount : '' as any, method: undefined, cardLast4: '', fromBankName: '', fromAccountNumber: '', toBankName: '', toAccountNumber: '', chequeBank: '', chequeDate: '', chequeNumber: '' });
         setIsPaymentDialogOpen(true);
@@ -332,8 +353,9 @@ export default function PurchaseOrdersPage() {
     const openCreateOrEditDialog = (po: PurchaseOrder | null) => {
         if (po) {
             setEditingPO(po);
-            createForm.reset({ supplierName: po.supplierName });
-            createReplace(po.lineItems);
+            const simplifiedLineItems = po.lineItems.map(({ itemId, quantity }) => ({ itemId, quantity }));
+            createForm.reset({ supplierName: po.supplierName, lineItems: simplifiedLineItems });
+            createReplace(simplifiedLineItems);
         } else {
             setEditingPO(null);
             createForm.reset({ supplierName: '', lineItems: [] });
@@ -377,7 +399,30 @@ export default function PurchaseOrdersPage() {
                             </DialogHeader>
                             <Form {...createForm}>
                                 <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)} className="space-y-4 py-4">
-                                    <FormField control={createForm.control} name="supplierName" render={({ field }) => ( <FormItem> <FormLabel>Supplier</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Select a supplier" /> </SelectTrigger> </FormControl> <SelectContent> {initialSuppliers.map(supplier => ( <SelectItem key={supplier.id} value={supplier.name}> {supplier.name} </SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+                                    <FormField
+                                      control={createForm.control}
+                                      name="supplierName"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Supplier</FormLabel>
+                                          <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue placeholder="Select a supplier" />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              {initialSuppliers.map(supplier => (
+                                                <SelectItem key={supplier.id} value={supplier.name}>
+                                                  {supplier.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
                                     <div>
                                         <FormLabel>Line Items</FormLabel>
                                         <div className="space-y-2 mt-2">
