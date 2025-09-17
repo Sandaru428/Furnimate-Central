@@ -420,7 +420,7 @@ export default function PurchaseOrdersPage() {
                                     </div>
                                     <AddItemForm onAddItem={createAppend} />
                                     <DialogFooter>
-                                        <div className='flex gap-2'>
+                                        <div className="flex gap-2">
                                             <DialogClose asChild>
                                                 <Button variant="outline" type="button">Cancel</Button>
                                             </DialogClose>
@@ -531,22 +531,22 @@ export default function PurchaseOrdersPage() {
                             name="method"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>Payment Method</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select a payment method" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (
-                                            <SelectItem key={method} value={method}>
-                                                {method}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
+                                    <FormLabel>Payment Method</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a payment method" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (
+                                                <SelectItem key={method} value={method}>
+                                                    {method}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
