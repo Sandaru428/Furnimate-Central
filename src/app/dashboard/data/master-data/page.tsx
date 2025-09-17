@@ -54,8 +54,8 @@ const itemSchema = z.object({
     itemCode: z.string().min(1, "Item code is required"),
     name: z.string().min(1, "Item name is required"),
     type: z.string().min(1, "Type is required"),
-    unitPrice: z.coerce.number().min(0, "Unit price must be non-negative"),
-    stockLevel: z.coerce.number().int().min(0, "Stock level must be a non-negative integer"),
+    unitPrice: z.coerce.number().positive("Unit price must be a positive number."),
+    stockLevel: z.coerce.number().int().positive("Stock level must be a positive integer."),
 });
 
 export type MasterDataItem = z.infer<typeof itemSchema>;
@@ -104,8 +104,8 @@ export default function MasterDataPage() {
             itemCode: '',
             name: '',
             type: '',
-            unitPrice: 0,
-            stockLevel: 0,
+            unitPrice: undefined,
+            stockLevel: undefined,
         },
     });
 
@@ -208,7 +208,7 @@ export default function MasterDataPage() {
                                         <FormItem>
                                         <FormLabel>Unit Price</FormLabel>
                                         <FormControl>
-                                            <Input type="number" placeholder="0.00" {...field} />
+                                            <Input type="number" placeholder="e.g. 10.50" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
@@ -221,7 +221,7 @@ export default function MasterDataPage() {
                                         <FormItem>
                                         <FormLabel>Stock Level</FormLabel>
                                         <FormControl>
-                                            <Input type="number" placeholder="0" {...field} />
+                                            <Input type="number" placeholder="e.g. 100" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
@@ -286,5 +286,3 @@ export default function MasterDataPage() {
     </>
   );
 }
-
-    

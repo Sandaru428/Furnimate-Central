@@ -80,7 +80,7 @@ const receiveItemsSchema = z.object({
   lineItems: z.array(z.object({
     itemId: z.string(),
     quantity: z.number(),
-    unitPrice: z.coerce.number().min(0, "Unit price must be non-negative."),
+    unitPrice: z.coerce.number().positive("Unit price must be a positive number."),
     totalValue: z.number(),
   }))
 });
@@ -277,7 +277,7 @@ export default function PurchaseOrdersPage() {
         receiveForm.reset({ 
             lineItems: po.lineItems.map(item => ({
                 ...item,
-                unitPrice: item.unitPrice ?? 0,
+                unitPrice: undefined,
                 totalValue: item.totalValue ?? 0,
             })) 
         });
@@ -500,7 +500,7 @@ export default function PurchaseOrdersPage() {
                                     const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId);
                                     const quantity = receiveForm.watch(`lineItems.${index}.quantity`);
                                     const unitPrice = receiveForm.watch(`lineItems.${index}.unitPrice`);
-                                    const totalValue = quantity * unitPrice;
+                                    const totalValue = (quantity || 0) * (unitPrice || 0);
                                     receiveForm.setValue(`lineItems.${index}.totalValue`, totalValue);
 
                                     return (
@@ -514,7 +514,7 @@ export default function PurchaseOrdersPage() {
                                                     render={({ field }) => (
                                                         <FormItem>
                                                             <FormControl>
-                                                                <Input type="number" {...field} />
+                                                                <Input type="number" placeholder="e.g. 10.50" {...field} />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -540,6 +540,3 @@ export default function PurchaseOrdersPage() {
     </>
   );
 }
-
-    
-    

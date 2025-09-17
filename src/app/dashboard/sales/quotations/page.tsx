@@ -56,7 +56,7 @@ import { useRouter } from 'next/navigation';
 
 const lineItemSchema = z.object({
   itemId: z.string(),
-  quantity: z.coerce.number().int().positive(),
+  quantity: z.coerce.number().int().positive("Quantity must be a positive integer."),
 });
 
 const quotationSchema = z.object({
@@ -128,9 +128,10 @@ export default function QuotationsPage() {
     function onSubmit(values: z.infer<typeof createQuotationSchema>) {
         try {
             const parsedLineItems = values.items.split('\n').map(line => {
-                const [itemId, quantity] = line.split(',');
-                if (!itemId || !quantity || isNaN(parseInt(quantity))) {
-                    throw new Error(`Invalid line item format: ${line}. Use 'ITEM-ID,quantity'.`);
+                const [itemId, quantityStr] = line.split(',');
+                const quantity = parseInt(quantityStr?.trim());
+                if (!itemId || !quantityStr || isNaN(quantity) || quantity <= 0) {
+                    throw new Error(`Invalid line item: '${line}'. Each line must be 'ITEM-CODE,quantity' with a positive quantity.`);
                 }
                 const item = initialMasterData.find(i => i.itemCode === itemId.trim());
                 if (!item) {
@@ -138,7 +139,7 @@ export default function QuotationsPage() {
                 }
                 return { 
                     itemId: itemId.trim(), 
-                    quantity: parseInt(quantity.trim()),
+                    quantity: quantity,
                     unitPrice: item.unitPrice,
                 };
             });
