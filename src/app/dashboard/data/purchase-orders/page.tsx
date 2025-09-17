@@ -270,8 +270,6 @@ export default function PurchaseOrdersPage() {
                                                 <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md">
                                                     <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div>
                                                     <div className="w-20 text-sm">Qty: {field.quantity}</div>
-                                                    <div className="w-24 text-sm text-right">@ ${field.unitPrice.toFixed(2)}</div>
-                                                    <div className="w-24 text-sm font-semibold text-right">${field.totalValue.toFixed(2)}</div>
                                                     <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
                                                         <Trash2 className="h-4 w-4 text-destructive"/>
                                                     </Button>
@@ -348,3 +346,5 @@ export default function PurchaseOrdersPage() {
     </>
   );
 }
+
+    
