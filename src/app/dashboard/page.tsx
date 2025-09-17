@@ -24,7 +24,7 @@ const developmentChecklist = [
     heading: "Admin Features",
     items: [
       { id: "admin-1", label: "Company Profile Management UI", checked: true },
-      { id: "admin-2", label: "Notification Template Engine UI" },
+      { id: "admin-2", label: "Notification Template Engine UI", checked: true },
     ],
   },
   {
@@ -67,7 +67,7 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p>You have successfully logged in.</p>
+              <p>You can now log in with any email and password.</p>
             </CardContent>
           </Card>
         </TabsContent>

@@ -9,8 +9,10 @@ import {
     SidebarProvider,
     SidebarInset,
     SidebarTrigger,
+    SidebarGroup,
+    SidebarGroupLabel,
   } from "@/components/ui/sidebar";
-import { Home } from "lucide-react";
+import { Home, Settings, FileText } from "lucide-react";
 
 export default function DashboardLayout({
     children,
@@ -28,11 +30,26 @@ export default function DashboardLayout({
                 </SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton href="/dashboard" isActive>
+                        <SidebarMenuButton href="/dashboard">
                             <Home />
                             Dashboard
                         </SidebarMenuButton>
                     </SidebarMenuItem>
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Admin</SidebarGroupLabel>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton href="/dashboard/admin/company-profile">
+                                <Settings />
+                                Company Profile
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton href="/dashboard/admin/notification-templates">
+                                <FileText />
+                                Notification Templates
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarGroup>
                 </SidebarMenu>
             </Sidebar>
             <SidebarInset>
