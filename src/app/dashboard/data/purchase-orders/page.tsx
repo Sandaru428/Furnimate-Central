@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -50,17 +50,16 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { initialMasterData } from '@/app/dashboard/data/master-data/page';
+import { initialMasterData, MasterDataItem } from '@/app/dashboard/data/master-data/page';
 import { initialSuppliers } from '../suppliers/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 
-
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item selection is required."),
   quantity: z.coerce.number().int().positive("Quantity must be a positive number."),
-  unitPrice: z.coerce.number(),
-  totalValue: z.coerce.number(),
+  unitPrice: z.coerce.number().optional(), // Now optional at creation
+  totalValue: z.coerce.number().optional(), // Now optional at creation
 });
 
 const purchaseOrderSchema = z.object({
@@ -74,28 +73,37 @@ const purchaseOrderSchema = z.object({
 
 const createPurchaseOrderSchema = z.object({
     supplierName: z.string().min(1, "Please select a supplier."),
-    lineItems: z.array(lineItemSchema).min(1, "Please add at least one item."),
+    lineItems: z.array(lineItemSchema.omit({ unitPrice: true, totalValue: true })).min(1, "Please add at least one item."),
+});
+
+const receiveItemsSchema = z.object({
+  lineItems: z.array(z.object({
+    itemId: z.string(),
+    quantity: z.number(),
+    unitPrice: z.coerce.number().min(0, "Unit price must be non-negative."),
+    totalValue: z.number(),
+  }))
 });
 
 
 type PurchaseOrder = z.infer<typeof purchaseOrderSchema>;
 type CreatePurchaseOrder = z.infer<typeof createPurchaseOrderSchema>;
+type ReceiveItemsForm = z.infer<typeof receiveItemsSchema>;
 
 const initialPurchaseOrders: PurchaseOrder[] = [
     {
       id: 'PO-001',
       supplierName: 'Timber Co.',
       date: '2024-05-10',
-      totalAmount: 750.00,
+      totalAmount: 0, // Will be calculated on fulfillment
       status: 'Sent',
       lineItems: [
-        { itemId: 'WD-001', quantity: 30, unitPrice: 25.00, totalValue: 750.00 },
+        { itemId: 'WD-001', quantity: 30 },
       ],
     },
 ];
 
-// Temporary component for adding items - will be moved to its own file later if needed
-const AddItemForm = ({ onAddItem }: { onAddItem: (item: z.infer<typeof lineItemSchema>) => void }) => {
+const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
     const [selectedItemCode, setSelectedItemCode] = useState('');
     const [quantity, setQuantity] = useState(1);
     const item = initialMasterData.find(i => i.itemCode === selectedItemCode);
@@ -105,8 +113,6 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: z.infer<typeof lineItemS
             onAddItem({
                 itemId: item.itemCode,
                 quantity: quantity,
-                unitPrice: item.unitPrice,
-                totalValue: item.unitPrice * quantity,
             });
             setSelectedItemCode('');
             setQuantity(1);
@@ -148,11 +154,14 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: z.infer<typeof lineItemS
 
 export default function PurchaseOrdersPage() {
     const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [masterData, setMasterData] = useState<MasterDataItem[]>(initialMasterData);
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
+    const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
 
-    const form = useForm<CreatePurchaseOrder>({
+    const createForm = useForm<CreatePurchaseOrder>({
         resolver: zodResolver(createPurchaseOrderSchema),
         defaultValues: {
           supplierName: '',
@@ -160,13 +169,19 @@ export default function PurchaseOrdersPage() {
         },
     });
 
-    const { fields, append, remove } = useFieldArray({
-        control: form.control,
+    const receiveForm = useForm<ReceiveItemsForm>();
+
+    const { fields: createFields, append: createAppend, remove: createRemove } = useFieldArray({
+        control: createForm.control,
         name: "lineItems",
     });
 
-    function onSubmit(values: CreatePurchaseOrder) {
-        const totalAmount = values.lineItems.reduce((acc, item) => acc + item.totalValue, 0);
+     const { fields: receiveFields } = useFieldArray({
+        control: receiveForm.control,
+        name: "lineItems",
+    });
+
+    function handleCreateSubmit(values: CreatePurchaseOrder) {
         const nextId = purchaseOrders.length > 0 ? Math.max(...purchaseOrders.map(po => parseInt(po.id.split('-')[1]))) + 1 : 1;
         
         const newPO: PurchaseOrder = {
@@ -175,7 +190,7 @@ export default function PurchaseOrdersPage() {
             date: format(new Date(), 'yyyy-MM-dd'),
             status: 'Draft',
             lineItems: values.lineItems,
-            totalAmount: totalAmount,
+            totalAmount: 0, // Total amount is 0 on creation
         };
 
         setPurchaseOrders([newPO, ...purchaseOrders]);
@@ -183,10 +198,64 @@ export default function PurchaseOrdersPage() {
             title: 'Purchase Order Created',
             description: `Purchase Order ${newPO.id} has been saved as a draft.`,
         });
-        form.reset();
-        remove(); // remove all field array items
-        setIsDialogOpen(false);
+        createForm.reset();
+        createRemove();
+        setIsCreateDialogOpen(false);
     }
+    
+    function handleReceiveSubmit(values: ReceiveItemsForm) {
+        if (!selectedPO) return;
+
+        const totalAmount = values.lineItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
+
+        // Update PO
+        setPurchaseOrders(prevPOs => prevPOs.map(po => 
+            po.id === selectedPO.id 
+            ? { ...po, status: 'Fulfilled', totalAmount, lineItems: values.lineItems } 
+            : po
+        ));
+
+        // Update Master Data Stock
+        setMasterData(prevMasterData => {
+            const newMasterData = [...prevMasterData];
+            values.lineItems.forEach(receivedItem => {
+                const itemIndex = newMasterData.findIndex(md => md.itemCode === receivedItem.itemId);
+                if (itemIndex !== -1) {
+                    newMasterData[itemIndex].stockLevel += receivedItem.quantity;
+                }
+            });
+            return newMasterData;
+        });
+
+        toast({
+            title: 'Purchase Order Fulfilled',
+            description: `Stock for PO ${selectedPO.id} has been updated.`,
+        });
+        setIsReceiveDialogOpen(false);
+        setSelectedPO(null);
+    }
+    
+    const handleStatusChange = (poId: string, status: 'Sent' | 'Fulfilled') => {
+        setPurchaseOrders(prev => prev.map(po => po.id === poId ? {...po, status} : po));
+        toast({ title: 'Status Updated', description: `PO ${poId} marked as ${status}.` });
+    };
+
+    const handleDelete = (poId: string) => {
+        setPurchaseOrders(prev => prev.filter(po => po.id !== poId));
+        toast({ title: 'Purchase Order Deleted', description: `PO ${poId} has been removed.` });
+    };
+
+    const openReceiveDialog = (po: PurchaseOrder) => {
+        setSelectedPO(po);
+        receiveForm.reset({ 
+            lineItems: po.lineItems.map(item => ({
+                ...item,
+                unitPrice: item.unitPrice ?? 0,
+                totalValue: item.totalValue ?? 0,
+            })) 
+        });
+        setIsReceiveDialogOpen(true);
+    };
 
     const filteredPurchaseOrders = purchaseOrders.filter(po =>
         po.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -217,11 +286,11 @@ export default function PurchaseOrdersPage() {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
-                        setIsDialogOpen(isOpen);
+                    <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => {
+                        setIsCreateDialogOpen(isOpen);
                         if (!isOpen) {
-                            form.reset();
-                            remove();
+                            createForm.reset();
+                            createRemove();
                         };
                     }}>
                         <DialogTrigger asChild>
@@ -234,10 +303,10 @@ export default function PurchaseOrdersPage() {
                             <DialogHeader>
                                 <DialogTitle>Create New Purchase Order</DialogTitle>
                             </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                            <Form {...createForm}>
+                                <form onSubmit={createForm.handleSubmit(handleCreateSubmit)} className="space-y-4 py-4">
                                     <FormField
-                                        control={form.control}
+                                        control={createForm.control}
                                         name="supplierName"
                                         render={({ field }) => (
                                             <FormItem>
@@ -264,25 +333,25 @@ export default function PurchaseOrdersPage() {
                                     <div>
                                         <FormLabel>Line Items</FormLabel>
                                         <div className="space-y-2 mt-2">
-                                            {fields.map((field, index) => {
+                                            {createFields.map((field, index) => {
                                                 const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId);
                                                 return (
                                                 <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md">
                                                     <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div>
                                                     <div className="w-20 text-sm">Qty: {field.quantity}</div>
-                                                    <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
+                                                    <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}>
                                                         <Trash2 className="h-4 w-4 text-destructive"/>
                                                     </Button>
                                                 </div>
                                             )})}
                                         </div>
-                                         {fields.length === 0 && (
+                                         {createFields.length === 0 && (
                                             <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
                                         )}
-                                        <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
+                                        <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
                                     </div>
                                     
-                                    <AddItemForm onAddItem={append} />
+                                    <AddItemForm onAddItem={createAppend} />
 
                                     <DialogFooter>
                                         <DialogClose asChild>
@@ -330,9 +399,24 @@ export default function PurchaseOrdersPage() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View/Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Mark as Sent</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                            <DropdownMenuItem disabled>View/Edit</DropdownMenuItem>
+                            {po.status === 'Draft' && (
+                                <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}>
+                                    Mark as Sent
+                                </DropdownMenuItem>
+                            )}
+                             {po.status === 'Sent' && (
+                                <DropdownMenuItem onClick={() => openReceiveDialog(po)}>
+                                    Receive Items
+                                </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem 
+                                className="text-destructive" 
+                                onClick={() => handleDelete(po.id)}
+                                disabled={po.status !== 'Draft'}
+                            >
+                                Delete
+                            </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -343,6 +427,67 @@ export default function PurchaseOrdersPage() {
           </CardContent>
         </Card>
       </main>
+
+       {/* Receive Items Dialog */}
+       <Dialog open={isReceiveDialogOpen} onOpenChange={setIsReceiveDialogOpen}>
+            <DialogContent className="sm:max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle>
+                    <CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription>
+                </DialogHeader>
+                <Form {...receiveForm}>
+                    <form onSubmit={receiveForm.handleSubmit(handleReceiveSubmit)} className="space-y-4 py-4">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Item</TableHead>
+                                    <TableHead className="w-24">Quantity</TableHead>
+                                    <TableHead className="w-40">Unit Price</TableHead>
+                                    <TableHead className="w-40 text-right">Total Value</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {receiveFields.map((field, index) => {
+                                    const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId);
+                                    const quantity = receiveForm.watch(`lineItems.${index}.quantity`);
+                                    const unitPrice = receiveForm.watch(`lineItems.${index}.unitPrice`);
+                                    const totalValue = quantity * unitPrice;
+                                    receiveForm.setValue(`lineItems.${index}.totalValue`, totalValue);
+
+                                    return (
+                                        <TableRow key={field.id}>
+                                            <TableCell className="font-medium">{itemDetails?.name}</TableCell>
+                                            <TableCell>{quantity}</TableCell>
+                                            <TableCell>
+                                                <FormField
+                                                    control={receiveForm.control}
+                                                    name={`lineItems.${index}.unitPrice`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormControl>
+                                                                <Input type="number" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono">${totalValue.toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline" type="button">Cancel</Button>
+                            </DialogClose>
+                            <Button type="submit">Confirm & Receive Stock</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
     </>
   );
 }

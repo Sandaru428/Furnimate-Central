@@ -58,7 +58,7 @@ const itemSchema = z.object({
     stockLevel: z.coerce.number().int().min(0, "Stock level must be a non-negative integer"),
 });
 
-type MasterDataItem = z.infer<typeof itemSchema>;
+export type MasterDataItem = z.infer<typeof itemSchema>;
 
 
 export const initialMasterData: MasterDataItem[] = [
@@ -286,3 +286,5 @@ export default function MasterDataPage() {
     </>
   );
 }
+
+    
