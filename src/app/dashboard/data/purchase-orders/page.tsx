@@ -139,7 +139,7 @@ const initialPurchaseOrders: PurchaseOrder[] = [
 
 const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
     const [selectedItemCode, setSelectedItemCode] = useState('');
-    const [quantity, setQuantity] = useState<number | ''>('');
+    const [quantity, setQuantity] = useState<number | ''>(1);
     const item = initialMasterData.find(i => i.itemCode === selectedItemCode);
 
     const handleAddItem = () => {
@@ -150,7 +150,7 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof line
                 quantity: numQuantity,
             });
             setSelectedItemCode('');
-            setQuantity('');
+            setQuantity(1);
         }
     }
 
@@ -209,6 +209,7 @@ export default function PurchaseOrdersPage() {
     });
 
     const receiveForm = useForm<ReceiveItemsForm>({
+        resolver: zodResolver(receiveItemsSchema),
         defaultValues: {
             lineItems: []
         }
@@ -235,26 +236,12 @@ export default function PurchaseOrdersPage() {
 
     function handleCreateOrUpdateSubmit(values: CreatePurchaseOrder) {
         if (editingPO) {
-            // Calculate total amount based on line items, assuming unitPrice can be found in masterData
-            const totalAmount = values.lineItems.reduce((acc, item) => {
-                const masterItem = masterData.find(md => md.itemCode === item.itemId);
-                const price = masterItem?.unitPrice || 0;
-                return acc + (price * item.quantity);
-            }, 0);
-
-            const updatedLineItems = values.lineItems.map(item => {
-                const masterItem = masterData.find(md => md.itemCode === item.itemId);
-                return {
-                    ...item,
-                    unitPrice: masterItem?.unitPrice || 0,
-                    totalValue: (masterItem?.unitPrice || 0) * item.quantity
-                }
-            })
-
+            // Update logic, no price calculation here as it's done on fulfillment
+            const updatedLineItems = values.lineItems.map(item => ({...item, unitPrice: undefined, totalValue: undefined }));
 
             setPurchaseOrders(prevPOs => prevPOs.map(po => 
                 po.id === editingPO.id
-                ? { ...po, ...values, lineItems: updatedLineItems, totalAmount: totalAmount, status: 'Draft' }
+                ? { ...po, ...values, lineItems: updatedLineItems, status: 'Draft', totalAmount: 0 }
                 : po
             ));
             toast({ title: 'Purchase Order Updated', description: `Purchase Order ${editingPO.id} has been updated.` });
@@ -338,7 +325,7 @@ export default function PurchaseOrdersPage() {
 
     const openReceiveDialog = (po: PurchaseOrder) => {
         setSelectedPO(po);
-        receiveForm.reset({ lineItems: po.lineItems.map(item => ({ ...item, unitPrice: '' as any, totalValue: 0 })) });
+        receiveForm.reset({ lineItems: po.lineItems.map(item => ({ ...item, unitPrice: item.unitPrice || ('' as any), totalValue: item.totalValue || 0 })) });
         setIsReceiveDialogOpen(true);
     };
 
@@ -432,7 +419,12 @@ export default function PurchaseOrdersPage() {
                                         <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
                                     </div>
                                     <AddItemForm onAddItem={createAppend} />
-                                    <DialogFooter> <DialogClose asChild> <Button variant="outline" type="button">Cancel</Button> </DialogClose> <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button> </DialogFooter>
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button variant="outline" type="button">Cancel</Button>
+                                        </DialogClose>
+                                        <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
+                                    </DialogFooter>
                                 </form>
                             </Form>
                         </DialogContent>
@@ -500,7 +492,9 @@ export default function PurchaseOrdersPage() {
                                     const quantity = receiveForm.watch(`lineItems.${index}.quantity`);
                                     const unitPrice = receiveForm.watch(`lineItems.${index}.unitPrice`);
                                     const totalValue = (quantity || 0) * (unitPrice || 0);
-                                    receiveForm.setValue(`lineItems.${index}.totalValue`, totalValue);
+                                    if(receiveForm.getValues(`lineItems.${index}.totalValue`) !== totalValue) {
+                                        receiveForm.setValue(`lineItems.${index}.totalValue`, totalValue);
+                                    }
                                     return (
                                         <TableRow key={field.id}>
                                             <TableCell className="font-medium">{itemDetails?.name}</TableCell>
@@ -542,3 +536,5 @@ export default function PurchaseOrdersPage() {
     </>
   );
 }
+
+    
