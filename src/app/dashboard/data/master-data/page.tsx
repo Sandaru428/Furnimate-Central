@@ -1,6 +1,10 @@
 
 'use client';
 
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -22,13 +26,42 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-  } from "@/components/ui/dropdown-menu"
+  } from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter,
+    DialogClose,
+  } from '@/components/ui/dialog';
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+  } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useToast } from '@/hooks/use-toast';
 
-const masterData = [
+const itemSchema = z.object({
+    itemCode: z.string().min(1, "Item code is required"),
+    name: z.string().min(1, "Item name is required"),
+    category: z.string().min(1, "Category is required"),
+    unitPrice: z.coerce.number().min(0, "Unit price must be non-negative"),
+    stockLevel: z.coerce.number().int().min(0, "Stock level must be a non-negative integer"),
+});
+
+type MasterDataItem = z.infer<typeof itemSchema>;
+
+
+const initialMasterData: MasterDataItem[] = [
   {
     itemCode: 'WD-001',
     name: 'Oak Wood Plank',
@@ -60,6 +93,31 @@ const masterData = [
 ];
 
 export default function MasterDataPage() {
+    const [masterData, setMasterData] = useState<MasterDataItem[]>(initialMasterData);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const { toast } = useToast();
+
+    const form = useForm<MasterDataItem>({
+        resolver: zodResolver(itemSchema),
+        defaultValues: {
+            itemCode: '',
+            name: '',
+            category: '',
+            unitPrice: 0,
+            stockLevel: 0,
+        },
+    });
+
+    function onSubmit(values: MasterDataItem) {
+        setMasterData([...masterData, values]);
+        toast({
+          title: 'Item Added',
+          description: `${values.name} has been successfully added.`,
+        });
+        form.reset();
+        setIsDialogOpen(false);
+      }
+
   return (
     <>
       <header className="flex items-center p-4 border-b">
@@ -78,10 +136,94 @@ export default function MasterDataPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Input placeholder="Search items..." className="w-64" />
-                    <Button>
-                        <PlusCircle className="mr-2" />
-                        Add New Item
-                    </Button>
+                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <PlusCircle className="mr-2" />
+                                Add New Item
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Add New Item</DialogTitle>
+                            </DialogHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                    <FormField
+                                    control={form.control}
+                                    name="itemCode"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Item Code</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., WD-002" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+                                    <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Walnut Wood Plank" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+                                    <FormField
+                                    control={form.control}
+                                    name="category"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Category</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Wood" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+                                    <FormField
+                                    control={form.control}
+                                    name="unitPrice"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Unit Price</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" placeholder="0.00" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+                                    <FormField
+                                    control={form.control}
+                                    name="stockLevel"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Stock Level</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" placeholder="0" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button variant="outline">Cancel</Button>
+                                        </DialogClose>
+                                        <Button type="submit">Add Item</Button>
+                                    </DialogFooter>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
           </CardHeader>
