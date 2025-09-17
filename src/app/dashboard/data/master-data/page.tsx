@@ -61,7 +61,7 @@ const itemSchema = z.object({
 type MasterDataItem = z.infer<typeof itemSchema>;
 
 
-const initialMasterData: MasterDataItem[] = [
+export const initialMasterData: MasterDataItem[] = [
   {
     itemCode: 'WD-001',
     name: 'Oak Wood Plank',

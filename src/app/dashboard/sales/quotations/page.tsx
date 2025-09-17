@@ -45,11 +45,19 @@ import {
     FormMessage,
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { initialMasterData } from '@/app/dashboard/data/master-data/page';
+import { useRouter } from 'next/navigation';
+
+const lineItemSchema = z.object({
+  itemId: z.string(),
+  quantity: z.coerce.number().int().positive(),
+});
 
 const quotationSchema = z.object({
     id: z.string(),
@@ -57,7 +65,13 @@ const quotationSchema = z.object({
     date: z.string(),
     amount: z.coerce.number().min(0, "Amount must be a non-negative number"),
     status: z.enum(['Draft', 'Sent', 'Approved', 'Rejected', 'Converted']),
+    lineItems: z.array(lineItemSchema),
 });
+
+const createQuotationSchema = quotationSchema.omit({ id: true, date: true, status: true, amount: true, lineItems: true }).extend({
+    items: z.string().min(1, "Please add at least one item."),
+});
+
 
 type Quotation = z.infer<typeof quotationSchema>;
 
@@ -68,6 +82,7 @@ const initialQuotations: Quotation[] = [
     date: '2024-05-01',
     amount: 1250.00,
     status: 'Sent',
+    lineItems: [{ itemId: 'WD-001', quantity: 50 }],
   },
   {
     id: 'QUO-002',
@@ -75,6 +90,7 @@ const initialQuotations: Quotation[] = [
     date: '2024-05-03',
     amount: 850.50,
     status: 'Draft',
+    lineItems: [{ itemId: 'FBR-003', quantity: 55 }],
   },
   {
     id: 'QUO-003',
@@ -82,6 +98,7 @@ const initialQuotations: Quotation[] = [
     date: '2024-05-05',
     amount: 2400.00,
     status: 'Approved',
+    lineItems: [{ itemId: 'MTL-002', quantity: 40 }, { itemId: 'FNS-010', quantity: 10 }],
   },
 ];
 
@@ -98,40 +115,94 @@ export default function QuotationsPage() {
     const [quotations, setQuotations] = useState<Quotation[]>(initialQuotations);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const { toast } = useToast();
+    const router = useRouter();
 
-    const form = useForm({
-        resolver: zodResolver(quotationSchema.omit({ id: true, date: true, status: true})),
+    const form = useForm<z.infer<typeof createQuotationSchema>>({
+        resolver: zodResolver(createQuotationSchema),
         defaultValues: {
           customer: '',
-          amount: 0,
+          items: '',
         },
     });
 
-    function onSubmit(values: z.infer<typeof quotationSchema.omit<{id: true, date: true, status: true}>>) {
-        const nextId = quotations.length > 0 ? Math.max(...quotations.map(q => parseInt(q.id.split('-')[1]))) + 1 : 1;
-        const newQuotation: Quotation = {
-            ...values,
-            id: `QUO-${String(nextId).padStart(3, '0')}`,
-            date: format(new Date(), 'yyyy-MM-dd'),
-            status: 'Draft',
-        };
-        setQuotations([newQuotation, ...quotations]);
-        toast({
-          title: 'Quotation Created',
-          description: `Quotation ${newQuotation.id} has been saved as a draft.`,
-        });
-        form.reset();
-        setIsDialogOpen(false);
+    function onSubmit(values: z.infer<typeof createQuotationSchema>) {
+        try {
+            const parsedLineItems = values.items.split('\n').map(line => {
+                const [itemId, quantity] = line.split(',');
+                if (!itemId || !quantity || isNaN(parseInt(quantity))) {
+                    throw new Error(`Invalid line item format: ${line}. Use 'ITEM-ID,quantity'.`);
+                }
+                const item = initialMasterData.find(i => i.itemCode === itemId.trim());
+                if (!item) {
+                    throw new Error(`Item with code ${itemId.trim()} not found in master data.`);
+                }
+                return { 
+                    itemId: itemId.trim(), 
+                    quantity: parseInt(quantity.trim()),
+                    unitPrice: item.unitPrice,
+                };
+            });
+
+            const totalAmount = parsedLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+            
+            const nextId = quotations.length > 0 ? Math.max(...quotations.map(q => parseInt(q.id.split('-')[1]))) + 1 : 1;
+            const newQuotation: Quotation = {
+                id: `QUO-${String(nextId).padStart(3, '0')}`,
+                customer: values.customer,
+                date: format(new Date(), 'yyyy-MM-dd'),
+                status: 'Draft',
+                lineItems: parsedLineItems.map(({itemId, quantity}) => ({itemId, quantity})),
+                amount: totalAmount,
+            };
+
+            setQuotations([newQuotation, ...quotations]);
+            toast({
+              title: 'Quotation Created',
+              description: `Quotation ${newQuotation.id} has been saved as a draft.`,
+            });
+            form.reset();
+            setIsDialogOpen(false);
+
+        } catch (error: any) {
+             toast({
+                variant: "destructive",
+                title: 'Error Creating Quotation',
+                description: error.message,
+            });
+        }
     }
     
     const handleConvertToOrder = (quotationId: string) => {
+        const quotation = quotations.find(q => q.id === quotationId);
+        if (!quotation) return;
+
+        // Stock check logic
+        let insufficientStock = false;
+        quotation.lineItems.forEach(item => {
+            const masterItem = initialMasterData.find(mi => mi.itemCode === item.itemId);
+            if (!masterItem || masterItem.stockLevel < item.quantity) {
+                insufficientStock = true;
+                toast({
+                    variant: "destructive",
+                    title: 'Stock Unvailable',
+                    description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${masterItem?.stockLevel || 0}`,
+                });
+            }
+        });
+
+        if (insufficientStock) {
+            return; // Stop conversion if any item has insufficient stock
+        }
+
         setQuotations(quotations.map(q => 
             q.id === quotationId ? { ...q, status: 'Converted' } : q
         ));
         toast({
-            title: 'Quotation Converted',
-            description: `Quotation ${quotationId} has been converted to an order.`,
+            title: 'Quotation Converted to Order',
+            description: `Stock checked and available. Order created from ${quotationId}.`,
         });
+        // Optionally, navigate to orders page
+        router.push('/dashboard/sales/orders');
     };
 
 
@@ -179,12 +250,12 @@ export default function QuotationsPage() {
                                 />
                                  <FormField
                                 control={form.control}
-                                name="amount"
+                                name="items"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Amount</FormLabel>
+                                    <FormLabel>Items (ID,quantity per line)</FormLabel>
                                     <FormControl>
-                                        <Input type="number" placeholder="0.00" {...field} />
+                                        <Textarea placeholder="WD-001,50\nFBR-003,20" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                     </FormItem>
@@ -241,7 +312,7 @@ export default function QuotationsPage() {
                             <DropdownMenuItem>View/Edit</DropdownMenuItem>
                             <DropdownMenuItem 
                                 onClick={() => handleConvertToOrder(quote.id)}
-                                disabled={quote.status === 'Converted'}
+                                disabled={quote.status === 'Converted' || quote.status !== 'Approved'}
                             >
                                 Convert to Order
                             </DropdownMenuItem>
