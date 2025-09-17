@@ -57,7 +57,7 @@ const supplierSchema = z.object({
 
 type Supplier = z.infer<typeof supplierSchema>;
 
-const initialSuppliers: Supplier[] = [
+export const initialSuppliers: Supplier[] = [
   {
     id: '1',
     name: 'Timber Co.',
