@@ -24,6 +24,7 @@ import {
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal } from 'lucide-react';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const templates = [
   {
@@ -42,51 +43,59 @@ const templates = [
 
 export default function NotificationTemplatesPage() {
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-            <div>
-                <CardTitle>Notification Templates</CardTitle>
-                <CardDescription>
-                Manage email and SMS templates for your application.
-                </CardDescription>
+    <>
+      <header className="flex items-center p-4 border-b">
+          <SidebarTrigger />
+          <h1 className="text-xl font-semibold ml-4">Notification Templates</h1>
+      </header>
+      <main className="p-4">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>Notification Templates</CardTitle>
+                    <CardDescription>
+                    Manage email and SMS templates for your application.
+                    </CardDescription>
+                </div>
+                <Button>Create New Template</Button>
             </div>
-            <Button>Create New Template</Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Template Name</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {templates.map((template) => (
-              <TableRow key={template.name}>
-                <TableCell className="font-medium">{template.name}</TableCell>
-                <TableCell>{template.subject}</TableCell>
-                <TableCell>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Template Name</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {templates.map((template) => (
+                  <TableRow key={template.name}>
+                    <TableCell className="font-medium">{template.name}</TableCell>
+                    <TableCell>{template.subject}</TableCell>
+                    <TableCell>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuItem>Edit</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </main>
+    </>
   );
 }

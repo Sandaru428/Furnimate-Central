@@ -26,6 +26,7 @@ import {
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const masterData = [
   {
@@ -60,65 +61,73 @@ const masterData = [
 
 export default function MasterDataPage() {
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-            <div>
-                <CardTitle>Master Data</CardTitle>
-                <CardDescription>
-                Manage products, materials, and other master data.
-                </CardDescription>
+    <>
+      <header className="flex items-center p-4 border-b">
+          <SidebarTrigger />
+          <h1 className="text-xl font-semibold ml-4">Master Data</h1>
+      </header>
+      <main className="p-4">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>Master Data</CardTitle>
+                    <CardDescription>
+                    Manage products, materials, and other master data.
+                    </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Input placeholder="Search items..." className="w-64" />
+                    <Button>
+                        <PlusCircle className="mr-2" />
+                        Add New Item
+                    </Button>
+                </div>
             </div>
-            <div className="flex items-center gap-2">
-                <Input placeholder="Search items..." className="w-64" />
-                <Button>
-                    <PlusCircle className="mr-2" />
-                    Add New Item
-                </Button>
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item Code</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Unit Price</TableHead>
-              <TableHead className="text-right">Stock Level</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {masterData.map((item) => (
-              <TableRow key={item.itemCode}>
-                <TableCell className="font-mono">{item.itemCode}</TableCell>
-                <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{item.category}</Badge>
-                </TableCell>
-                <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
-                <TableCell className="text-right">{item.stockLevel}</TableCell>
-                <TableCell>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-right">Unit Price</TableHead>
+                  <TableHead className="text-right">Stock Level</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {masterData.map((item) => (
+                  <TableRow key={item.itemCode}>
+                    <TableCell className="font-mono">{item.itemCode}</TableCell>
+                    <TableCell className="font-medium">{item.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{item.category}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{item.stockLevel}</TableCell>
+                    <TableCell>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuItem>Edit</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </main>
+    </>
   );
 }

@@ -16,7 +16,6 @@ import {
   Package,
   ShoppingCart,
   TrendingUp,
-  Users,
 } from 'lucide-react';
 import {
   Bar,
@@ -27,6 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const developmentChecklist = [
   {
@@ -129,90 +129,98 @@ const salesData = [
 
 export default function DashboardPage() {
   return (
-    <Tabs defaultValue="dashboard" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-        <TabsTrigger value="development">Development</TabsTrigger>
-      </TabsList>
-      <TabsContent value="dashboard">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {kpiData.map((kpi) => (
-            <Card key={kpi.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {kpi.title}
-                </CardTitle>
-                {kpi.icon}
+    <>
+      <header className="flex items-center p-4 border-b">
+        <SidebarTrigger />
+        <h1 className="text-xl font-semibold ml-4">Dashboard</h1>
+      </header>
+      <main className="p-4">
+        <Tabs defaultValue="dashboard" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="development">Development</TabsTrigger>
+          </TabsList>
+          <TabsContent value="dashboard">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {kpiData.map((kpi) => (
+                <Card key={kpi.title}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      {kpi.title}
+                    </CardTitle>
+                    {kpi.icon}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{kpi.value}</div>
+                    <p className="text-xs text-muted-foreground">{kpi.change}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Sales Overview</CardTitle>
+                        <CardDescription>A look at your sales performance over the last 6 months.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={salesData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="sales" fill="hsl(var(--primary))" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            </div>
+          </TabsContent>
+          <TabsContent value="development">
+            <Card>
+              <CardHeader>
+                <CardTitle>Development Workflow</CardTitle>
+                <CardDescription>
+                  A step-by-step checklist to track feature implementation.
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpi.value}</div>
-                <p className="text-xs text-muted-foreground">{kpi.change}</p>
+              <CardContent className="space-y-6">
+                {developmentChecklist.map((section, index) => (
+                  <div key={section.heading}>
+                    <h3 className="text-lg font-semibold mb-4">
+                      {section.heading}
+                    </h3>
+                    <div className="space-y-4">
+                      {section.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center space-x-3"
+                        >
+                          <Checkbox
+                            id={item.id}
+                            checked={item.checked || false}
+                            disabled
+                          />
+                          <label
+                            htmlFor={item.id}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {item.label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    {index < developmentChecklist.length - 1 && (
+                      <Separator className="mt-6" />
+                    )}
+                  </div>
+                ))}
               </CardContent>
             </Card>
-          ))}
-        </div>
-        <div className="mt-4 grid gap-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Sales Overview</CardTitle>
-                    <CardDescription>A look at your sales performance over the last 6 months.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={salesData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="sales" fill="hsl(var(--primary))" />
-                    </BarChart>
-                </ResponsiveContainer>
-                </CardContent>
-            </Card>
-        </div>
-      </TabsContent>
-      <TabsContent value="development">
-        <Card>
-          <CardHeader>
-            <CardTitle>Development Workflow</CardTitle>
-            <CardDescription>
-              A step-by-step checklist to track feature implementation.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {developmentChecklist.map((section, index) => (
-              <div key={section.heading}>
-                <h3 className="text-lg font-semibold mb-4">
-                  {section.heading}
-                </h3>
-                <div className="space-y-4">
-                  {section.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center space-x-3"
-                    >
-                      <Checkbox
-                        id={item.id}
-                        checked={item.checked || false}
-                        disabled
-                      />
-                      <label
-                        htmlFor={item.id}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {item.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-                {index < developmentChecklist.length - 1 && (
-                  <Separator className="mt-6" />
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </>
   );
 }

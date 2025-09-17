@@ -74,13 +74,7 @@ export default function DashboardLayout({
                 </SidebarMenu>
             </Sidebar>
             <SidebarInset>
-                <header className="flex items-center p-4 border-b">
-                    <SidebarTrigger />
-                    <h1 className="text-xl font-semibold ml-4">Dashboard</h1>
-                </header>
-                <main className="p-4">
-                    {children}
-                </main>
+                {children}
             </SidebarInset>
         </SidebarProvider>
     );
