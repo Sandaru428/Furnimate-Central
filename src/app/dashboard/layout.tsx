@@ -12,7 +12,7 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
   } from "@/components/ui/sidebar";
-import { Home, Settings, FileText, Database } from "lucide-react";
+import { Home, Settings, FileText, Database, Users, Building } from "lucide-react";
 
 export default function DashboardLayout({
     children,
@@ -56,6 +56,18 @@ export default function DashboardLayout({
                             <SidebarMenuButton href="/dashboard/data/master-data">
                                 <Database />
                                 Master Data
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton href="/dashboard/data/suppliers">
+                                <Building />
+                                Suppliers
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton href="/dashboard/data/customers">
+                                <Users />
+                                Customers
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarGroup>

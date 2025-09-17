@@ -79,7 +79,7 @@ const developmentChecklist = [
         label: 'Master Data Management for products and materials',
         checked: true,
       },
-      { id: 'data-2', label: 'Supplier and Customer data management' },
+      { id: 'data-2', label: 'Supplier and Customer data management', checked: true },
     ],
   },
   {
