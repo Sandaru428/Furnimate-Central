@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,7 @@ const formSchema = z.object({
   }),
 });
 
-export function LoginForm() {
+export function SignUpForm() {
   const { toast } = useToast();
   const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
@@ -50,13 +50,13 @@ export function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      await createUserWithEmailAndPassword(auth, values.email, values.password);
       router.push("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Invalid login",
-        description: "Please check your email and password.",
+        title: "Error creating account",
+        description: error.message || "An unexpected error occurred.",
       });
     }
   }
@@ -64,9 +64,9 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle className="text-2xl font-headline">Log In</CardTitle>
+        <CardTitle className="text-2xl font-headline">Sign Up</CardTitle>
         <CardDescription>
-          Enter your email below to log in to your account.
+          Enter your details to create a new account.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -90,15 +90,7 @@ export function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <div className="flex items-center">
-                    <FormLabel>Password</FormLabel>
-                    <Link
-                      href="#"
-                      className="ml-auto inline-block text-sm underline"
-                    >
-                      Forgot your password?
-                    </Link>
-                  </div>
+                  <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
@@ -107,14 +99,14 @@ export function LoginForm() {
               )}
             />
             <Button type="submit" className="w-full">
-              Log In
+              Sign Up
             </Button>
           </form>
         </Form>
         <div className="mt-4 text-center text-sm">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="underline">
-            Sign up
+          Already have an account?{" "}
+          <Link href="/login" className="underline">
+            Log in
           </Link>
         </div>
       </CardContent>

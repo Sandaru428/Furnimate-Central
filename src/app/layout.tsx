@@ -1,6 +1,8 @@
+
 import type { Metadata } from 'next';
 import { Inter, Space_Grotesk, Source_Code_Pro } from 'next/font/google';
 import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/hooks/use-auth.tsx';
 import './globals.css';
 
 const inter = Inter({
@@ -34,7 +36,9 @@ export default function RootLayout({
         className={`${inter.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
         suppressHydrationWarning
       >
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Toaster />
       </body>
     </html>

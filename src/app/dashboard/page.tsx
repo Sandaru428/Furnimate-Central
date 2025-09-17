@@ -1,3 +1,8 @@
+
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth.tsx";
 import {
   Card,
   CardContent,
@@ -8,12 +13,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { useEffect } from "react";
 
 const developmentChecklist = [
   {
     heading: "User Authentication & Roles",
     items: [
-      { id: "auth-1", label: "Implement secure email-based login" },
+      { id: "auth-1", label: "Implement secure email-based login", checked: true },
       { id: "auth-2", label: "Define roles: Admin, Sales, Production, Customer, Supplier" },
     ],
   },
@@ -49,6 +55,23 @@ const developmentChecklist = [
 ];
 
 export default function DashboardPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+  
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen p-4 md:p-8">
       <Tabs defaultValue="dashboard" className="w-full max-w-4xl">
@@ -61,7 +84,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Welcome to your Dashboard</CardTitle>
               <CardDescription>
-                This is your central hub for managing everything.
+                This is your central hub for managing everything. You are logged in as {user.email}.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -84,7 +107,7 @@ export default function DashboardPage() {
                   <div className="space-y-4">
                     {section.items.map((item) => (
                       <div key={item.id} className="flex items-center space-x-3">
-                        <Checkbox id={item.id} />
+                        <Checkbox id={item.id} checked={item.checked || false} />
                         <label
                           htmlFor={item.id}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
