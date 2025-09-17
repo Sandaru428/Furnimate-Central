@@ -158,7 +158,7 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof line
         <div className="flex items-end gap-2 p-2 border rounded-lg">
             <div className="flex-1">
                 <Label htmlFor="item-select">Raw Material</Label>
-                 <Select value={selectedItemCode} onValueChange={setSelectedItemCode}>
+                 <Select value={selectedItemCode} onValuechange={setSelectedItemCode}>
                     <SelectTrigger id="item-select">
                         <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
@@ -392,20 +392,20 @@ export default function PurchaseOrdersPage() {
                                       render={({ field }) => (
                                         <FormItem>
                                           <FormLabel>Supplier</FormLabel>
-                                          <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue placeholder="Select a supplier" />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              {initialSuppliers.map(supplier => (
-                                                <SelectItem key={supplier.id} value={supplier.name}>
-                                                  {supplier.name}
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select a supplier" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                {initialSuppliers.map(supplier => (
+                                                    <SelectItem key={supplier.id} value={supplier.name}>
+                                                    {supplier.name}
+                                                    </SelectItem>
+                                                ))}
+                                                </SelectContent>
+                                            </Select>
                                           <FormMessage />
                                         </FormItem>
                                       )}
@@ -420,7 +420,7 @@ export default function PurchaseOrdersPage() {
                                     </div>
                                     <AddItemForm onAddItem={createAppend} />
                                     <DialogFooter>
-                                        <div className="flex gap-2">
+                                        <div className="flex justify-end gap-2">
                                             <DialogClose asChild>
                                                 <Button variant="outline" type="button">Cancel</Button>
                                             </DialogClose>
@@ -561,5 +561,3 @@ export default function PurchaseOrdersPage() {
     </>
   );
 }
-
-    
