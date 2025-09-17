@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -101,6 +101,16 @@ const initialPurchaseOrders: PurchaseOrder[] = [
         { itemId: 'WD-001', quantity: 30 },
       ],
     },
+     {
+      id: 'PO-002',
+      supplierName: 'Fabric Solutions',
+      date: '2025-09-17',
+      totalAmount: 0,
+      status: 'Draft',
+      lineItems: [
+        { itemId: 'FBR-003', quantity: 20 },
+      ],
+    },
 ];
 
 const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
@@ -158,6 +168,7 @@ export default function PurchaseOrdersPage() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
     const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+    const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
 
@@ -171,7 +182,7 @@ export default function PurchaseOrdersPage() {
 
     const receiveForm = useForm<ReceiveItemsForm>();
 
-    const { fields: createFields, append: createAppend, remove: createRemove } = useFieldArray({
+    const { fields: createFields, append: createAppend, remove: createRemove, replace: createReplace } = useFieldArray({
         control: createForm.control,
         name: "lineItems",
     });
@@ -181,26 +192,42 @@ export default function PurchaseOrdersPage() {
         name: "lineItems",
     });
 
-    function handleCreateSubmit(values: CreatePurchaseOrder) {
-        const nextId = purchaseOrders.length > 0 ? Math.max(...purchaseOrders.map(po => parseInt(po.id.split('-')[1]))) + 1 : 1;
-        
-        const newPO: PurchaseOrder = {
-            id: `PO-${String(nextId).padStart(3, '0')}`,
-            supplierName: values.supplierName,
-            date: format(new Date(), 'yyyy-MM-dd'),
-            status: 'Draft',
-            lineItems: values.lineItems,
-            totalAmount: 0, // Total amount is 0 on creation
-        };
+    function handleCreateOrUpdateSubmit(values: CreatePurchaseOrder) {
+        if (editingPO) {
+             // Update existing PO
+            setPurchaseOrders(prevPOs => prevPOs.map(po => 
+                po.id === editingPO.id
+                ? { ...po, ...values, lineItems: values.lineItems, status: 'Draft' }
+                : po
+            ));
+            toast({
+                title: 'Purchase Order Updated',
+                description: `Purchase Order ${editingPO.id} has been updated.`,
+            });
+        } else {
+             // Create new PO
+            const nextId = purchaseOrders.length > 0 ? Math.max(...purchaseOrders.map(po => parseInt(po.id.split('-')[1]))) + 1 : 1;
+            
+            const newPO: PurchaseOrder = {
+                id: `PO-${String(nextId).padStart(3, '0')}`,
+                supplierName: values.supplierName,
+                date: format(new Date(), 'yyyy-MM-dd'),
+                status: 'Draft',
+                lineItems: values.lineItems,
+                totalAmount: 0, // Total amount is 0 on creation
+            };
 
-        setPurchaseOrders([newPO, ...purchaseOrders]);
-        toast({
-            title: 'Purchase Order Created',
-            description: `Purchase Order ${newPO.id} has been saved as a draft.`,
-        });
-        createForm.reset();
+            setPurchaseOrders([newPO, ...purchaseOrders]);
+            toast({
+                title: 'Purchase Order Created',
+                description: `Purchase Order ${newPO.id} has been saved as a draft.`,
+            });
+        }
+       
+        createForm.reset({ supplierName: '', lineItems: []});
         createRemove();
         setIsCreateDialogOpen(false);
+        setEditingPO(null);
     }
     
     function handleReceiveSubmit(values: ReceiveItemsForm) {
@@ -257,6 +284,22 @@ export default function PurchaseOrdersPage() {
         setIsReceiveDialogOpen(true);
     };
 
+    const openCreateOrEditDialog = (po: PurchaseOrder | null) => {
+        if (po) {
+            setEditingPO(po);
+            createForm.reset({
+                supplierName: po.supplierName,
+            });
+            createReplace(po.lineItems);
+        } else {
+            setEditingPO(null);
+            createForm.reset({ supplierName: '', lineItems: [] });
+            createRemove();
+        }
+        setIsCreateDialogOpen(true);
+    };
+
+
     const filteredPurchaseOrders = purchaseOrders.filter(po =>
         po.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         po.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -287,31 +330,32 @@ export default function PurchaseOrdersPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => {
-                        setIsCreateDialogOpen(isOpen);
                         if (!isOpen) {
+                            setEditingPO(null);
                             createForm.reset();
                             createRemove();
-                        };
+                        }
+                        setIsCreateDialogOpen(isOpen);
                     }}>
                         <DialogTrigger asChild>
-                            <Button>
+                            <Button onClick={() => openCreateOrEditDialog(null)}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Create New PO
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-2xl">
                             <DialogHeader>
-                                <DialogTitle>Create New Purchase Order</DialogTitle>
+                                <DialogTitle>{editingPO ? `Edit Purchase Order ${editingPO.id}` : 'Create New Purchase Order'}</DialogTitle>
                             </DialogHeader>
                             <Form {...createForm}>
-                                <form onSubmit={createForm.handleSubmit(handleCreateSubmit)} className="space-y-4 py-4">
+                                <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)} className="space-y-4 py-4">
                                     <FormField
                                         control={createForm.control}
                                         name="supplierName"
                                         render={({ field }) => (
                                             <FormItem>
                                             <FormLabel>Supplier</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select a supplier" />
@@ -357,7 +401,7 @@ export default function PurchaseOrdersPage() {
                                         <DialogClose asChild>
                                             <Button variant="outline" type="button">Cancel</Button>
                                         </DialogClose>
-                                        <Button type="submit">Create PO</Button>
+                                        <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
                                     </DialogFooter>
                                 </form>
                             </Form>
@@ -399,7 +443,12 @@ export default function PurchaseOrdersPage() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuItem disabled>View/Edit</DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => openCreateOrEditDialog(po)} 
+                                disabled={po.status !== 'Draft'}
+                            >
+                                View/Edit
+                            </DropdownMenuItem>
                             {po.status === 'Draft' && (
                                 <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}>
                                     Mark as Sent
@@ -482,7 +531,7 @@ export default function PurchaseOrdersPage() {
                             <DialogClose asChild>
                                 <Button variant="outline" type="button">Cancel</Button>
                             </DialogClose>
-                            <Button type="submit">Confirm & Receive Stock</Button>
+                            <Button type="submit">Confirm &amp; Receive Stock</Button>
                         </DialogFooter>
                     </form>
                 </Form>
@@ -492,4 +541,5 @@ export default function PurchaseOrdersPage() {
   );
 }
 
+    
     
