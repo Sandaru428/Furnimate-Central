@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -45,18 +45,22 @@ import {
     FormMessage,
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { initialMasterData } from '@/app/dashboard/data/master-data/page';
+import { initialCustomers } from '@/app/dashboard/data/customers/page';
 import { useRouter } from 'next/navigation';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 const lineItemSchema = z.object({
-  itemId: z.string(),
+  itemId: z.string().min(1, "Item is required."),
   quantity: z.coerce.number().int().positive("Quantity must be a positive integer."),
+  unitPrice: z.coerce.number(),
+  totalValue: z.coerce.number(),
 });
 
 const quotationSchema = z.object({
@@ -68,12 +72,14 @@ const quotationSchema = z.object({
     lineItems: z.array(lineItemSchema),
 });
 
-const createQuotationSchema = quotationSchema.omit({ id: true, date: true, status: true, amount: true, lineItems: true }).extend({
-    items: z.string().min(1, "Please add at least one item."),
+const createQuotationSchema = z.object({
+    customer: z.string().min(1, "Customer name is required"),
+    lineItems: z.array(lineItemSchema).min(1, "Please add at least one item."),
 });
 
 
 type Quotation = z.infer<typeof quotationSchema>;
+type CreateQuotation = z.infer<typeof createQuotationSchema>;
 
 const initialQuotations: Quotation[] = [
   {
@@ -82,23 +88,26 @@ const initialQuotations: Quotation[] = [
     date: '2024-05-01',
     amount: 1250.00,
     status: 'Sent',
-    lineItems: [{ itemId: 'WD-001', quantity: 50 }],
+    lineItems: [{ itemId: 'WD-001', quantity: 50, unitPrice: 25, totalValue: 1250 }],
   },
   {
     id: 'QUO-002',
     customer: 'Home Comforts',
     date: '2024-05-03',
-    amount: 850.50,
+    amount: 852.50,
     status: 'Draft',
-    lineItems: [{ itemId: 'FBR-003', quantity: 55 }],
+    lineItems: [{ itemId: 'FBR-003', quantity: 55, unitPrice: 15.50, totalValue: 852.50 }],
   },
   {
     id: 'QUO-003',
     customer: 'Emily Davis',
     date: '2024-05-05',
-    amount: 2400.00,
+    amount: 2320.00,
     status: 'Approved',
-    lineItems: [{ itemId: 'MTL-002', quantity: 40 }, { itemId: 'FNS-010', quantity: 10 }],
+    lineItems: [
+        { itemId: 'MTL-002', quantity: 40, unitPrice: 55, totalValue: 2200 }, 
+        { itemId: 'FNS-010', quantity: 10, unitPrice: 12, totalValue: 120 }
+    ],
   },
 ];
 
@@ -110,6 +119,58 @@ const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "
     'Converted': 'default'
 }
 
+const AddItemForm = ({ onAddItem }: { onAddItem: (item: z.infer<typeof lineItemSchema>) => void }) => {
+    const [selectedItemCode, setSelectedItemCode] = useState('');
+    const [quantity, setQuantity] = useState<number | ''>('');
+    const item = initialMasterData.find(i => i.itemCode === selectedItemCode);
+
+    const handleAddItem = () => {
+        const numQuantity = Number(quantity);
+        if (item && numQuantity > 0) {
+            onAddItem({
+                itemId: item.itemCode,
+                quantity: numQuantity,
+                unitPrice: item.unitPrice,
+                totalValue: item.unitPrice * numQuantity,
+            });
+            setSelectedItemCode('');
+            setQuantity('');
+        }
+    }
+
+    return (
+        <div className="flex items-end gap-2 p-2 border rounded-lg">
+            <div className="flex-1">
+                <Label htmlFor="item-select">Finished Good</Label>
+                 <Select value={selectedItemCode} onValueChange={setSelectedItemCode}>
+                    <SelectTrigger id="item-select">
+                        <SelectValue placeholder="Select an item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {initialMasterData.map(item => (
+                            <SelectItem key={item.itemCode} value={item.itemCode}>
+                                {item.name} ({item.itemCode})
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="w-24">
+                <Label htmlFor="item-quantity">Quantity</Label>
+                <Input
+                    id="item-quantity"
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value === '' ? '' : parseInt(e.target.value))}
+                    min="1"
+                    placeholder="1"
+                />
+            </div>
+            <Button type="button" onClick={handleAddItem} disabled={!item || !quantity}>Add</Button>
+        </div>
+    );
+};
+
 
 export default function QuotationsPage() {
     const [quotations, setQuotations] = useState<Quotation[]>(initialQuotations);
@@ -117,34 +178,25 @@ export default function QuotationsPage() {
     const { toast } = useToast();
     const router = useRouter();
 
-    const form = useForm<z.infer<typeof createQuotationSchema>>({
+    const form = useForm<CreateQuotation>({
         resolver: zodResolver(createQuotationSchema),
         defaultValues: {
           customer: '',
-          items: '',
+          lineItems: [],
         },
     });
 
-    function onSubmit(values: z.infer<typeof createQuotationSchema>) {
-        try {
-            const parsedLineItems = values.items.split('\n').map(line => {
-                const [itemId, quantityStr] = line.split(',');
-                const quantity = parseInt(quantityStr?.trim());
-                if (!itemId || !quantityStr || isNaN(quantity) || quantity <= 0) {
-                    throw new Error(`Invalid line item: '${line}'. Each line must be 'ITEM-CODE,quantity' with a positive quantity.`);
-                }
-                const item = initialMasterData.find(i => i.itemCode === itemId.trim());
-                if (!item) {
-                    throw new Error(`Item with code ${itemId.trim()} not found in master data.`);
-                }
-                return { 
-                    itemId: itemId.trim(), 
-                    quantity: quantity,
-                    unitPrice: item.unitPrice,
-                };
-            });
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "lineItems",
+    });
 
-            const totalAmount = parsedLineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+    const totalAmount = form.watch('lineItems').reduce((acc, item) => acc + item.totalValue, 0);
+
+
+    function onSubmit(values: CreateQuotation) {
+        try {
+            const totalAmount = values.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
             
             const nextId = quotations.length > 0 ? Math.max(...quotations.map(q => parseInt(q.id.split('-')[1]))) + 1 : 1;
             const newQuotation: Quotation = {
@@ -152,7 +204,7 @@ export default function QuotationsPage() {
                 customer: values.customer,
                 date: format(new Date(), 'yyyy-MM-dd'),
                 status: 'Draft',
-                lineItems: parsedLineItems.map(({itemId, quantity}) => ({itemId, quantity})),
+                lineItems: values.lineItems,
                 amount: totalAmount,
             };
 
@@ -162,6 +214,7 @@ export default function QuotationsPage() {
               description: `Quotation ${newQuotation.id} has been saved as a draft.`,
             });
             form.reset();
+            remove(); // clear all items
             setIsDialogOpen(false);
 
         } catch (error: any) {
@@ -185,7 +238,7 @@ export default function QuotationsPage() {
                 insufficientStock = true;
                 toast({
                     variant: "destructive",
-                    title: 'Stock Unvailable',
+                    title: 'Stock Unavailable',
                     description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${masterItem?.stockLevel || 0}`,
                 });
             }
@@ -223,50 +276,101 @@ export default function QuotationsPage() {
                     Create and manage sales quotations for your customers.
                     </CardDescription>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
+                    if (!isOpen) {
+                        form.reset();
+                        remove();
+                    }
+                    setIsDialogOpen(isOpen);
+                }}>
                     <DialogTrigger asChild>
                         <Button>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Create New Quotation
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-2xl">
                         <DialogHeader>
                             <DialogTitle>Create New Quotation</DialogTitle>
                         </DialogHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                                 <FormField
-                                control={form.control}
-                                name="customer"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Customer Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g. Modern Designs LLC" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
+                                    control={form.control}
+                                    name="customer"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Customer</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a customer" />
+                                            </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {initialCustomers.map(customer => (
+                                                    <SelectItem key={customer.id} value={customer.name}>
+                                                        {customer.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
                                 />
-                                 <FormField
-                                control={form.control}
-                                name="items"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Items (ID,quantity per line)</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="WD-001,50\nFBR-003,20" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                                />
+                                 <div>
+                                    <FormLabel>Line Items</FormLabel>
+                                    <div className="space-y-2 mt-2">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Item</TableHead>
+                                                    <TableHead className="w-20">Qty</TableHead>
+                                                    <TableHead className="w-28 text-right">Unit Price</TableHead>
+                                                    <TableHead className="w-28 text-right">Total</TableHead>
+                                                    <TableHead className="w-10"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {fields.map((field, index) => {
+                                                    const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId);
+                                                    return (
+                                                    <TableRow key={field.id}>
+                                                        <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
+                                                        <TableCell>{field.quantity}</TableCell>
+                                                        <TableCell className="text-right">${field.unitPrice.toFixed(2)}</TableCell>
+                                                        <TableCell className="text-right">${field.totalValue.toFixed(2)}</TableCell>
+                                                        <TableCell>
+                                                            <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
+                                                                <Trash2 className="h-4 w-4 text-destructive"/>
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )})}
+                                            </TableBody>
+                                        </Table>
+                                         {fields.length === 0 && (
+                                            <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
+                                        )}
+                                        <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
+                                    </div>
+                                </div>
+                                
+                                <AddItemForm onAddItem={append} />
+
                                 <DialogFooter>
-                                    <DialogClose asChild>
-                                        <Button variant="outline">Cancel</Button>
-                                    </DialogClose>
-                                    <Button type="submit">Create Quotation</Button>
+                                    <div className='w-full flex justify-between items-center'>
+                                        <div className="text-lg font-semibold">
+                                            Total: ${totalAmount.toFixed(2)}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <DialogClose asChild>
+                                                <Button variant="outline" type="button">Cancel</Button>
+                                            </DialogClose>
+                                            <Button type="submit">Create Quotation</Button>
+                                        </div>
+                                    </div>
                                 </DialogFooter>
                             </form>
                         </Form>

@@ -58,7 +58,7 @@ const customerSchema = z.object({
 
 type Customer = z.infer<typeof customerSchema>;
 
-const initialCustomers: Customer[] = [
+export const initialCustomers: Customer[] = [
   {
     id: '1',
     name: 'Modern Designs LLC',
