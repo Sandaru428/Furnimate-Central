@@ -51,27 +51,30 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom } from '@/lib/store';
+import { paymentsAtom, Payment } from '@/lib/store';
 import { format } from 'date-fns';
 
 const paymentSchema = z.object({
     amount: z.coerce.number().positive("Amount must be a positive number."),
     method: z.enum(['Cash', 'Card', 'Online', 'QR', 'Cheque']),
     cardLast4: z.string().optional(),
-    onlineBank: z.string().optional(),
-    onlineAccount: z.string().optional(),
+    fromBankName: z.string().optional(),
+    fromAccountNumber: z.string().optional(),
+    toBankName: z.string().optional(),
+    toAccountNumber: z.string().optional(),
     chequeBank: z.string().optional(),
     chequeDate: z.string().optional(),
     chequeNumber: z.string().optional(),
 }).refine(data => {
     if (data.method === 'Card') return !!data.cardLast4 && data.cardLast4.length === 4;
-    if (data.method === 'Online') return !!data.onlineBank && !!data.onlineAccount;
+    if (data.method === 'Online') return !!data.fromBankName && !!data.fromAccountNumber && !!data.toBankName && !!data.toAccountNumber;
     if (data.method === 'Cheque') return !!data.chequeBank && !!data.chequeDate && !!data.chequeNumber;
     return true;
 }, {
-    message: "Please fill in the required details for the selected payment method.",
-    path: ['method'], // This path can be adjusted to point to a more specific field if needed
+    message: "Please fill in all required details for the selected payment method.",
+    path: ['method'], 
 });
+
 
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 type Order = {
@@ -100,16 +103,19 @@ export default function OrdersPage() {
     const [orders, setOrders] = useState<Order[]>(initialOrders);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-    const [, setPayments] = useAtom(paymentsAtom);
+    const [payments, setPayments] = useAtom(paymentsAtom);
     const { toast } = useToast();
 
     const form = useForm<PaymentFormValues>({
         resolver: zodResolver(paymentSchema),
         defaultValues: {
             amount: '' as any,
+            method: undefined,
             cardLast4: '',
-            onlineBank: '',
-            onlineAccount: '',
+            fromBankName: '',
+            fromAccountNumber: '',
+            toBankName: '',
+            toAccountNumber: '',
             chequeBank: '',
             chequeDate: '',
             chequeNumber: '',
@@ -117,6 +123,10 @@ export default function OrdersPage() {
     });
 
     const paymentMethod = form.watch('method');
+    
+    const amountPaid = selectedOrder ? payments.filter(p => p.orderId === selectedOrder.id).reduce((acc, p) => acc + p.amount, 0) : 0;
+    const remainingAmount = selectedOrder ? selectedOrder.amount - amountPaid : 0;
+
 
     useEffect(() => {
         const convertedOrder = localStorage.getItem('convertedOrder');
@@ -131,12 +141,36 @@ export default function OrdersPage() {
 
     const openPaymentDialog = (order: Order) => {
         setSelectedOrder(order);
-        form.reset({ amount: order.amount, method: undefined, cardLast4: '', onlineBank: '', onlineAccount: '', chequeBank: '', chequeDate: '', chequeNumber: '' });
+        const currentAmountPaid = payments.filter(p => p.orderId === order.id).reduce((acc, p) => acc + p.amount, 0);
+        const currentRemainingAmount = order.amount - currentAmountPaid;
+        form.reset({ 
+            amount: currentRemainingAmount > 0 ? currentRemainingAmount : '' as any, 
+            method: undefined, 
+            cardLast4: '', 
+            fromBankName: '',
+            fromAccountNumber: '',
+            toBankName: '',
+            toAccountNumber: '',
+            chequeBank: '', 
+            chequeDate: '', 
+            chequeNumber: '' 
+        });
         setIsPaymentDialogOpen(true);
     };
 
     function onPaymentSubmit(values: PaymentFormValues) {
         if (!selectedOrder) return;
+
+        const currentAmountPaid = payments.filter(p => p.orderId === selectedOrder.id).reduce((acc, p) => acc + p.amount, 0);
+        
+        if (values.amount > selectedOrder.amount - currentAmountPaid) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Amount',
+                description: `Payment exceeds remaining balance. Max payable: $${(selectedOrder.amount - currentAmountPaid).toFixed(2)}`,
+            });
+            return;
+        }
 
         let details = '';
         switch(values.method) {
@@ -144,7 +178,7 @@ export default function OrdersPage() {
                 details = `Card ending in ${values.cardLast4}`;
                 break;
             case 'Online':
-                details = `From ${values.onlineBank} (Acc: ${values.onlineAccount})`;
+                details = `From ${values.fromBankName} (${values.fromAccountNumber}) to ${values.toBankName} (${values.toAccountNumber})`;
                 break;
              case 'Cheque':
                 details = `${values.chequeBank} Cheque #${values.chequeNumber}, dated ${values.chequeDate}`;
@@ -153,23 +187,32 @@ export default function OrdersPage() {
                 details = 'N/A';
         }
 
-        // Add to payments log
-        setPayments(prev => [...prev, {
+        const newPayment: Payment = {
             id: Date.now().toString(),
             orderId: selectedOrder.id,
             date: format(new Date(), 'yyyy-MM-dd'),
             amount: values.amount,
             method: values.method,
             details: details
-        }]);
+        };
 
-        // Update order status
-        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'Paid' } : o));
+        setPayments(prev => [...prev, newPayment]);
 
-        toast({
-            title: 'Payment Recorded',
-            description: `Payment for order ${selectedOrder.id} has been successfully recorded.`
-        });
+        const totalPaid = currentAmountPaid + newPayment.amount;
+
+        if (totalPaid >= selectedOrder.amount) {
+            setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'Paid' } : o));
+             toast({
+                title: 'Payment Complete',
+                description: `Final payment for order ${selectedOrder.id} has been recorded.`
+            });
+        } else {
+             toast({
+                title: 'Installment Recorded',
+                description: `Payment of $${values.amount.toFixed(2)} for order ${selectedOrder.id} recorded.`
+            });
+        }
+
         setIsPaymentDialogOpen(false);
     }
 
@@ -245,9 +288,12 @@ export default function OrdersPage() {
 
       {/* Payment Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Record Payment for {selectedOrder?.id}</DialogTitle>
+                    <CardDescription>
+                        Total: ${selectedOrder?.amount.toFixed(2)} | Paid: ${amountPaid.toFixed(2)} | Remaining: ${remainingAmount.toFixed(2)}
+                    </CardDescription>
                 </DialogHeader>
                  <Form {...form}>
                     <form onSubmit={form.handleSubmit(onPaymentSubmit)} className="space-y-4 py-4">
@@ -304,33 +350,17 @@ export default function OrdersPage() {
                             />
                         )}
                         {paymentMethod === 'Online' && (
-                            <div className="space-y-4">
-                               <FormField
-                                    control={form.control}
-                                    name="onlineBank"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Bank Name</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g. City Bank" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                 <FormField
-                                    control={form.control}
-                                    name="onlineAccount"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Account Number</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g. 1234567890" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 col-span-2 sm:col-span-1">
+                                    <h4 className="font-medium text-sm">From</h4>
+                                    <FormField control={form.control} name="fromBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="fromAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </div>
+                                <div className="space-y-2 col-span-2 sm:col-span-1">
+                                     <h4 className="font-medium text-sm">To</h4>
+                                     <FormField control={form.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={form.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </div>
                             </div>
                         )}
                         {paymentMethod === 'Cheque' && (
