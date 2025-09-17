@@ -17,7 +17,7 @@ const developmentChecklist = [
     heading: "User Authentication & Roles",
     items: [
       { id: "auth-1", label: "Implement secure email-based login", checked: true },
-      { id: "auth-2", label: "Define roles: Admin, Sales, Production, Customer, Supplier" },
+      { id: "auth-2", label: "Define roles: Admin, Sales, Production, Customer, Supplier", checked: true },
     ],
   },
   {
