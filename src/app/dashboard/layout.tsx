@@ -12,7 +12,7 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
   } from "@/components/ui/sidebar";
-import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList } from "lucide-react";
+import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser } from "lucide-react";
 
 export default function DashboardLayout({
     children,
@@ -25,7 +25,7 @@ export default function DashboardLayout({
                 <SidebarHeader>
                     <div className="flex items-center gap-4 text-lg font-medium p-2">
                         <Logo />
-                        <span className="font-headline text-2xl">Furnimate Central</span>
+                        <span className="font.headline text-2xl">Furnimate Central</span>
                     </div>
                 </SidebarHeader>
                 <SidebarMenu>
@@ -47,6 +47,12 @@ export default function DashboardLayout({
                             <SidebarMenuButton href="/dashboard/admin/notification-templates">
                                 <FileText />
                                 Notification Templates
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                         <SidebarMenuItem>
+                            <SidebarMenuButton href="/dashboard/admin/cash-book">
+                                <BookUser />
+                                Cash Book
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarGroup>
