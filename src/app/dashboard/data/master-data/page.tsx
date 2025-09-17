@@ -129,9 +129,9 @@ export default function MasterDataPage() {
           <CardHeader>
             <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Master Data</CardTitle>
+                    <CardTitle>Master Item List</CardTitle>
                     <CardDescription>
-                    Manage products, materials, and other master data.
+                    A consolidated list of all raw materials and finished goods.
                     </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
@@ -139,7 +139,7 @@ export default function MasterDataPage() {
                      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
                             <Button>
-                                <PlusCircle className="mr-2" />
+                                <PlusCircle className="mr-2 h-4 w-4" />
                                 Add New Item
                             </Button>
                         </DialogTrigger>
@@ -148,7 +148,7 @@ export default function MasterDataPage() {
                                 <DialogTitle>Add New Item</DialogTitle>
                             </DialogHeader>
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                                     <FormField
                                     control={form.control}
                                     name="itemCode"

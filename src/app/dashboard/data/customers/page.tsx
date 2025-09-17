@@ -125,7 +125,7 @@ export default function CustomersPage() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>Customers</CardTitle>
+                <CardTitle>Customer List</CardTitle>
                 <CardDescription>Manage your customer information.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -133,7 +133,7 @@ export default function CustomersPage() {
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
-                      <PlusCircle className="mr-2" />
+                      <PlusCircle className="mr-2 h-4 w-4" />
                       Add New Customer
                     </Button>
                   </DialogTrigger>
@@ -142,7 +142,7 @@ export default function CustomersPage() {
                       <DialogTitle>Add New Customer</DialogTitle>
                     </DialogHeader>
                     <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                         <FormField
                           control={form.control}
                           name="name"
@@ -150,7 +150,7 @@ export default function CustomersPage() {
                             <FormItem>
                               <FormLabel>Customer Name</FormLabel>
                               <FormControl>
-                                <Input placeholder="Modern Designs LLC" {...field} />
+                                <Input placeholder="e.g. Modern Designs LLC" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -163,7 +163,7 @@ export default function CustomersPage() {
                             <FormItem>
                               <FormLabel>Contact Person</FormLabel>
                               <FormControl>
-                                <Input placeholder="Sarah Miller" {...field} />
+                                <Input placeholder="e.g. Sarah Miller" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -176,7 +176,7 @@ export default function CustomersPage() {
                             <FormItem>
                               <FormLabel>Email</FormLabel>
                               <FormControl>
-                                <Input placeholder="sarah@moderndesigns.com" {...field} />
+                                <Input type="email" placeholder="e.g. sarah@example.com" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -189,7 +189,7 @@ export default function CustomersPage() {
                             <FormItem>
                               <FormLabel>Phone</FormLabel>
                               <FormControl>
-                                <Input placeholder="555-111-2222" {...field} />
+                                <Input placeholder="e.g. 555-111-2222" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -202,7 +202,7 @@ export default function CustomersPage() {
                             <FormItem>
                               <FormLabel>Type</FormLabel>
                               <FormControl>
-                                <Input placeholder="Corporate" {...field} />
+                                <Input placeholder="e.g. Corporate" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>

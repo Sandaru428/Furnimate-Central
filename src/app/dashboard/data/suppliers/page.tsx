@@ -134,7 +134,7 @@ export default function SuppliersPage() {
           <CardHeader>
             <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Suppliers</CardTitle>
+                    <CardTitle>Supplier List</CardTitle>
                     <CardDescription>
                     Manage your supplier information.
                     </CardDescription>
@@ -144,7 +144,7 @@ export default function SuppliersPage() {
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
                             <Button>
-                                <PlusCircle className="mr-2" />
+                                <PlusCircle className="mr-2 h-4 w-4" />
                                 Add New Supplier
                             </Button>
                         </DialogTrigger>
@@ -153,7 +153,7 @@ export default function SuppliersPage() {
                                 <DialogTitle>Add New Supplier</DialogTitle>
                             </DialogHeader>
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                                     <FormField
                                     control={form.control}
                                     name="name"
@@ -161,7 +161,7 @@ export default function SuppliersPage() {
                                         <FormItem>
                                         <FormLabel>Supplier Name</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Timber Co." {...field} />
+                                            <Input placeholder="e.g. Timber Co." {...field} />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
@@ -174,7 +174,7 @@ export default function SuppliersPage() {
                                         <FormItem>
                                         <FormLabel>Contact Person</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="John Doe" {...field} />
+                                            <Input placeholder="e.g. John Doe" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
@@ -187,7 +187,7 @@ export default function SuppliersPage() {
                                         <FormItem>
                                         <FormLabel>Email</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="john@timberco.com" {...field} />
+                                            <Input type="email" placeholder="e.g. john@timberco.com" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
@@ -200,7 +200,7 @@ export default function SuppliersPage() {
                                         <FormItem>
                                         <FormLabel>Phone</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="555-123-4567" {...field} />
+                                            <Input placeholder="e.g. 555-123-4567" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
@@ -213,7 +213,7 @@ export default function SuppliersPage() {
                                         <FormItem>
                                         <FormLabel>Category</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Wood" {...field} />
+                                            <Input placeholder="e.g. Wood" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
