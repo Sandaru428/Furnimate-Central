@@ -193,7 +193,8 @@ export default function OrdersPage() {
             date: format(new Date(), 'yyyy-MM-dd'),
             amount: values.amount,
             method: values.method,
-            details: details
+            details: details,
+            type: 'income',
         };
 
         setPayments(prev => [...prev, newPayment]);
@@ -265,7 +266,7 @@ export default function OrdersPage() {
                                 </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openPaymentDialog(order)} disabled={order.status !== 'Processing'}>
+                                <DropdownMenuItem onClick={() => openPaymentDialog(order)} disabled={order.status === 'Paid'}>
                                     Add Payment
                                 </DropdownMenuItem>
                                 </DropdownMenuContent>

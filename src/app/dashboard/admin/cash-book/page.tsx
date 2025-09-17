@@ -20,6 +20,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAtom } from 'jotai';
 import { paymentsAtom } from '@/lib/store';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 
 export default function CashBookPage() {
@@ -36,7 +37,7 @@ export default function CashBookPage() {
           <CardHeader>
             <CardTitle>Cash Book</CardTitle>
             <CardDescription>
-                A record of all financial transactions.
+                A record of all financial transactions, both income and expenses.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -44,7 +45,8 @@ export default function CashBookPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Order ID</TableHead>
+                  <TableHead>Reference ID</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Payment Method</TableHead>
                   <TableHead>Details</TableHead>
@@ -56,7 +58,14 @@ export default function CashBookPage() {
                     <TableRow key={payment.id}>
                         <TableCell>{payment.date}</TableCell>
                         <TableCell className="font-mono">{payment.orderId}</TableCell>
-                        <TableCell className="text-right">${payment.amount.toFixed(2)}</TableCell>
+                        <TableCell>
+                            <Badge variant={payment.type === 'income' ? 'default' : 'destructive'} className={cn(payment.type === 'income' ? 'bg-green-600' : 'bg-red-600', 'text-white')}>
+                                {payment.type}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className={cn("text-right", payment.type === 'income' ? 'text-green-600' : 'text-red-600')}>
+                            {payment.type === 'income' ? '+' : '-'}${payment.amount.toFixed(2)}
+                        </TableCell>
                         <TableCell>
                             <Badge variant="secondary">{payment.method}</Badge>
                         </TableCell>
@@ -65,7 +74,7 @@ export default function CashBookPage() {
                     ))
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={5} className="text-center">
+                        <TableCell colSpan={6} className="text-center">
                             No transactions recorded yet.
                         </TableCell>
                     </TableRow>

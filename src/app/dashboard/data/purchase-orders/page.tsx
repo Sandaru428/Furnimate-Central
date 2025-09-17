@@ -54,6 +54,8 @@ import { initialMasterData, MasterDataItem } from '@/app/dashboard/data/master-d
 import { initialSuppliers } from '../suppliers/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useAtom } from 'jotai';
+import { paymentsAtom, Payment } from '@/lib/store';
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item selection is required."),
@@ -67,7 +69,7 @@ const purchaseOrderSchema = z.object({
     supplierName: z.string(),
     date: z.string(),
     totalAmount: z.coerce.number(),
-    status: z.enum(['Draft', 'Sent', 'Fulfilled']),
+    status: z.enum(['Draft', 'Sent', 'Fulfilled', 'Paid']),
     lineItems: z.array(lineItemSchema),
 });
 
@@ -85,20 +87,42 @@ const receiveItemsSchema = z.object({
   }))
 });
 
+const paymentSchema = z.object({
+    amount: z.coerce.number().positive("Amount must be a positive number."),
+    method: z.enum(['Cash', 'Card', 'Online', 'QR', 'Cheque']),
+    cardLast4: z.string().optional(),
+    fromBankName: z.string().optional(),
+    fromAccountNumber: z.string().optional(),
+    toBankName: z.string().optional(),
+    toAccountNumber: z.string().optional(),
+    chequeBank: z.string().optional(),
+    chequeDate: z.string().optional(),
+    chequeNumber: z.string().optional(),
+}).refine(data => {
+    if (data.method === 'Card') return !!data.cardLast4 && data.cardLast4.length === 4;
+    if (data.method === 'Online') return !!data.fromBankName && !!data.fromAccountNumber && !!data.toBankName && !!data.toAccountNumber;
+    if (data.method === 'Cheque') return !!data.chequeBank && !!data.chequeDate && !!data.chequeNumber;
+    return true;
+}, {
+    message: "Please fill in all required details for the selected payment method.",
+    path: ['method'], 
+});
+
 
 type PurchaseOrder = z.infer<typeof purchaseOrderSchema>;
 type CreatePurchaseOrder = z.infer<typeof createPurchaseOrderSchema>;
 type ReceiveItemsForm = z.infer<typeof receiveItemsSchema>;
+type PaymentFormValues = z.infer<typeof paymentSchema>;
 
 const initialPurchaseOrders: PurchaseOrder[] = [
     {
       id: 'PO-001',
       supplierName: 'Timber Co.',
       date: '2024-05-10',
-      totalAmount: 0, // Will be calculated on fulfillment
-      status: 'Sent',
+      totalAmount: 750,
+      status: 'Fulfilled',
       lineItems: [
-        { itemId: 'WD-001', quantity: 30 },
+        { itemId: 'WD-001', quantity: 30, unitPrice: 25 },
       ],
     },
      {
@@ -167,8 +191,10 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof line
 export default function PurchaseOrdersPage() {
     const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
     const [masterData, setMasterData] = useState<MasterDataItem[]>(initialMasterData);
+    const [payments, setPayments] = useAtom(paymentsAtom);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
+    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
     const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -184,6 +210,15 @@ export default function PurchaseOrdersPage() {
 
     const receiveForm = useForm<ReceiveItemsForm>();
 
+    const paymentForm = useForm<PaymentFormValues>({
+        resolver: zodResolver(paymentSchema),
+        defaultValues: { amount: '' as any, method: undefined, cardLast4: '', fromBankName: '', fromAccountNumber: '', toBankName: '', toAccountNumber: '', chequeBank: '', chequeDate: '', chequeNumber: '' }
+    });
+
+    const paymentMethod = paymentForm.watch('method');
+    const amountPaid = selectedPO ? payments.filter(p => p.orderId === selectedPO.id && p.type === 'expense').reduce((acc, p) => acc + p.amount, 0) : 0;
+    const remainingAmount = selectedPO ? selectedPO.totalAmount - amountPaid : 0;
+
     const { fields: createFields, append: createAppend, remove: createRemove, replace: createReplace } = useFieldArray({
         control: createForm.control,
         name: "lineItems",
@@ -196,36 +231,25 @@ export default function PurchaseOrdersPage() {
 
     function handleCreateOrUpdateSubmit(values: CreatePurchaseOrder) {
         if (editingPO) {
-             // Update existing PO
             setPurchaseOrders(prevPOs => prevPOs.map(po => 
                 po.id === editingPO.id
                 ? { ...po, ...values, lineItems: values.lineItems, status: 'Draft' }
                 : po
             ));
-            toast({
-                title: 'Purchase Order Updated',
-                description: `Purchase Order ${editingPO.id} has been updated.`,
-            });
+            toast({ title: 'Purchase Order Updated', description: `Purchase Order ${editingPO.id} has been updated.` });
         } else {
-             // Create new PO
             const nextId = purchaseOrders.length > 0 ? Math.max(...purchaseOrders.map(po => parseInt(po.id.split('-')[1]))) + 1 : 1;
-            
             const newPO: PurchaseOrder = {
                 id: `PO-${String(nextId).padStart(3, '0')}`,
                 supplierName: values.supplierName,
                 date: format(new Date(), 'yyyy-MM-dd'),
                 status: 'Draft',
                 lineItems: values.lineItems,
-                totalAmount: 0, // Total amount is 0 on creation
+                totalAmount: 0,
             };
-
             setPurchaseOrders([newPO, ...purchaseOrders]);
-            toast({
-                title: 'Purchase Order Created',
-                description: `Purchase Order ${newPO.id} has been saved as a draft.`,
-            });
+            toast({ title: 'Purchase Order Created', description: `Purchase Order ${newPO.id} has been saved as a draft.` });
         }
-       
         createForm.reset({ supplierName: '', lineItems: []});
         createRemove();
         setIsCreateDialogOpen(false);
@@ -234,17 +258,12 @@ export default function PurchaseOrdersPage() {
     
     function handleReceiveSubmit(values: ReceiveItemsForm) {
         if (!selectedPO) return;
-
         const totalAmount = values.lineItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-
-        // Update PO
         setPurchaseOrders(prevPOs => prevPOs.map(po => 
             po.id === selectedPO.id 
             ? { ...po, status: 'Fulfilled', totalAmount, lineItems: values.lineItems } 
             : po
         ));
-
-        // Update Master Data Stock
         setMasterData(prevMasterData => {
             const newMasterData = [...prevMasterData];
             values.lineItems.forEach(receivedItem => {
@@ -255,16 +274,38 @@ export default function PurchaseOrdersPage() {
             });
             return newMasterData;
         });
-
-        toast({
-            title: 'Purchase Order Fulfilled',
-            description: `Stock for PO ${selectedPO.id} has been updated.`,
-        });
+        toast({ title: 'Purchase Order Fulfilled', description: `Stock for PO ${selectedPO.id} has been updated.` });
         setIsReceiveDialogOpen(false);
         setSelectedPO(null);
     }
+
+    function onPaymentSubmit(values: PaymentFormValues) {
+        if (!selectedPO) return;
+        const currentAmountPaid = payments.filter(p => p.orderId === selectedPO.id).reduce((acc, p) => acc + p.amount, 0);
+        if (values.amount > selectedPO.totalAmount - currentAmountPaid) {
+            toast({ variant: 'destructive', title: 'Invalid Amount', description: `Payment exceeds remaining balance. Max payable: $${(selectedPO.totalAmount - currentAmountPaid).toFixed(2)}` });
+            return;
+        }
+        let details = '';
+        switch(values.method) {
+            case 'Card': details = `Card ending in ${values.cardLast4}`; break;
+            case 'Online': details = `From ${values.fromBankName} (${values.fromAccountNumber}) to ${values.toBankName} (${values.toAccountNumber})`; break;
+            case 'Cheque': details = `${values.chequeBank} Cheque #${values.chequeNumber}, dated ${values.chequeDate}`; break;
+            default: details = 'N/A';
+        }
+        const newPayment: Payment = { id: Date.now().toString(), orderId: selectedPO.id, date: format(new Date(), 'yyyy-MM-dd'), amount: values.amount, method: values.method, details: details, type: 'expense' };
+        setPayments(prev => [...prev, newPayment]);
+        const totalPaid = currentAmountPaid + newPayment.amount;
+        if (totalPaid >= selectedPO.totalAmount) {
+            setPurchaseOrders(prev => prev.map(o => o.id === selectedPO.id ? { ...o, status: 'Paid' } : o));
+            toast({ title: 'Payment Complete', description: `Final payment for PO ${selectedPO.id} has been recorded.` });
+        } else {
+            toast({ title: 'Installment Recorded', description: `Payment of $${values.amount.toFixed(2)} for PO ${selectedPO.id} recorded.` });
+        }
+        setIsPaymentDialogOpen(false);
+    }
     
-    const handleStatusChange = (poId: string, status: 'Sent' | 'Fulfilled') => {
+    const handleStatusChange = (poId: string, status: 'Sent') => {
         setPurchaseOrders(prev => prev.map(po => po.id === poId ? {...po, status} : po));
         toast({ title: 'Status Updated', description: `PO ${poId} marked as ${status}.` });
     };
@@ -276,22 +317,22 @@ export default function PurchaseOrdersPage() {
 
     const openReceiveDialog = (po: PurchaseOrder) => {
         setSelectedPO(po);
-        receiveForm.reset({ 
-            lineItems: po.lineItems.map(item => ({
-                ...item,
-                unitPrice: '' as any,
-                totalValue: item.totalValue ?? 0,
-            })) 
-        });
+        receiveForm.reset({ lineItems: po.lineItems.map(item => ({ ...item, unitPrice: '' as any, totalValue: item.totalValue ?? 0 })) });
         setIsReceiveDialogOpen(true);
+    };
+
+    const openPaymentDialog = (po: PurchaseOrder) => {
+        setSelectedPO(po);
+        const currentAmountPaid = payments.filter(p => p.orderId === po.id).reduce((acc, p) => acc + p.amount, 0);
+        const currentRemainingAmount = po.totalAmount - currentAmountPaid;
+        paymentForm.reset({ amount: currentRemainingAmount > 0 ? currentRemainingAmount : '' as any, method: undefined, cardLast4: '', fromBankName: '', fromAccountNumber: '', toBankName: '', toAccountNumber: '', chequeBank: '', chequeDate: '', chequeNumber: '' });
+        setIsPaymentDialogOpen(true);
     };
 
     const openCreateOrEditDialog = (po: PurchaseOrder | null) => {
         if (po) {
             setEditingPO(po);
-            createForm.reset({
-                supplierName: po.supplierName,
-            });
+            createForm.reset({ supplierName: po.supplierName });
             createReplace(po.lineItems);
         } else {
             setEditingPO(null);
@@ -301,13 +342,10 @@ export default function PurchaseOrdersPage() {
         setIsCreateDialogOpen(true);
     };
 
-
-    const filteredPurchaseOrders = purchaseOrders.filter(po =>
-        po.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        po.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        po.status.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPurchaseOrders = purchaseOrders.filter(po => po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) || po.status.toLowerCase().includes(searchTerm.toLowerCase()));
     
+    const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "outline"} = { 'Draft': 'secondary', 'Sent': 'default', 'Fulfilled': 'outline', 'Paid': 'default' };
+
   return (
     <>
       <header className="flex items-center p-4 border-b">
@@ -325,20 +363,8 @@ export default function PurchaseOrdersPage() {
                     </CardDescription>
                 </div>
                  <div className="flex items-center gap-2">
-                    <Input
-                        placeholder="Search POs..."
-                        className="w-64"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => {
-                        if (!isOpen) {
-                            setEditingPO(null);
-                            createForm.reset();
-                            createRemove();
-                        }
-                        setIsCreateDialogOpen(isOpen);
-                    }}>
+                    <Input placeholder="Search POs..." className="w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setEditingPO(null); createForm.reset(); createRemove(); } setIsCreateDialogOpen(isOpen); }}>
                         <DialogTrigger asChild>
                             <Button onClick={() => openCreateOrEditDialog(null)}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -351,60 +377,17 @@ export default function PurchaseOrdersPage() {
                             </DialogHeader>
                             <Form {...createForm}>
                                 <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)} className="space-y-4 py-4">
-                                    <FormField
-                                        control={createForm.control}
-                                        name="supplierName"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>Supplier</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a supplier" />
-                                                </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {initialSuppliers.map(supplier => (
-                                                        <SelectItem key={supplier.id} value={supplier.name}>
-                                                            {supplier.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    
+                                    <FormField control={createForm.control} name="supplierName" render={({ field }) => ( <FormItem> <FormLabel>Supplier</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Select a supplier" /> </SelectTrigger> </FormControl> <SelectContent> {initialSuppliers.map(supplier => ( <SelectItem key={supplier.id} value={supplier.name}> {supplier.name} </SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )} />
                                     <div>
                                         <FormLabel>Line Items</FormLabel>
                                         <div className="space-y-2 mt-2">
-                                            {createFields.map((field, index) => {
-                                                const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId);
-                                                return (
-                                                <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md">
-                                                    <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div>
-                                                    <div className="w-20 text-sm">Qty: {field.quantity}</div>
-                                                    <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}>
-                                                        <Trash2 className="h-4 w-4 text-destructive"/>
-                                                    </Button>
-                                                </div>
-                                            )})}
+                                            {createFields.map((field, index) => { const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
                                         </div>
-                                         {createFields.length === 0 && (
-                                            <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
-                                        )}
+                                         {createFields.length === 0 && ( <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p> )}
                                         <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
                                     </div>
-                                    
                                     <AddItemForm onAddItem={createAppend} />
-
-                                    <DialogFooter>
-                                        <DialogClose asChild>
-                                            <Button variant="outline" type="button">Cancel</Button>
-                                        </DialogClose>
-                                        <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
-                                    </DialogFooter>
+                                    <DialogFooter> <DialogClose asChild> <Button variant="outline" type="button">Cancel</Button> </DialogClose> <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button> </DialogFooter>
                                 </form>
                             </Form>
                         </DialogContent>
@@ -432,42 +415,21 @@ export default function PurchaseOrdersPage() {
                     <TableCell>{po.date}</TableCell>
                     <TableCell className="text-right">${po.totalAmount.toFixed(2)}</TableCell>
                     <TableCell>
-                      <Badge variant={po.status === 'Draft' ? 'secondary' : po.status === 'Sent' ? 'default' : 'outline'}>
+                      <Badge variant={statusVariant[po.status]} className={po.status === 'Paid' ? 'bg-green-600 text-white' : ''}>
                         {po.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
+                            <Button variant="ghost" className="h-8 w-8 p-0"> <span className="sr-only">Open menu</span> <MoreHorizontal className="h-4 w-4" /> </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuItem 
-                                onClick={() => openCreateOrEditDialog(po)} 
-                                disabled={po.status !== 'Draft'}
-                            >
-                                View/Edit
-                            </DropdownMenuItem>
-                            {po.status === 'Draft' && (
-                                <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}>
-                                    Mark as Sent
-                                </DropdownMenuItem>
-                            )}
-                             {po.status === 'Sent' && (
-                                <DropdownMenuItem onClick={() => openReceiveDialog(po)}>
-                                    Receive Items
-                                </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem 
-                                className="text-destructive" 
-                                onClick={() => handleDelete(po.id)}
-                                disabled={po.status !== 'Draft'}
-                            >
-                                Delete
-                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openCreateOrEditDialog(po)} disabled={po.status !== 'Draft'}> View/Edit </DropdownMenuItem>
+                            {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}> Mark as Sent </DropdownMenuItem> )}
+                            {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
+                            {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -482,21 +444,11 @@ export default function PurchaseOrdersPage() {
        {/* Receive Items Dialog */}
        <Dialog open={isReceiveDialogOpen} onOpenChange={setIsReceiveDialogOpen}>
             <DialogContent className="sm:max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle>
-                    <CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription>
-                </DialogHeader>
+                <DialogHeader> <DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle> <CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription> </DialogHeader>
                 <Form {...receiveForm}>
                     <form onSubmit={receiveForm.handleSubmit(handleReceiveSubmit)} className="space-y-4 py-4">
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Item</TableHead>
-                                    <TableHead className="w-24">Quantity</TableHead>
-                                    <TableHead className="w-40">Unit Price</TableHead>
-                                    <TableHead className="w-40 text-right">Total Value</TableHead>
-                                </TableRow>
-                            </TableHeader>
+                            <TableHeader> <TableRow> <TableHead>Item</TableHead> <TableHead className="w-24">Quantity</TableHead> <TableHead className="w-40">Unit Price</TableHead> <TableHead className="w-40 text-right">Total Value</TableHead> </TableRow> </TableHeader>
                             <TableBody>
                                 {receiveFields.map((field, index) => {
                                     const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId);
@@ -504,37 +456,40 @@ export default function PurchaseOrdersPage() {
                                     const unitPrice = receiveForm.watch(`lineItems.${index}.unitPrice`);
                                     const totalValue = (quantity || 0) * (unitPrice || 0);
                                     receiveForm.setValue(`lineItems.${index}.totalValue`, totalValue);
-
                                     return (
                                         <TableRow key={field.id}>
                                             <TableCell className="font-medium">{itemDetails?.name}</TableCell>
                                             <TableCell>{quantity}</TableCell>
-                                            <TableCell>
-                                                <FormField
-                                                    control={receiveForm.control}
-                                                    name={`lineItems.${index}.unitPrice`}
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormControl>
-                                                                <Input type="number" placeholder="e.g. 10.50" {...field} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </TableCell>
+                                            <TableCell> <FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => ( <FormItem> <FormControl> <Input type="number" placeholder="e.g. 10.50" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> </TableCell>
                                             <TableCell className="text-right font-mono">${totalValue.toFixed(2)}</TableCell>
                                         </TableRow>
                                     );
                                 })}
                             </TableBody>
                         </Table>
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button variant="outline" type="button">Cancel</Button>
-                            </DialogClose>
-                            <Button type="submit">Confirm &amp; Receive Stock</Button>
-                        </DialogFooter>
+                        <DialogFooter> <DialogClose asChild> <Button variant="outline" type="button">Cancel</Button> </DialogClose> <Button type="submit">Confirm &amp; Receive Stock</Button> </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Record Payment for PO {selectedPO?.id}</DialogTitle>
+                    <CardDescription>
+                        Total: ${selectedPO?.totalAmount.toFixed(2)} | Paid: ${amountPaid.toFixed(2)} | Remaining: ${remainingAmount.toFixed(2)}
+                    </CardDescription>
+                </DialogHeader>
+                 <Form {...paymentForm}>
+                    <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)} className="space-y-4 py-4">
+                       <FormField control={paymentForm.control} name="amount" render={({ field }) => ( <FormItem> <FormLabel>Amount</FormLabel> <FormControl> <Input type="number" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
+                        <FormField control={paymentForm.control} name="method" render={({ field }) => ( <FormItem> <FormLabel>Payment Method</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Select a payment method" /> </SelectTrigger> </FormControl> <SelectContent> {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => ( <SelectItem key={method} value={method}> {method} </SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+                        {paymentMethod === 'Card' && ( <FormField control={paymentForm.control} name="cardLast4" render={({ field }) => ( <FormItem> <FormLabel>Last 4 Digits of Card</FormLabel> <FormControl> <Input placeholder="1234" maxLength={4} {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> )}
+                        {paymentMethod === 'Online' && ( <div className="grid grid-cols-2 gap-4"> <div className="space-y-2 col-span-2 sm:col-span-1"> <h4 className="font-medium text-sm">From</h4> <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} /> </div> <div className="space-y-2 col-span-2 sm:col-span-1"> <h4 className="font-medium text-sm">To</h4> <FormField control={paymentForm.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} /> </div> </div> )}
+                        {paymentMethod === 'Cheque' && ( <div className="space-y-4"> <FormField control={paymentForm.control} name="chequeBank" render={({ field }) => ( <FormItem> <FormLabel>Bank Name</FormLabel> <FormControl> <Input placeholder="e.g. National Bank" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> <FormField control={paymentForm.control} name="chequeNumber" render={({ field }) => ( <FormItem> <FormLabel>Cheque Number</FormLabel> <FormControl> <Input placeholder="e.g. 987654" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> <FormField control={paymentForm.control} name="chequeDate" render={({ field }) => ( <FormItem> <FormLabel>Cheque Date</FormLabel> <FormControl> <Input type="date" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> </div> )}
+                        <DialogFooter> <DialogClose asChild> <Button variant="outline">Cancel</Button> </DialogClose> <Button type="submit">Record Payment</Button> </DialogFooter>
                     </form>
                 </Form>
             </DialogContent>
