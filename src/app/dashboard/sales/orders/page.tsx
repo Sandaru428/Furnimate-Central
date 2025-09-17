@@ -107,6 +107,12 @@ export default function OrdersPage() {
         resolver: zodResolver(paymentSchema),
         defaultValues: {
             amount: '' as any,
+            cardLast4: '',
+            onlineBank: '',
+            onlineAccount: '',
+            chequeBank: '',
+            chequeDate: '',
+            chequeNumber: '',
         }
     });
 
@@ -125,7 +131,7 @@ export default function OrdersPage() {
 
     const openPaymentDialog = (order: Order) => {
         setSelectedOrder(order);
-        form.reset({ amount: order.amount, method: undefined });
+        form.reset({ amount: order.amount, method: undefined, cardLast4: '', onlineBank: '', onlineAccount: '', chequeBank: '', chequeDate: '', chequeNumber: '' });
         setIsPaymentDialogOpen(true);
     };
 
