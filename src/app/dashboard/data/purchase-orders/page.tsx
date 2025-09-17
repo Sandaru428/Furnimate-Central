@@ -96,6 +96,7 @@ const initialPurchaseOrders: PurchaseOrder[] = [
 export default function PurchaseOrdersPage() {
     const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
 
     const form = useForm<z.infer<typeof createPurchaseOrderSchema>>({
@@ -154,6 +155,12 @@ export default function PurchaseOrdersPage() {
             });
         }
     }
+
+    const filteredPurchaseOrders = purchaseOrders.filter(po =>
+        po.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        po.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        po.status.toLowerCase().includes(searchTerm.toLowerCase())
+    );
     
   return (
     <>
@@ -171,70 +178,78 @@ export default function PurchaseOrdersPage() {
                     Create and manage purchase orders for raw materials.
                     </CardDescription>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Create New PO
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>Create New Purchase Order</DialogTitle>
-                        </DialogHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                                <FormField
+                 <div className="flex items-center gap-2">
+                    <Input
+                        placeholder="Search POs..."
+                        className="w-64"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Create New PO
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Create New Purchase Order</DialogTitle>
+                            </DialogHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="supplierName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Supplier</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a supplier" />
+                                                </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {initialSuppliers.map(supplier => (
+                                                        <SelectItem key={supplier.id} value={supplier.name}>
+                                                            {supplier.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
                                     control={form.control}
-                                    name="supplierName"
+                                    name="items"
                                     render={({ field }) => (
                                         <FormItem>
-                                        <FormLabel>Supplier</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select a supplier" />
-                                            </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {initialSuppliers.map(supplier => (
-                                                    <SelectItem key={supplier.id} value={supplier.name}>
-                                                        {supplier.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <FormLabel>Items (Item Code, Quantity)</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="e.g.&#10;WD-001,30&#10;MTL-002,10" {...field} rows={4} />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Enter one item per line. The Unit Price is automatically fetched from Master Data.
+                                        </FormDescription>
                                         <FormMessage />
                                         </FormItem>
                                     )}
-                                />
-
-                                 <FormField
-                                control={form.control}
-                                name="items"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Items (ID,quantity per line)</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="WD-001,30\nMTL-002,10" {...field} />
-                                    </FormControl>
-                                    <FormDescription>
-                                        Each line should contain an item code and quantity, separated by a comma.
-                                    </FormDescription>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                                />
-                                <DialogFooter>
-                                    <DialogClose asChild>
-                                        <Button variant="outline">Cancel</Button>
-                                    </DialogClose>
-                                    <Button type="submit">Create PO</Button>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
+                                    />
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button variant="outline">Cancel</Button>
+                                        </DialogClose>
+                                        <Button type="submit">Create PO</Button>
+                                    </DialogFooter>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -250,7 +265,7 @@ export default function PurchaseOrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {purchaseOrders.map((po) => (
+                {filteredPurchaseOrders.map((po) => (
                   <TableRow key={po.id}>
                     <TableCell className="font-mono">{po.id}</TableCell>
                     <TableCell className="font-medium">{po.supplierName}</TableCell>
@@ -286,3 +301,5 @@ export default function PurchaseOrdersPage() {
     </>
   );
 }
+
+    
