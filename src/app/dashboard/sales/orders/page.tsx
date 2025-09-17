@@ -39,9 +39,18 @@ const initialOrders: any[] = [
 export default function OrdersPage() {
     const [orders, setOrders] = useState(initialOrders);
 
-    // In a real application, you might fetch converted quotations
-    // or listen to a global state management solution.
-    // For this example, we'll keep it simple.
+    useEffect(() => {
+        const convertedOrder = localStorage.getItem('convertedOrder');
+        if (convertedOrder) {
+            const newOrder = JSON.parse(convertedOrder);
+            // Prevent duplicates
+            if (!orders.some(o => o.id === newOrder.id)) {
+                setOrders(prevOrders => [newOrder, ...prevOrders]);
+            }
+            localStorage.removeItem('convertedOrder');
+        }
+    }, [orders]);
+
 
   return (
     <>

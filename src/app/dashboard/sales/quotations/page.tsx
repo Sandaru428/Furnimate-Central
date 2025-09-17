@@ -175,6 +175,7 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: z.infer<typeof lineItemS
 export default function QuotationsPage() {
     const [quotations, setQuotations] = useState<Quotation[]>(initialQuotations);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -186,7 +187,7 @@ export default function QuotationsPage() {
         },
     });
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields, append, remove, replace } = useFieldArray({
         control: form.control,
         name: "lineItems",
     });
@@ -196,35 +197,68 @@ export default function QuotationsPage() {
 
     function onSubmit(values: CreateQuotation) {
         try {
-            const totalAmount = values.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+             const totalAmount = values.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
             
-            const nextId = quotations.length > 0 ? Math.max(...quotations.map(q => parseInt(q.id.split('-')[1]))) + 1 : 1;
-            const newQuotation: Quotation = {
-                id: `QUO-${String(nextId).padStart(3, '0')}`,
-                customer: values.customer,
-                date: format(new Date(), 'yyyy-MM-dd'),
-                status: 'Draft',
-                lineItems: values.lineItems,
-                amount: totalAmount,
-            };
-
-            setQuotations([newQuotation, ...quotations]);
-            toast({
-              title: 'Quotation Created',
-              description: `Quotation ${newQuotation.id} has been saved as a draft.`,
-            });
+             if (editingQuotation) {
+                // Update
+                const updatedQuotation: Quotation = {
+                    ...editingQuotation,
+                    ...values,
+                    amount: totalAmount,
+                    status: 'Draft',
+                };
+                setQuotations(quotations.map(q => q.id === editingQuotation.id ? updatedQuotation : q));
+                toast({
+                    title: 'Quotation Updated',
+                    description: `Quotation ${editingQuotation.id} has been updated.`
+                });
+             } else {
+                // Create
+                const nextId = quotations.length > 0 ? Math.max(...quotations.map(q => parseInt(q.id.split('-')[1]))) + 1 : 1;
+                const newQuotation: Quotation = {
+                    id: `QUO-${String(nextId).padStart(3, '0')}`,
+                    customer: values.customer,
+                    date: format(new Date(), 'yyyy-MM-dd'),
+                    status: 'Draft',
+                    lineItems: values.lineItems,
+                    amount: totalAmount,
+                };
+    
+                setQuotations([newQuotation, ...quotations]);
+                toast({
+                  title: 'Quotation Created',
+                  description: `Quotation ${newQuotation.id} has been saved as a draft.`,
+                });
+             }
+            
             form.reset();
             remove(); // clear all items
             setIsDialogOpen(false);
+            setEditingQuotation(null);
 
         } catch (error: any) {
              toast({
                 variant: "destructive",
-                title: 'Error Creating Quotation',
+                title: 'Error Saving Quotation',
                 description: error.message,
             });
         }
     }
+
+    const openCreateOrEditDialog = (quote: Quotation | null) => {
+        if (quote) {
+            setEditingQuotation(quote);
+            form.reset({
+                customer: quote.customer,
+            });
+            replace(quote.lineItems);
+        } else {
+            setEditingQuotation(null);
+            form.reset({ customer: '', lineItems: [] });
+            remove();
+        }
+        setIsDialogOpen(true);
+    };
     
     const handleConvertToOrder = (quotationId: string) => {
         const quotation = quotations.find(q => q.id === quotationId);
@@ -248,14 +282,30 @@ export default function QuotationsPage() {
             return; // Stop conversion if any item has insufficient stock
         }
 
+        // Create the new order object
+        const newOrder = {
+            id: `ORD-${quotation.id.split('-')[1]}`,
+            quotationId: quotation.id,
+            customer: quotation.customer,
+            date: format(new Date(), 'yyyy-MM-dd'),
+            amount: quotation.amount,
+            status: 'Processing',
+        };
+        
+        // Use local storage to pass the new order to the orders page
+        localStorage.setItem('convertedOrder', JSON.stringify(newOrder));
+
+        // Update the quotation status to 'Converted'
         setQuotations(quotations.map(q => 
             q.id === quotationId ? { ...q, status: 'Converted' } : q
         ));
+
         toast({
             title: 'Quotation Converted to Order',
             description: `Stock checked and available. Order created from ${quotationId}.`,
         });
-        // Optionally, navigate to orders page
+
+        // Navigate to orders page
         router.push('/dashboard/sales/orders');
     };
 
@@ -280,18 +330,19 @@ export default function QuotationsPage() {
                     if (!isOpen) {
                         form.reset();
                         remove();
+                        setEditingQuotation(null);
                     }
                     setIsDialogOpen(isOpen);
                 }}>
                     <DialogTrigger asChild>
-                        <Button>
+                        <Button onClick={() => openCreateOrEditDialog(null)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Create New Quotation
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-2xl">
                         <DialogHeader>
-                            <DialogTitle>Create New Quotation</DialogTitle>
+                             <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.id}` : 'Create New Quotation'}</DialogTitle>
                         </DialogHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -368,7 +419,7 @@ export default function QuotationsPage() {
                                             <DialogClose asChild>
                                                 <Button variant="outline" type="button">Cancel</Button>
                                             </DialogClose>
-                                            <Button type="submit">Create Quotation</Button>
+                                             <Button type="submit">{editingQuotation ? 'Save Changes' : 'Create Quotation'}</Button>
                                         </div>
                                     </div>
                                 </DialogFooter>
@@ -414,10 +465,15 @@ export default function QuotationsPage() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View/Edit</DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => openCreateOrEditDialog(quote)}
+                                disabled={quote.status !== 'Draft'}
+                            >
+                                View/Edit
+                            </DropdownMenuItem>
                             <DropdownMenuItem 
                                 onClick={() => handleConvertToOrder(quote.id)}
-                                disabled={quote.status === 'Converted' || quote.status !== 'Approved'}
+                                disabled={quote.status !== 'Approved'}
                             >
                                 Convert to Order
                             </DropdownMenuItem>
