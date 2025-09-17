@@ -115,17 +115,18 @@ const initialPurchaseOrders: PurchaseOrder[] = [
 
 const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
     const [selectedItemCode, setSelectedItemCode] = useState('');
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState<number | ''>('');
     const item = initialMasterData.find(i => i.itemCode === selectedItemCode);
 
     const handleAddItem = () => {
-        if (item && quantity > 0) {
+        const numQuantity = Number(quantity);
+        if (item && numQuantity > 0) {
             onAddItem({
                 itemId: item.itemCode,
-                quantity: quantity,
+                quantity: numQuantity,
             });
             setSelectedItemCode('');
-            setQuantity(1);
+            setQuantity('');
         }
     }
 
@@ -152,11 +153,12 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof line
                     id="item-quantity"
                     type="number"
                     value={quantity}
-                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                    onChange={(e) => setQuantity(e.target.value === '' ? '' : parseInt(e.target.value))}
                     min="1"
+                    placeholder="1"
                 />
             </div>
-            <Button type="button" onClick={handleAddItem} disabled={!item}>Add</Button>
+            <Button type="button" onClick={handleAddItem} disabled={!item || !quantity}>Add</Button>
         </div>
     );
 };
