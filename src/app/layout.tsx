@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Head from 'next/head';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
