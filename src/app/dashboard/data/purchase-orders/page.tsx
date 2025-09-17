@@ -286,10 +286,6 @@ export default function PurchaseOrdersPage() {
                                     
                                     <AddItemForm onAddItem={append} />
 
-                                    <div className="text-right font-bold text-lg">
-                                        Total Amount: ${form.watch('lineItems').reduce((acc, item) => acc + item.totalValue, 0).toFixed(2)}
-                                    </div>
-
                                     <DialogFooter>
                                         <DialogClose asChild>
                                             <Button variant="outline" type="button">Cancel</Button>
