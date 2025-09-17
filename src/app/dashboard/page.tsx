@@ -23,7 +23,7 @@ const developmentChecklist = [
   {
     heading: "Admin Features",
     items: [
-      { id: "admin-1", label: "Company Profile Management UI" },
+      { id: "admin-1", label: "Company Profile Management UI", checked: true },
       { id: "admin-2", label: "Notification Template Engine UI" },
     ],
   },
@@ -53,8 +53,7 @@ const developmentChecklist = [
 
 export default function DashboardPage() {
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 md:p-8">
-      <Tabs defaultValue="dashboard" className="w-full max-w-4xl">
+      <Tabs defaultValue="dashboard" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="development">Development</TabsTrigger>
@@ -104,6 +103,5 @@ export default function DashboardPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
   );
 }
