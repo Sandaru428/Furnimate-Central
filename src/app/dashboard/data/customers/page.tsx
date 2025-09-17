@@ -1,6 +1,10 @@
 
 'use client';
 
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -18,17 +22,47 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-  } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useToast } from '@/hooks/use-toast';
 
-const customers = [
+const customerSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Customer name is required'),
+  contactPerson: z.string().min(1, 'Contact person is required'),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().min(1, 'Phone number is required'),
+  type: z.string().min(1, 'Customer type is required'),
+});
+
+type Customer = z.infer<typeof customerSchema>;
+
+const initialCustomers: Customer[] = [
   {
+    id: '1',
     name: 'Modern Designs LLC',
     contactPerson: 'Sarah Miller',
     email: 'sarah@moderndesigns.com',
@@ -36,6 +70,7 @@ const customers = [
     type: 'Corporate',
   },
   {
+    id: '2',
     name: 'Home Comforts',
     contactPerson: 'Michael Brown',
     email: 'mbrown@homecomforts.net',
@@ -43,6 +78,7 @@ const customers = [
     type: 'Retail',
   },
   {
+    id: '3',
     name: 'Emily Davis',
     contactPerson: 'Emily Davis',
     email: 'emily.d@email.com',
@@ -52,29 +88,137 @@ const customers = [
 ];
 
 export default function CustomersPage() {
+  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const form = useForm<Customer>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: {
+      name: '',
+      contactPerson: '',
+      email: '',
+      phone: '',
+      type: '',
+    },
+  });
+
+  function onSubmit(values: Customer) {
+    const newCustomer = { ...values, id: Date.now().toString() };
+    setCustomers([...customers, newCustomer]);
+    toast({
+      title: 'Customer Added',
+      description: `${values.name} has been successfully added.`,
+    });
+    form.reset();
+    setIsDialogOpen(false);
+  }
+
   return (
     <>
       <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Customers</h1>
+        <SidebarTrigger />
+        <h1 className="text-xl font-semibold ml-4">Customers</h1>
       </header>
       <main className="p-4">
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Customers</CardTitle>
-                    <CardDescription>
-                    Manage your customer information.
-                    </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Input placeholder="Search customers..." className="w-64" />
+              <div>
+                <CardTitle>Customers</CardTitle>
+                <CardDescription>Manage your customer information.</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input placeholder="Search customers..." className="w-64" />
+                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
                     <Button>
-                        <PlusCircle className="mr-2" />
-                        Add New Customer
+                      <PlusCircle className="mr-2" />
+                      Add New Customer
                     </Button>
-                </div>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Add New Customer</DialogTitle>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Customer Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Modern Designs LLC" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="contactPerson"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Contact Person</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Sarah Miller" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input placeholder="sarah@moderndesigns.com" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                         <FormField
+                          control={form.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone</FormLabel>
+                              <FormControl>
+                                <Input placeholder="555-111-2222" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                         <FormField
+                          control={form.control}
+                          name="type"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Type</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Corporate" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button type="submit">Add Customer</Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -91,25 +235,27 @@ export default function CustomersPage() {
               </TableHeader>
               <TableBody>
                 {customers.map((customer) => (
-                  <TableRow key={customer.name}>
+                  <TableRow key={customer.id}>
                     <TableCell className="font-medium">{customer.name}</TableCell>
                     <TableCell>{customer.contactPerson}</TableCell>
                     <TableCell>{customer.email}</TableCell>
                     <TableCell>{customer.phone}</TableCell>
                     <TableCell>{customer.type}</TableCell>
                     <TableCell>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>Edit</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive">
+                            Archive
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
