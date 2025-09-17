@@ -55,7 +55,7 @@ const itemSchema = z.object({
     name: z.string().min(1, "Item name is required"),
     type: z.string().min(1, "Type is required"),
     unitPrice: z.coerce.number().positive("Unit price must be a positive number."),
-    stockLevel: z.coerce.number().int().positive("Stock level must be a positive integer."),
+    stockLevel: z.coerce.number().int().min(0, "Stock level cannot be negative."),
 });
 
 export type MasterDataItem = z.infer<typeof itemSchema>;
@@ -104,8 +104,8 @@ export default function MasterDataPage() {
             itemCode: '',
             name: '',
             type: '',
-            unitPrice: undefined,
-            stockLevel: undefined,
+            unitPrice: '' as any,
+            stockLevel: '' as any,
         },
     });
 

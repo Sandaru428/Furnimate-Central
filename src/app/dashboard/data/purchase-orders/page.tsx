@@ -277,7 +277,7 @@ export default function PurchaseOrdersPage() {
         receiveForm.reset({ 
             lineItems: po.lineItems.map(item => ({
                 ...item,
-                unitPrice: undefined,
+                unitPrice: '' as any,
                 totalValue: item.totalValue ?? 0,
             })) 
         });
