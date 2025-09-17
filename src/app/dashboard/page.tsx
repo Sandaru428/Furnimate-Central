@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -30,8 +29,8 @@ const developmentChecklist = [
   {
     heading: "Core System Features",
     items: [
-      { id: "core-1", label: "Smart Reference Number Generator (Cloud Function)" },
-      { id: "core-2", label: "GenAI Audit Flow for reference numbers" },
+      { id: "core-1", label: "Smart Reference Number Generator (Cloud Function)", checked: true },
+      { id: "core-2", label: "GenAI Audit Flow for reference numbers", checked: true },
       { id: "core-3", label: "Progress Dashboard with KPIs" },
     ],
   },

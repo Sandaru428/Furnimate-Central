@@ -10,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {parse, isValid as isValidDate} from 'date-fns';
 
 const AuditReferenceComplianceInputSchema = z.object({
   referenceNumber: z
@@ -35,32 +36,35 @@ export async function auditReferenceCompliance(
   return auditReferenceComplianceFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'auditReferenceCompliancePrompt',
-  input: {schema: AuditReferenceComplianceInputSchema},
-  output: {schema: AuditReferenceComplianceOutputSchema},
-  prompt: `You are an expert auditor specializing in reference number compliance.
-
-You will audit the reference number against the following rules:
-1. The reference number must be in the format YYYYMMDDXXXXXX.
-2. YYYYMMDD must be a valid date.
-3. XXXXXX must be a 6-digit number, zero-padded.
-
-Reference Type: {{{referenceType}}}
-Reference Number: {{{referenceNumber}}}
-
-Respond with isValid true or false, and a reason if isValid is false.
-`,
-});
-
 const auditReferenceComplianceFlow = ai.defineFlow(
   {
     name: 'auditReferenceComplianceFlow',
     inputSchema: AuditReferenceComplianceInputSchema,
     outputSchema: AuditReferenceComplianceOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async ({referenceNumber, referenceType}) => {
+    // Rule 1: Check format YYYYMMDDXXXXXX (14 characters, all digits)
+    if (!/^\d{14}$/.test(referenceNumber)) {
+      return {
+        isValid: false,
+        reason: 'Invalid format. Must be 14 digits in YYYYMMDDXXXXXX format.',
+      };
+    }
+
+    // Rule 2: YYYYMMDD must be a valid date
+    const datePart = referenceNumber.substring(0, 8);
+    const date = parse(datePart, 'yyyyMMdd', new Date());
+    if (!isValidDate(date)) {
+      return {
+        isValid: false,
+        reason: `Invalid date part. ${datePart} is not a valid date.`,
+      };
+    }
+    
+    // All checks passed
+    return {
+        isValid: true,
+        reason: 'Reference number is valid.',
+    };
   }
 );
