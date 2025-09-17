@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,20 +24,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { auth } from "@/lib/firebase";
 
 const formSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters.",
+  password: z.string().min(1, {
+    message: "Password cannot be empty.",
   }),
 });
 
 export function LoginForm() {
-  const { toast } = useToast();
   const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,16 +45,8 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push("/dashboard");
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Invalid login",
-        description: "Please check your email and password.",
-      });
-    }
+    // TODO: Re-enable Firebase authentication
+    router.push("/dashboard");
   }
 
   return (
