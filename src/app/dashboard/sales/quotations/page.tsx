@@ -55,7 +55,7 @@ const quotationSchema = z.object({
     id: z.string(),
     customer: z.string().min(1, "Customer name is required"),
     date: z.string(),
-    total: z.coerce.number().min(0, "Total must be a non-negative number"),
+    amount: z.coerce.number().min(0, "Amount must be a non-negative number"),
     status: z.enum(['Draft', 'Sent', 'Approved', 'Rejected', 'Converted']),
 });
 
@@ -66,21 +66,21 @@ const initialQuotations: Quotation[] = [
     id: 'QUO-001',
     customer: 'Modern Designs LLC',
     date: '2024-05-01',
-    total: 1250.00,
+    amount: 1250.00,
     status: 'Sent',
   },
   {
     id: 'QUO-002',
     customer: 'Home Comforts',
     date: '2024-05-03',
-    total: 850.50,
+    amount: 850.50,
     status: 'Draft',
   },
   {
     id: 'QUO-003',
     customer: 'Emily Davis',
     date: '2024-05-05',
-    total: 2400.00,
+    amount: 2400.00,
     status: 'Approved',
   },
 ];
@@ -103,7 +103,7 @@ export default function QuotationsPage() {
         resolver: zodResolver(quotationSchema.omit({ id: true, date: true, status: true})),
         defaultValues: {
           customer: '',
-          total: 0,
+          amount: 0,
         },
     });
 
@@ -179,10 +179,10 @@ export default function QuotationsPage() {
                                 />
                                  <FormField
                                 control={form.control}
-                                name="total"
+                                name="amount"
                                 render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Total Amount</FormLabel>
+                                    <FormLabel>Amount</FormLabel>
                                     <FormControl>
                                         <Input type="number" placeholder="0.00" {...field} />
                                     </FormControl>
@@ -209,7 +209,7 @@ export default function QuotationsPage() {
                   <TableHead>Quotation ID</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -220,7 +220,7 @@ export default function QuotationsPage() {
                     <TableCell className="font-mono">{quote.id}</TableCell>
                     <TableCell className="font-medium">{quote.customer}</TableCell>
                     <TableCell>{quote.date}</TableCell>
-                    <TableCell className="text-right">${quote.total.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">${quote.amount.toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge 
                         variant={statusVariant[quote.status] || 'secondary'}

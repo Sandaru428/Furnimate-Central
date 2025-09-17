@@ -53,7 +53,7 @@ import { useToast } from '@/hooks/use-toast';
 const itemSchema = z.object({
     itemCode: z.string().min(1, "Item code is required"),
     name: z.string().min(1, "Item name is required"),
-    category: z.string().min(1, "Category is required"),
+    type: z.string().min(1, "Type is required"),
     unitPrice: z.coerce.number().min(0, "Unit price must be non-negative"),
     stockLevel: z.coerce.number().int().min(0, "Stock level must be a non-negative integer"),
 });
@@ -65,28 +65,28 @@ const initialMasterData: MasterDataItem[] = [
   {
     itemCode: 'WD-001',
     name: 'Oak Wood Plank',
-    category: 'Wood',
+    type: 'Wood',
     unitPrice: 25.00,
     stockLevel: 150,
   },
   {
     itemCode: 'FBR-003',
     name: 'Linen Fabric',
-    category: 'Fabric',
+    type: 'Fabric',
     unitPrice: 15.50,
     stockLevel: 300,
   },
   {
     itemCode: 'MTL-002',
     name: 'Steel Frame',
-    category: 'Metal',
+    type: 'Metal',
     unitPrice: 55.00,
     stockLevel: 80,
   },
     {
     itemCode: 'FNS-010',
     name: 'Matte Varnish',
-    category: 'Finishing',
+    type: 'Finishing',
     unitPrice: 12.00,
     stockLevel: 200,
   },
@@ -102,7 +102,7 @@ export default function MasterDataPage() {
         defaultValues: {
             itemCode: '',
             name: '',
-            category: '',
+            type: '',
             unitPrice: 0,
             stockLevel: 0,
         },
@@ -177,10 +177,10 @@ export default function MasterDataPage() {
                                     />
                                     <FormField
                                     control={form.control}
-                                    name="category"
+                                    name="type"
                                     render={({ field }) => (
                                         <FormItem>
-                                        <FormLabel>Category</FormLabel>
+                                        <FormLabel>Type</FormLabel>
                                         <FormControl>
                                             <Input placeholder="e.g., Wood" {...field} />
                                         </FormControl>
@@ -233,7 +233,7 @@ export default function MasterDataPage() {
                 <TableRow>
                   <TableHead>Item Code</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead className="text-right">Unit Price</TableHead>
                   <TableHead className="text-right">Stock Level</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -245,7 +245,7 @@ export default function MasterDataPage() {
                     <TableCell className="font-mono">{item.itemCode}</TableCell>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{item.category}</Badge>
+                      <Badge variant="secondary">{item.type}</Badge>
                     </TableCell>
                     <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
                     <TableCell className="text-right">{item.stockLevel}</TableCell>

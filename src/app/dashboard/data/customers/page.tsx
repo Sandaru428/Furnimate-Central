@@ -52,10 +52,8 @@ import { useToast } from '@/hooks/use-toast';
 const customerSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Customer name is required'),
-  contactPerson: z.string().min(1, 'Contact person is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone number is required'),
-  type: z.string().min(1, 'Customer type is required'),
 });
 
 type Customer = z.infer<typeof customerSchema>;
@@ -64,26 +62,20 @@ const initialCustomers: Customer[] = [
   {
     id: '1',
     name: 'Modern Designs LLC',
-    contactPerson: 'Sarah Miller',
     email: 'sarah@moderndesigns.com',
     phone: '555-111-2222',
-    type: 'Corporate',
   },
   {
     id: '2',
     name: 'Home Comforts',
-    contactPerson: 'Michael Brown',
     email: 'mbrown@homecomforts.net',
     phone: '555-333-4444',
-    type: 'Retail',
   },
   {
     id: '3',
     name: 'Emily Davis',
-    contactPerson: 'Emily Davis',
     email: 'emily.d@email.com',
     phone: '555-555-6666',
-    type: 'Individual',
   },
 ];
 
@@ -96,10 +88,8 @@ export default function CustomersPage() {
     resolver: zodResolver(customerSchema),
     defaultValues: {
       name: '',
-      contactPerson: '',
       email: '',
       phone: '',
-      type: '',
     },
   });
 
@@ -158,19 +148,6 @@ export default function CustomersPage() {
                         />
                         <FormField
                           control={form.control}
-                          name="contactPerson"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Contact Person</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g. Sarah Miller" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
                           name="email"
                           render={({ field }) => (
                             <FormItem>
@@ -195,19 +172,6 @@ export default function CustomersPage() {
                             </FormItem>
                           )}
                         />
-                         <FormField
-                          control={form.control}
-                          name="type"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Type</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g. Corporate" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
                         <DialogFooter>
                             <DialogClose asChild>
                                 <Button variant="outline">Cancel</Button>
@@ -226,10 +190,8 @@ export default function CustomersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Customer Name</TableHead>
-                  <TableHead>Contact Person</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Type</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -237,10 +199,8 @@ export default function CustomersPage() {
                 {customers.map((customer) => (
                   <TableRow key={customer.id}>
                     <TableCell className="font-medium">{customer.name}</TableCell>
-                    <TableCell>{customer.contactPerson}</TableCell>
                     <TableCell>{customer.email}</TableCell>
                     <TableCell>{customer.phone}</TableCell>
-                    <TableCell>{customer.type}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

@@ -46,17 +46,13 @@ import {
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 
 const supplierSchema = z.object({
     id: z.string().optional(),
     name: z.string().min(1, "Supplier name is required"),
-    contactPerson: z.string().min(1, "Contact person is required"),
-    email: z.string().email("Invalid email address"),
-    phone: z.string().min(1, "Phone number is required"),
-    category: z.string().min(1, "Category is required"),
+    contact: z.string().min(1, "Contact info is required"),
 });
 
 type Supplier = z.infer<typeof supplierSchema>;
@@ -65,34 +61,22 @@ const initialSuppliers: Supplier[] = [
   {
     id: '1',
     name: 'Timber Co.',
-    contactPerson: 'John Doe',
-    email: 'john.doe@timberco.com',
-    phone: '555-123-4567',
-    category: 'Wood',
+    contact: 'John Doe, 555-123-4567',
   },
   {
     id: '2',
     name: 'Fabric Solutions',
-    contactPerson: 'Jane Smith',
-    email: 'jane.s@fabricsolutions.com',
-    phone: '555-987-6543',
-    category: 'Fabric',
+    contact: 'Jane Smith, 555-987-6543',
   },
   {
     id: '3',
     name: 'MetalWorks Inc.',
-    contactPerson: 'Bob Johnson',
-    email: 'b.johnson@metalworks.com',
-    phone: '555-456-7890',
-    category: 'Metal',
+    contact: 'Bob Johnson, 555-456-7890',
   },
     {
     id: '4',
     name: 'Finishing Touches',
-    contactPerson: 'Alice Williams',
-    email: 'alice@finishingtouches.com',
-    phone: '555-321-9876',
-    category: 'Finishing',
+    contact: 'Alice Williams, 555-321-9876',
   },
 ];
 
@@ -105,10 +89,7 @@ export default function SuppliersPage() {
     resolver: zodResolver(supplierSchema),
     defaultValues: {
       name: '',
-      contactPerson: '',
-      email: '',
-      phone: '',
-      category: '',
+      contact: '',
     },
   });
 
@@ -169,51 +150,12 @@ export default function SuppliersPage() {
                                     />
                                     <FormField
                                     control={form.control}
-                                    name="contactPerson"
+                                    name="contact"
                                     render={({ field }) => (
                                         <FormItem>
-                                        <FormLabel>Contact Person</FormLabel>
+                                        <FormLabel>Contact Info</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="e.g. John Doe" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                    <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Email</FormLabel>
-                                        <FormControl>
-                                            <Input type="email" placeholder="e.g. john@timberco.com" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                    <FormField
-                                    control={form.control}
-                                    name="phone"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Phone</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g. 555-123-4567" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                    <FormField
-                                    control={form.control}
-                                    name="category"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Category</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g. Wood" {...field} />
+                                            <Input placeholder="e.g. John Doe, 555-123-4567" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
@@ -237,10 +179,7 @@ export default function SuppliersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Supplier Name</TableHead>
-                  <TableHead>Contact Person</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>Contact</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -248,12 +187,7 @@ export default function SuppliersPage() {
                 {suppliers.map((supplier) => (
                   <TableRow key={supplier.id}>
                     <TableCell className="font-medium">{supplier.name}</TableCell>
-                    <TableCell>{supplier.contactPerson}</TableCell>
-                    <TableCell>{supplier.email}</TableCell>
-                    <TableCell>{supplier.phone}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{supplier.category}</Badge>
-                    </TableCell>
+                    <TableCell>{supplier.contact}</TableCell>
                     <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
