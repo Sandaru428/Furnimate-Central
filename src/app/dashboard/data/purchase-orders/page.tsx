@@ -420,7 +420,7 @@ export default function PurchaseOrdersPage() {
                                     </div>
                                     <AddItemForm onAddItem={createAppend} />
                                     <DialogFooter>
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex justify-end gap-2 w-full">
                                             <DialogClose asChild>
                                                 <Button variant="outline" type="button">Cancel</Button>
                                             </DialogClose>
@@ -561,3 +561,5 @@ export default function PurchaseOrdersPage() {
     </>
   );
 }
+
+    
