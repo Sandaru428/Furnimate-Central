@@ -26,6 +26,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
   } from "@/components/ui/dropdown-menu"
 import {
     Dialog,
@@ -231,7 +232,7 @@ export default function QuotationsPage() {
                 });
              }
             
-            form.reset();
+            form.reset({ customer: '', lineItems: [] });
             remove(); // clear all items
             setIsDialogOpen(false);
             setEditingQuotation(null);
@@ -250,6 +251,7 @@ export default function QuotationsPage() {
             setEditingQuotation(quote);
             form.reset({
                 customer: quote.customer,
+                lineItems: quote.lineItems,
             });
             replace(quote.lineItems);
         } else {
@@ -258,6 +260,24 @@ export default function QuotationsPage() {
             remove();
         }
         setIsDialogOpen(true);
+    };
+
+    const handleStatusChange = (quotationId: string, newStatus: Quotation['status']) => {
+        setQuotations(quotations.map(q =>
+            q.id === quotationId ? { ...q, status: newStatus } : q
+        ));
+        toast({
+            title: 'Status Updated',
+            description: `Quotation ${quotationId} has been marked as ${newStatus}.`
+        });
+    };
+
+    const handleDelete = (quotationId: string) => {
+        setQuotations(quotations.filter(q => q.id !== quotationId));
+        toast({
+            title: 'Quotation Deleted',
+            description: `Quotation ${quotationId} has been removed.`,
+        });
     };
     
     const handleConvertToOrder = (quotationId: string) => {
@@ -465,19 +485,39 @@ export default function QuotationsPage() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuItem 
-                                onClick={() => openCreateOrEditDialog(quote)}
-                                disabled={quote.status !== 'Draft'}
-                            >
-                                View/Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                                onClick={() => handleConvertToOrder(quote.id)}
-                                disabled={quote.status !== 'Approved'}
-                            >
-                                Convert to Order
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                {quote.status === 'Draft' && (
+                                    <>
+                                        <DropdownMenuItem onClick={() => openCreateOrEditDialog(quote)}>
+                                            View/Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Sent')}>
+                                            Mark as Sent
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                                {quote.status === 'Sent' && (
+                                    <>
+                                        <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Approved')}>
+                                            Approve
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Rejected')} className="text-destructive">
+                                            Reject
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                                {quote.status === 'Approved' && (
+                                    <DropdownMenuItem onClick={() => handleConvertToOrder(quote.id)}>
+                                        Convert to Order
+                                    </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                    className="text-destructive" 
+                                    onClick={() => handleDelete(quote.id)}
+                                    disabled={!['Draft', 'Rejected'].includes(quote.status)}
+                                >
+                                    Delete
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -491,3 +531,5 @@ export default function QuotationsPage() {
     </>
   );
 }
+
+    
