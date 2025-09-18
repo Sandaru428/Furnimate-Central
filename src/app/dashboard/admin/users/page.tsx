@@ -49,7 +49,7 @@ import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, query, where, deleteDoc } from 'firebase/firestore';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAtom } from 'jotai';
 import { companyProfileAtom } from '@/lib/store';
@@ -57,6 +57,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { USER_ROLES, MAIN_TABS, UserRole, MainTab } from '@/lib/roles';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 
 const userSchema = z.object({
   id: z.string().optional(),
@@ -90,6 +91,17 @@ export default function UsersPage() {
       accessOptions: [],
     },
   });
+
+  const accessOptionsValue = form.watch('accessOptions') || [];
+    const allAccessOptions = MAIN_TABS.map(tab => tab.id);
+
+    const handleSelectAll = (checked: boolean | 'indeterminate') => {
+        if (checked === true) {
+            form.setValue('accessOptions', allAccessOptions);
+        } else {
+            form.setValue('accessOptions', []);
+        }
+    };
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -240,8 +252,18 @@ export default function UsersPage() {
                                 name="accessOptions"
                                 render={() => (
                                     <FormItem>
-                                        <FormLabel>User Access Options</FormLabel>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 rounded-lg border p-4">
+                                        <div className="flex items-center justify-between">
+                                          <FormLabel>User Access Options</FormLabel>
+                                          <div className="flex items-center space-x-2">
+                                              <Checkbox
+                                                  id="select-all"
+                                                  checked={accessOptionsValue.length === allAccessOptions.length}
+                                                  onCheckedChange={handleSelectAll}
+                                              />
+                                              <Label htmlFor="select-all" className="text-sm font-medium">Select All</Label>
+                                          </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-lg border p-4">
                                             {MAIN_TABS.map((item) => (
                                                 <FormField
                                                 key={item.id}
@@ -249,7 +271,7 @@ export default function UsersPage() {
                                                 name="accessOptions"
                                                 render={({ field }) => {
                                                     return (
-                                                    <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                                    <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0 w-48">
                                                         <FormControl>
                                                         <Checkbox
                                                             checked={field.value?.includes(item.id)}
@@ -360,3 +382,5 @@ export default function UsersPage() {
     </>
   );
 }
+
+    

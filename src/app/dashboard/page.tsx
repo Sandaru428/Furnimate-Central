@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -39,6 +39,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
+import { useAuth } from '@/hooks/use-auth';
 
 const developmentChecklist = [
   {
@@ -108,7 +109,14 @@ export default function DashboardPage() {
   const [payments] = useAtom(paymentsAtom);
   const [saleOrders] = useAtom(saleOrdersAtom);
   const [masterData] = useAtom(masterDataAtom);
+  const { user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setIsConnected(true);
+    }
+  }, [user]);
 
   const kpiData = useMemo(() => {
     const totalRevenue = payments
@@ -267,7 +275,7 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-4">
                             <Server className="h-6 w-6 text-muted-foreground" />
                             <div>
-                                <p className="font-medium">absiraivaws@gmail.com</p>
+                                <p className="font-medium">{user?.email || 'Not Logged In'}</p>
                                 {isConnected ? (
                                     <Badge className="bg-green-600 text-white">Connected</Badge>
                                 ) : (
@@ -275,12 +283,12 @@ export default function DashboardPage() {
                                 )}
                             </div>
                         </div>
-                        <Button variant="outline" onClick={() => setIsConnected(!isConnected)}>
+                        <Button variant="outline" disabled>
                           {isConnected ? 'Disconnect' : 'Connect'}
                         </Button>
                     </div>
                     <p className="text-sm text-muted-foreground mt-2">
-                        Simulated server connection status for development purposes.
+                        Server connection is managed automatically based on user login status.
                     </p>
                 </div>
 
@@ -324,3 +332,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
