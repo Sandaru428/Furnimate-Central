@@ -45,17 +45,25 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, CalendarIcon } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
 
 const customerSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Customer name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone number is required'),
+  whatsappNumber: z.string().optional(),
+  dateOfBirth: z.date().optional(),
+  address: z.string().optional(),
 });
 
 type Customer = z.infer<typeof customerSchema>;
@@ -67,25 +75,42 @@ export default function CustomersPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
 
+  const form = useForm<Customer>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      phone: '',
+      whatsappNumber: '',
+      dateOfBirth: undefined,
+      address: '',
+    },
+  });
+
+  const phoneValue = form.watch('phone');
+  useEffect(() => {
+      if (phoneValue && !form.getValues('whatsappNumber')) {
+          form.setValue('whatsappNumber', phoneValue);
+      }
+  }, [phoneValue, form]);
+
   useEffect(() => {
     const fetchCustomers = async () => {
       setLoading(true);
       const querySnapshot = await getDocs(collection(db, "customers"));
-      const customersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+      const customersData = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return { 
+              id: doc.id, 
+              ...data,
+              dateOfBirth: data.dateOfBirth ? data.dateOfBirth.toDate() : undefined,
+          } as Customer
+      });
       setCustomers(customersData);
       setLoading(false);
     };
     fetchCustomers();
   }, []);
-
-  const form = useForm<Omit<Customer, 'id'>>({
-    resolver: zodResolver(customerSchema.omit({ id: true })),
-    defaultValues: {
-      name: '',
-      email: '',
-      phone: '',
-    },
-  });
 
   async function onSubmit(values: Omit<Customer, 'id'>) {
     try {
@@ -141,7 +166,7 @@ export default function CustomersPage() {
                       Add New Customer
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                       <DialogTitle>Add New Customer</DialogTitle>
                     </DialogHeader>
@@ -186,6 +211,73 @@ export default function CustomersPage() {
                             </FormItem>
                           )}
                         />
+                        <FormField
+                          control={form.control}
+                          name="whatsappNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>WhatsApp Number</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g. 555-111-2222" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="dateOfBirth"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Date of birth</FormLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant={"outline"}
+                                      className={cn(
+                                        "w-[240px] pl-3 text-left font-normal",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value ? (
+                                        format(field.value, "PPP")
+                                      ) : (
+                                        <span>Pick a date</span>
+                                      )}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    disabled={(date) =>
+                                      date > new Date() || date < new Date("1900-01-01")
+                                    }
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="address"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Address</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="123 Main St, Anytown, USA" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <DialogFooter>
                             <DialogClose asChild>
                                 <Button variant="outline">Cancel</Button>
@@ -206,13 +298,16 @@ export default function CustomersPage() {
                   <TableHead>Customer Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
+                  <TableHead>WhatsApp</TableHead>
+                  <TableHead>DOB</TableHead>
+                  <TableHead>Address</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                     <TableRow>
-                        <TableCell colSpan={4} className="text-center">
+                        <TableCell colSpan={7} className="text-center">
                             Loading...
                         </TableCell>
                     </TableRow>
@@ -222,6 +317,11 @@ export default function CustomersPage() {
                         <TableCell className="font-medium">{customer.name}</TableCell>
                         <TableCell>{customer.email}</TableCell>
                         <TableCell>{customer.phone}</TableCell>
+                        <TableCell>{customer.whatsappNumber}</TableCell>
+                        <TableCell>
+                          {customer.dateOfBirth ? format(customer.dateOfBirth, 'PP') : '-'}
+                        </TableCell>
+                        <TableCell>{customer.address}</TableCell>
                         <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -242,7 +342,7 @@ export default function CustomersPage() {
                     ))
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={4} className="text-center">
+                        <TableCell colSpan={7} className="text-center">
                             No customers found.
                         </TableCell>
                     </TableRow>
