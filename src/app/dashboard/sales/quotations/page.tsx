@@ -48,7 +48,6 @@ import {
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle, Trash2, Share2, Printer } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -61,6 +60,7 @@ import type { MasterDataItem } from '../../data/master-data/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { DashboardHeader } from '@/components/dashboard-header';
 
 
 const lineItemSchema = z.object({
@@ -371,10 +371,7 @@ export default function QuotationsPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Quotations</h1>
-      </header>
+      <DashboardHeader title="Quotations" />
       <main className="p-4">
           <Card>
           <CardHeader>

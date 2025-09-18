@@ -46,7 +46,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
@@ -55,6 +54,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAtom } from 'jotai';
 import { companyProfileAtom } from '@/lib/store';
+import { DashboardHeader } from '@/components/dashboard-header';
 
 const customerSchema = z.object({
   id: z.string().optional(),
@@ -195,10 +195,7 @@ export default function CustomersPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-        <SidebarTrigger />
-        <h1 className="text-xl font-semibold ml-4">Customers</h1>
-      </header>
+      <DashboardHeader title="Customers" />
       <main className="p-4">
         <Card>
           <CardHeader>
@@ -230,13 +227,13 @@ export default function CustomersPage() {
                         <ScrollArea className="flex-1 pr-6">
                             <div className="space-y-4 py-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Customer Name</FormLabel><FormControl><Input placeholder="e.g. Modern Designs LLC" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. sarah@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="whatsappNumber" render={({ field }) => (<FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="dateOfBirth" render={({ field }) => (<FormItem><FormLabel>Date of birth</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Customer Name</FormLabel><FormControl><Input placeholder="e.g. Modern Designs LLC" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. sarah@example.com" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField control={form.control} name="phone" render={({ field }) => <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField control={form.control} name="whatsappNumber" render={({ field }) => <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField control={form.control} name="dateOfBirth" render={({ field }) => <FormItem><FormLabel>Date of birth</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>} />
                                 </div>
-                                <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel>Address</FormLabel><FormControl><Textarea placeholder="123 Main St, Anytown, USA" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="address" render={({ field }) => <FormItem><FormLabel>Address</FormLabel><FormControl><Textarea placeholder="123 Main St, Anytown, USA" {...field} /></FormControl><FormMessage /></FormItem>} />
                             </div>
                         </ScrollArea>
                         <DialogFooter className="pt-4">

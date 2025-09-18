@@ -49,7 +49,6 @@ import {
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle, Trash2, Share2, Printer } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -69,6 +68,7 @@ import type { MasterDataItem } from '../master-data/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
+import { DashboardHeader } from '@/components/dashboard-header';
 
 
 const lineItemSchema = z.object({
@@ -477,10 +477,7 @@ toBankName: '',
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Purchase Orders</h1>
-      </header>
+      <DashboardHeader title="Purchase Orders" />
       <main className="p-4">
           <Card>
           <CardHeader>
@@ -657,7 +654,7 @@ toBankName: '',
                                                   <TableRow key={field.id}>
                                                       <TableCell className="font-medium">{itemDetails?.name}</TableCell>
                                                       <TableCell>{quantity}</TableCell>
-                                                      <TableCell><FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => (<FormItem><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>)} /></TableCell>
+                                                      <TableCell><FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} /></TableCell>
                                                       <TableCell className="text-right font-mono">{currency.code} {totalValue.toFixed(2)}</TableCell>
                                                   </TableRow>
                                               );
@@ -689,30 +686,30 @@ toBankName: '',
                           <ScrollArea className="flex-1 pr-6">
                               <div className="space-y-4 py-4">
                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <FormField control={paymentForm.control} name="amount" render={({ field }) => (<FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                      <FormField control={paymentForm.control} name="method" render={({ field }) => (<FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (<SelectItem key={method} value={method}>{method}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                                      <FormField control={paymentForm.control} name="amount" render={({ field }) => <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                      <FormField control={paymentForm.control} name="method" render={({ field }) => <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>}/>
                                   </div>
 
                                   {paymentMethod === 'Card' && (
-                                      <FormField control={paymentForm.control} name="cardLast4" render={({ field }) => (<FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                      <FormField control={paymentForm.control} name="cardLast4" render={({ field }) => <FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem>}/>
                                   )}
                                   {paymentMethod === 'Online' && (
                                       <div className="space-y-4">
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                              <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => (<FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                              <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => (<FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                              <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => <FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                              <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => <FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>} />
                                           </div>
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                              <FormField control={paymentForm.control} name="toBankName" render={({ field }) => (<FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                              <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => (<FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                              <FormField control={paymentForm.control} name="toBankName" render={({ field }) => <FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                              <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => <FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>} />
                                           </div>
                                       </div>
                                   )}
                                   {paymentMethod === 'Cheque' && (
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                          <FormField control={paymentForm.control} name="chequeBank" render={({ field }) => (<FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                          <FormField control={paymentForm.control} name="chequeNumber" render={({ field }) => (<FormItem><FormLabel>Cheque Number</FormLabel><FormControl><Input placeholder="e.g. 987654" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                          <FormField control={paymentForm.control} name="chequeDate" render={({ field }) => (<FormItem><FormLabel>Cheque Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                          <FormField control={paymentForm.control} name="chequeBank" render={({ field }) => <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                          <FormField control={paymentForm.control} name="chequeNumber" render={({ field }) => <FormItem><FormLabel>Cheque Number</FormLabel><FormControl><Input placeholder="e.g. 987654" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                          <FormField control={paymentForm.control} name="chequeDate" render={({ field }) => <FormItem><FormLabel>Cheque Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>}/>
                                       </div>
                                   )}
                               </div>

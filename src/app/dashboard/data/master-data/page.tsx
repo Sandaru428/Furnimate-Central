@@ -47,7 +47,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAtom } from 'jotai';
@@ -59,6 +58,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DashboardHeader } from '@/components/dashboard-header';
 
 const itemSchema = z.object({
     id: z.string().optional(),
@@ -198,10 +198,7 @@ export default function MasterDataPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Master Data</h1>
-      </header>
+      <DashboardHeader title="Master Data" />
       <main className="p-4">
         <Card>
           <CardHeader>
@@ -235,16 +232,16 @@ export default function MasterDataPage() {
                                     <ScrollArea className="flex-1 pr-6">
                                         <div className="space-y-4 py-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="itemCode" render={({ field }) => (<FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="type" render={({ field }) => (<FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Raw Material">Raw Material</SelectItem><SelectItem value="Finished Good">Finished Good</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="unitPrice" render={({ field }) => (<FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                <FormField control={form.control} name="type" render={({ field }) => <FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Raw Material">Raw Material</SelectItem><SelectItem value="Finished Good">Finished Good</SelectItem></SelectContent></Select><FormMessage /></FormItem>} />
+                                                <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
                                             </div>
                                             
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name="stockLevel" render={({ field }) => (<FormItem><FormLabel>Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="minimumLevel" render={({ field }) => (<FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="maximumLevel" render={({ field }) => (<FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 200" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                <FormField control={form.control} name="minimumLevel" render={({ field }) => <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                <FormField control={form.control} name="maximumLevel" render={({ field }) => <FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 200" {...field} /></FormControl><FormMessage /></FormItem>} />
                                             </div>
 
                                             {itemType && (

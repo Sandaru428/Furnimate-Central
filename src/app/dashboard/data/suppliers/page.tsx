@@ -46,13 +46,13 @@ import {
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAtom } from 'jotai';
 import { companyProfileAtom } from '@/lib/store';
+import { DashboardHeader } from '@/components/dashboard-header';
 
 const supplierSchema = z.object({
     id: z.string().optional(),
@@ -193,10 +193,7 @@ export default function SuppliersPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Suppliers</h1>
-      </header>
+      <DashboardHeader title="Suppliers" />
       <main className="p-4">
         <Card>
           <CardHeader>
@@ -230,13 +227,13 @@ export default function SuppliersPage() {
                                     <ScrollArea className="flex-1 pr-6">
                                         <div className="space-y-4 py-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Supplier Name</FormLabel><FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                <FormField control={form.control} name="contactPerson" render={({ field }) => (<FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => (<FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                <FormField control={form.control} name="contactNumber" render={({ field }) => (<FormItem><FormLabel>Contact Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                <FormField control={form.control} name="bankName" render={({ field }) => (<FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                <FormField control={form.control} name="accountNumber" render={({ field }) => (<FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                                <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Supplier Name</FormLabel><FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                                <FormField control={form.control} name="contactPerson" render={({ field }) => <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                                <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                                <FormField control={form.control} name="contactNumber" render={({ field }) => <FormItem><FormLabel>Contact Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                                <FormField control={form.control} name="bankName" render={({ field }) => <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                                <FormField control={form.control} name="accountNumber" render={({ field }) => <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>}/>
                                             </div>
                                         </div>
                                     </ScrollArea>

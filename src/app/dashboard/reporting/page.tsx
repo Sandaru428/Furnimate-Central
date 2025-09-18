@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { CalendarIcon, Printer } from 'lucide-react';
 import { format, isWithinInterval, parseISO } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { DashboardHeader } from '@/components/dashboard-header';
 import {
   customersAtom,
   suppliersAtom,
@@ -139,10 +139,7 @@ export default function ReportingPage() {
           }
         `}
       </style>
-      <header className="flex items-center p-4 border-b no-print">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Reporting</h1>
-      </header>
+      <DashboardHeader title="Reporting" />
       <main className="p-4">
         <Card className="no-print">
             <CardHeader>

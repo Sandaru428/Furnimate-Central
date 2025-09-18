@@ -16,11 +16,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { currencies } from '@/lib/currencies';
 import { useAtom } from 'jotai';
 import { currencyAtom, companyProfileAtom } from '@/lib/store';
+import { DashboardHeader } from '@/components/dashboard-header';
 
 const formSchema = z.object({
   companyName: z.string().min(1, 'Company name is required'),
@@ -66,10 +66,7 @@ export default function CompanyProfilePage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Company Profile</h1>
-      </header>
+      <DashboardHeader title="Company Profile" />
       <main className="p-4">
         <Card>
           <CardHeader>

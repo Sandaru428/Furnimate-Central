@@ -46,10 +46,10 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { DashboardHeader } from '@/components/dashboard-header';
 
 const templateSchema = z.object({
   id: z.string().optional(),
@@ -130,10 +130,7 @@ export default function NotificationTemplatesPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Notification Templates</h1>
-      </header>
+      <DashboardHeader title="Notification Templates" />
       <main className="p-4">
         <Card>
           <CardHeader>

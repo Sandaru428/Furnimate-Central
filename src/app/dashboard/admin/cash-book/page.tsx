@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { DashboardHeader } from '@/components/dashboard-header';
 import {
   Card,
   CardContent,
@@ -17,7 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAtom } from 'jotai';
 import { paymentsAtom, currencyAtom, saleOrdersAtom, purchaseOrdersAtom, companyProfileAtom } from '@/lib/store';
 import { Badge } from '@/components/ui/badge';
@@ -108,10 +108,7 @@ export default function CashBookPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Cash Book</h1>
-      </header>
+      <DashboardHeader title="Cash Book" />
       <main className="p-4">
         <Card>
           <CardHeader>

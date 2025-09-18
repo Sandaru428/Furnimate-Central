@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { DashboardHeader } from '@/components/dashboard-header';
 import {
   Card,
   CardContent,
@@ -30,7 +31,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+
 import { useAtom } from 'jotai';
 import { currencyAtom, paymentsAtom, saleOrdersAtom, masterDataAtom } from '@/lib/store';
 import { Switch } from '@/components/ui/switch';
@@ -175,10 +176,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-        <SidebarTrigger />
-        <h1 className="text-xl font-semibold ml-4">Dashboard</h1>
-      </header>
+      <DashboardHeader title="Dashboard" />
       <main className="p-4">
         <Tabs defaultValue="dashboard" className="w-full">
           <TabsList className="grid w-full grid-cols-2">

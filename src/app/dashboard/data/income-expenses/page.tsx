@@ -40,7 +40,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { PlusCircle } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
 import { paymentsAtom, currencyAtom, Payment, companyProfileAtom } from '@/lib/store';
@@ -51,6 +50,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { DashboardHeader } from '@/components/dashboard-header';
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense'], { required_error: 'Transaction type is required.' }),
@@ -172,10 +172,7 @@ export default function IncomeExpensesPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-        <SidebarTrigger />
-        <h1 className="text-xl font-semibold ml-4">Income & Expenses</h1>
-      </header>
+      <DashboardHeader title="Income & Expenses" />
       <main className="p-4">
         <Card>
             <CardHeader>
@@ -201,32 +198,32 @@ export default function IncomeExpensesPage() {
                              <ScrollArea className="flex-1 pr-6">
                                 <div className="space-y-4 py-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField control={form.control} name="type" render={({ field }) => (<FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="income">Income</SelectItem><SelectItem value="expense">Expense</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-                                        <FormField control={form.control} name="amount" render={({ field }) => (<FormItem><FormLabel>Amount ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g., 50.00" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="type" render={({ field }) => <FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="income">Income</SelectItem><SelectItem value="expense">Expense</SelectItem></SelectContent></Select><FormMessage /></FormItem>} />
+                                        <FormField control={form.control} name="amount" render={({ field }) => <FormItem><FormLabel>Amount ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g., 50.00" {...field} /></FormControl><FormMessage /></FormItem>} />
                                     </div>
-                                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Input placeholder="e.g., Office electricity bill" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="method" render={({ field }) => (<FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select method..." /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="description" render={({ field }) => <FormItem><FormLabel>Description</FormLabel><FormControl><Input placeholder="e.g., Office electricity bill" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                    <FormField control={form.control} name="method" render={({ field }) => <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select method..." /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>} />
                                     
                                     {paymentMethod === 'Card' && (
-                                        <FormField control={form.control} name="cardLast4" render={({ field }) => (<FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="cardLast4" render={({ field }) => <FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem>} />
                                     )}
                                     {paymentMethod === 'Online' && (
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="fromBankName" render={({ field }) => (<FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="fromAccountNumber" render={({ field }) => (<FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="fromBankName" render={({ field }) => <FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                <FormField control={form.control} name="fromAccountNumber" render={({ field }) => <FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>} />
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="toBankName" render={({ field }) => (<FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="toAccountNumber" render={({ field }) => (<FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="toBankName" render={({ field }) => <FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                <FormField control={form.control} name="toAccountNumber" render={({ field }) => <FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>} />
                                             </div>
                                         </div>
                                     )}
                                     {paymentMethod === 'Cheque' && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField control={form.control} name="chequeBank" render={({ field }) => (<FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name="chequeNumber" render={({ field }) => (<FormItem><FormLabel>Cheque Number</FormLabel><FormControl><Input placeholder="e.g. 987654" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name="chequeDate" render={({ field }) => (<FormItem><FormLabel>Cheque Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="chequeBank" render={({ field }) => <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                            <FormField control={form.control} name="chequeNumber" render={({ field }) => <FormItem><FormLabel>Cheque Number</FormLabel><FormControl><Input placeholder="e.g. 987654" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                            <FormField control={form.control} name="chequeDate" render={({ field }) => <FormItem><FormLabel>Cheque Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>} />
                                         </div>
                                     )}
                                 </div>
