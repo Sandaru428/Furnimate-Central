@@ -17,6 +17,7 @@ import {
   ShoppingCart,
   TrendingUp,
   BookOpenCheck,
+  Server,
 } from 'lucide-react';
 import {
   Bar,
@@ -34,6 +35,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 const developmentChecklist = [
   {
@@ -229,6 +231,25 @@ export default function DashboardPage() {
                     </div>
                     <p className="text-sm text-muted-foreground mt-2">
                         Toggle this to populate the application with a rich set of sample data for testing.
+                    </p>
+                </div>
+                
+                <Separator />
+
+                <div>
+                    <h3 className="text-lg font-semibold mb-4">Server Connection</h3>
+                     <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-4">
+                            <Server className="h-6 w-6 text-muted-foreground" />
+                            <div>
+                                <p className="font-medium">absiraivaws@gmail.com</p>
+                                <Badge variant="destructive">Disconnected</Badge>
+                            </div>
+                        </div>
+                        <Button variant="outline">Connect</Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        Simulated server connection status for development purposes.
                     </p>
                 </div>
 
