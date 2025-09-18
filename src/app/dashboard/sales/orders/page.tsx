@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -53,9 +53,10 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Printer, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, useDummyDataAtom, dataSeederAtom, masterDataAtom, quotationsAtom } from '@/lib/store';
+import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, useDummyDataAtom, dataSeederAtom, masterDataAtom, quotationsAtom, companyProfileAtom } from '@/lib/store';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Logo } from '@/components/icons/logo';
 
 
 const paymentSchema = z.object({
@@ -95,6 +96,7 @@ export default function SaleOrdersPage() {
     const [orders, setOrders] = useAtom(saleOrdersAtom);
     const [quotations] = useAtom(quotationsAtom);
     const [masterData] = useAtom(masterDataAtom);
+    const [companyProfile] = useAtom(companyProfileAtom);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<SaleOrder | null>(null);
     const [orderToPrint, setOrderToPrint] = useState<SaleOrder | null>(null);
@@ -289,7 +291,7 @@ export default function SaleOrdersPage() {
             `}
         </style>
         <div id="print-area">
-            {orderToPrint && <PrintableSO order={orderToPrint} quotations={quotations} masterData={masterData} currency={currency} />}
+            {orderToPrint && <PrintableSO order={orderToPrint} quotations={quotations} masterData={masterData} currency={currency} companyProfile={companyProfile} />}
         </div>
         <div className="no-print">
             <header className="flex items-center p-4 border-b">
@@ -512,28 +514,43 @@ export default function SaleOrdersPage() {
 }
 
 // Component for printing - rendered conditionally in a hidden div
-const PrintableSO = ({ order, quotations, masterData, currency }: { order: SaleOrder | null, quotations: any[], masterData: any[], currency: any }) => {
+const PrintableSO = ({ order, quotations, masterData, currency, companyProfile }: { order: SaleOrder | null, quotations: any[], masterData: any[], currency: any, companyProfile: any }) => {
     if (!order) return null;
 
     const originalQuotation = quotations.find(q => q.id === order.quotationId);
 
     return (
         <div className="p-8">
-            <h1 className="text-2xl font-bold mb-4">Sale Order: {order.id}</h1>
+            <header className="flex justify-between items-start mb-8 pb-4 border-b">
+                <div className="flex items-center gap-4">
+                    <Logo />
+                    <div>
+                        <h1 className="text-2xl font-bold">{companyProfile.companyName}</h1>
+                        <p className="text-muted-foreground">{companyProfile.email}</p>
+                        <p className="text-muted-foreground">{companyProfile.phone}</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <h2 className="text-3xl font-bold uppercase text-muted-foreground">Sale Order</h2>
+                    <p className="text-muted-foreground font-mono">{order.id}</p>
+                </div>
+            </header>
+
             <div className="grid grid-cols-2 gap-4 mb-8">
             <div>
-                <p><strong>Customer:</strong> {order.customer}</p>
-                <p><strong>Date:</strong> {order.date}</p>
-                <p><strong>Original Quotation:</strong> {order.quotationId}</p>
+                <p className='text-sm text-muted-foreground'>Customer</p>
+                <p className="font-medium">{order.customer}</p>
+                <p className="text-sm text-muted-foreground mt-2">Original Quotation: {order.quotationId}</p>
             </div>
             <div className="text-right">
+                <p><strong>Date:</strong> {order.date}</p>
                 <p><strong>Status:</strong> {order.status}</p>
             </div>
             </div>
             
             {originalQuotation && (
             <>
-                <h2 className="text-lg font-semibold mb-2">Line Items</h2>
+                <h3 className="text-lg font-semibold mb-2">Order Summary</h3>
                 <Table>
                 <TableHeader>
                     <TableRow>
@@ -560,7 +577,7 @@ const PrintableSO = ({ order, quotations, masterData, currency }: { order: SaleO
             </>
             )}
     
-            <div className="text-right mt-4 text-xl font-bold">
+            <div className="text-right mt-4 pr-4 text-xl font-bold">
                 Total Amount: {currency.code} {order.amount.toFixed(2)}
             </div>
         </div>

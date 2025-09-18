@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -56,9 +56,10 @@ import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
-import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
+import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, useDummyDataAtom, dataSeederAtom, companyProfileAtom } from '@/lib/store';
 import type { MasterDataItem } from '../../data/master-data/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Logo } from '@/components/icons/logo';
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required."),
@@ -150,6 +151,7 @@ export default function QuotationsPage() {
     const [quotations, setQuotations] = useAtom(quotationsAtom);
     const [masterData] = useAtom(masterDataAtom);
     const [customers] = useAtom(customersAtom);
+    const [companyProfile] = useAtom(companyProfileAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
     const [quotationToPrint, setQuotationToPrint] = useState<Quotation | null>(null);
@@ -381,7 +383,7 @@ export default function QuotationsPage() {
         `}
       </style>
       <div id="print-area">
-        {quotationToPrint && <PrintableQuotation quotation={quotationToPrint} masterData={masterData} currency={currency} />}
+        {quotationToPrint && <PrintableQuotation quotation={quotationToPrint} masterData={masterData} currency={currency} companyProfile={companyProfile} />}
       </div>
       <div className="no-print">
         <header className="flex items-center p-4 border-b">
@@ -607,18 +609,33 @@ export default function QuotationsPage() {
 }
 
 // Component for printing - rendered conditionally in a hidden div
-const PrintableQuotation = ({ quotation, masterData, currency }: { quotation: Quotation | null; masterData: MasterDataItem[], currency: any }) => {
+const PrintableQuotation = ({ quotation, masterData, currency, companyProfile }: { quotation: Quotation | null; masterData: MasterDataItem[], currency: any, companyProfile: any }) => {
     if (!quotation) return null;
 
     return (
         <div className="p-8">
-            <h1 className="text-2xl font-bold mb-4">Quotation: {quotation.id}</h1>
+            <header className="flex justify-between items-start mb-8 pb-4 border-b">
+                <div className="flex items-center gap-4">
+                    <Logo />
+                    <div>
+                        <h1 className="text-2xl font-bold">{companyProfile.companyName}</h1>
+                        <p className="text-muted-foreground">{companyProfile.email}</p>
+                        <p className="text-muted-foreground">{companyProfile.phone}</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <h2 className="text-3xl font-bold uppercase text-muted-foreground">Quotation</h2>
+                    <p className="text-muted-foreground font-mono">{quotation.id}</p>
+                </div>
+            </header>
+
             <div className="grid grid-cols-2 gap-4 mb-8">
             <div>
-                <p><strong>Customer:</strong> {quotation.customer}</p>
-                <p><strong>Date:</strong> {quotation.date}</p>
+                <p className='text-sm text-muted-foreground'>Customer</p>
+                <p className="font-medium">{quotation.customer}</p>
             </div>
             <div className="text-right">
+                <p><strong>Date:</strong> {quotation.date}</p>
                 <p><strong>Status:</strong> {quotation.status}</p>
             </div>
             </div>
@@ -645,7 +662,7 @@ const PrintableQuotation = ({ quotation, masterData, currency }: { quotation: Qu
                 })}
             </TableBody>
             </Table>
-            <div className="text-right mt-4 text-xl font-bold">
+            <div className="text-right mt-4 pr-4 text-xl font-bold">
                 Total: {currency.code} {quotation.amount.toFixed(2)}
             </div>
         </div>

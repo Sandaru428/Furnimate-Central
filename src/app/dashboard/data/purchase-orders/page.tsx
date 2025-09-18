@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -63,10 +63,12 @@ import {
     masterDataAtom,
     suppliersAtom,
     useDummyDataAtom,
-    dataSeederAtom
+    dataSeederAtom,
+    companyProfileAtom,
 } from '@/lib/store';
 import type { MasterDataItem } from '../master-data/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Logo } from '@/components/icons/logo';
 
 
 const lineItemSchema = z.object({
@@ -182,6 +184,7 @@ export default function PurchaseOrdersPage() {
     const [masterData, setMasterData] = useAtom(masterDataAtom);
     const [suppliers] = useAtom(suppliersAtom);
     const [payments, setPayments] = useAtom(paymentsAtom);
+    const [companyProfile] = useAtom(companyProfileAtom);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -475,7 +478,7 @@ export default function PurchaseOrdersPage() {
         `}
       </style>
       <div id="print-area">
-        {poToPrint && <PrintablePO po={poToPrint} masterData={masterData} currency={currency} />}
+        {poToPrint && <PrintablePO po={poToPrint} masterData={masterData} currency={currency} companyProfile={companyProfile}/>}
       </div>
       <div className='no-print'>
         <header className="flex items-center p-4 border-b">
@@ -805,21 +808,37 @@ export default function PurchaseOrdersPage() {
 }
 
 // Component for printing - rendered conditionally in a hidden div
-const PrintablePO = ({ po, masterData, currency }: { po: PurchaseOrder | null; masterData: MasterDataItem[], currency: any }) => {
+const PrintablePO = ({ po, masterData, currency, companyProfile }: { po: PurchaseOrder | null; masterData: MasterDataItem[], currency: any, companyProfile: any }) => {
     if (!po) return null;
 
     return (
         <div className="p-8">
-            <h1 className="text-2xl font-bold mb-4">Purchase Order: {po.id}</h1>
+            <header className="flex justify-between items-start mb-8 pb-4 border-b">
+                <div className="flex items-center gap-4">
+                    <Logo />
+                    <div>
+                        <h1 className="text-2xl font-bold">{companyProfile.companyName}</h1>
+                        <p className="text-muted-foreground">{companyProfile.email}</p>
+                        <p className="text-muted-foreground">{companyProfile.phone}</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <h2 className="text-3xl font-bold uppercase text-muted-foreground">Purchase Order</h2>
+                    <p className="text-muted-foreground font-mono">{po.id}</p>
+                </div>
+            </header>
+
             <div className="grid grid-cols-2 gap-4 mb-8">
             <div>
-                <p><strong>Supplier:</strong> {po.supplierName}</p>
-                <p><strong>Date:</strong> {po.date}</p>
+                <p className='text-sm text-muted-foreground'>Supplier</p>
+                <p className="font-medium">{po.supplierName}</p>
             </div>
             <div className="text-right">
+                <p><strong>Date:</strong> {po.date}</p>
                 <p><strong>Status:</strong> {po.status}</p>
             </div>
             </div>
+
             <Table>
             <TableHeader>
                 <TableRow>
@@ -846,7 +865,7 @@ const PrintablePO = ({ po, masterData, currency }: { po: PurchaseOrder | null; m
             </TableBody>
             </Table>
             {po.status !== 'Draft' && (
-                <div className="text-right mt-4 text-xl font-bold">
+                <div className="text-right mt-4 pr-4 text-xl font-bold">
                     Total: {currency.code} {po.totalAmount.toFixed(2)}
                 </div>
             )}
