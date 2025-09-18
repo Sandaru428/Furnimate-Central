@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -51,13 +51,12 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { initialMasterData } from '@/app/dashboard/data/master-data/page';
-import { initialCustomers } from '@/app/dashboard/data/customers/page';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
-import { currencyAtom } from '@/lib/store';
+import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
+import type { MasterDataItem } from '../data/master-data/page';
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required."),
@@ -84,36 +83,6 @@ const createQuotationSchema = z.object({
 type Quotation = z.infer<typeof quotationSchema>;
 type CreateQuotation = z.infer<typeof createQuotationSchema>;
 
-const initialQuotations: Quotation[] = [
-  {
-    id: 'QUO-001',
-    customer: 'Modern Designs LLC',
-    date: '2024-05-01',
-    amount: 1250.00,
-    status: 'Sent',
-    lineItems: [{ itemId: 'WD-001', quantity: 50, unitPrice: 25, totalValue: 1250 }],
-  },
-  {
-    id: 'QUO-002',
-    customer: 'Home Comforts',
-    date: '2024-05-03',
-    amount: 852.50,
-    status: 'Draft',
-    lineItems: [{ itemId: 'FBR-003', quantity: 55, unitPrice: 15.50, totalValue: 852.50 }],
-  },
-  {
-    id: 'QUO-003',
-    customer: 'Emily Davis',
-    date: '2024-05-05',
-    amount: 2320.00,
-    status: 'Approved',
-    lineItems: [
-        { itemId: 'MTL-002', quantity: 40, unitPrice: 55, totalValue: 2200 }, 
-        { itemId: 'FNS-010', quantity: 10, unitPrice: 12, totalValue: 120 }
-    ],
-  },
-];
-
 const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "outline"} = {
     'Sent': 'default',
     'Draft': 'secondary',
@@ -122,10 +91,10 @@ const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "
     'Converted': 'default'
 }
 
-const AddItemForm = ({ onAddItem }: { onAddItem: (item: z.infer<typeof lineItemSchema>) => void }) => {
+const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], onAddItem: (item: z.infer<typeof lineItemSchema>) => void }) => {
     const [selectedItemCode, setSelectedItemCode] = useState('');
     const [quantity, setQuantity] = useState<number | ''>('');
-    const item = initialMasterData.find(i => i.itemCode === selectedItemCode);
+    const item = masterData.find(i => i.itemCode === selectedItemCode);
 
     const handleAddItem = () => {
         const numQuantity = Number(quantity);
@@ -150,7 +119,7 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: z.infer<typeof lineItemS
                         <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
                     <SelectContent>
-                        {initialMasterData.filter(i => i.type === 'Finished Good').map(item => (
+                        {masterData.filter(i => i.type === 'Finished Good').map(item => (
                             <SelectItem key={item.itemCode} value={item.itemCode}>
                                 {item.name} ({item.itemCode})
                             </SelectItem>
@@ -176,12 +145,22 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: z.infer<typeof lineItemS
 
 
 export default function QuotationsPage() {
-    const [quotations, setQuotations] = useState<Quotation[]>(initialQuotations);
+    const [quotations, setQuotations] = useAtom(quotationsAtom);
+    const [masterData] = useAtom(masterDataAtom);
+    const [customers] = useAtom(customersAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
+
+    const [useDummyData] = useAtom(useDummyDataAtom);
+    const [, seedData] = useAtom(dataSeederAtom);
+
+    useEffect(() => {
+        seedData(useDummyData);
+    }, [useDummyData, seedData]);
+
 
     const form = useForm<CreateQuotation>({
         resolver: zodResolver(createQuotationSchema),
@@ -290,7 +269,7 @@ export default function QuotationsPage() {
         // Stock check logic
         let insufficientStock = false;
         quotation.lineItems.forEach(item => {
-            const masterItem = initialMasterData.find(mi => mi.itemCode === item.itemId);
+            const masterItem = masterData.find(mi => mi.itemCode === item.itemId);
             if (!masterItem || masterItem.stockLevel < item.quantity) {
                 insufficientStock = true;
                 toast({
@@ -316,7 +295,9 @@ export default function QuotationsPage() {
         };
         
         // Use local storage to pass the new order to the orders page
-        localStorage.setItem('convertedOrder', JSON.stringify(newOrder));
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('convertedOrder', JSON.stringify(newOrder));
+        }
 
         // Update the quotation status to 'Converted'
         setQuotations(quotations.map(q => 
@@ -382,7 +363,7 @@ export default function QuotationsPage() {
                                             </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                {initialCustomers.map(customer => (
+                                                {customers.map(customer => (
                                                     <SelectItem key={customer.id} value={customer.name}>
                                                         {customer.name}
                                                     </SelectItem>
@@ -408,7 +389,7 @@ export default function QuotationsPage() {
                                             </TableHeader>
                                             <TableBody>
                                                 {fields.map((field, index) => {
-                                                    const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId);
+                                                    const itemDetails = masterData.find(i => i.itemCode === field.itemId);
                                                     return (
                                                     <TableRow key={field.id}>
                                                         <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
@@ -431,7 +412,7 @@ export default function QuotationsPage() {
                                     </div>
                                 </div>
                                 
-                                <AddItemForm onAddItem={append} />
+                                <AddItemForm masterData={masterData} onAddItem={append} />
 
                                 <DialogFooter>
                                     <div className='w-full flex justify-between items-center'>
@@ -464,67 +445,75 @@ export default function QuotationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {quotations.map((quote) => (
-                  <TableRow key={quote.id}>
-                    <TableCell className="font-mono">{quote.id}</TableCell>
-                    <TableCell className="font-medium">{quote.customer}</TableCell>
-                    <TableCell>{quote.date}</TableCell>
-                    <TableCell className="text-right">{currency.code} {quote.amount.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={statusVariant[quote.status] || 'secondary'}
-                        className={quote.status === 'Converted' ? 'bg-green-600 text-white' : ''}
-                      >
-                        {quote.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {quote.status === 'Draft' && (
-                                    <>
-                                        <DropdownMenuItem onClick={() => openCreateOrEditDialog(quote)}>
-                                            View/Edit
+                {quotations.length > 0 ? (
+                    quotations.map((quote) => (
+                    <TableRow key={quote.id}>
+                        <TableCell className="font-mono">{quote.id}</TableCell>
+                        <TableCell className="font-medium">{quote.customer}</TableCell>
+                        <TableCell>{quote.date}</TableCell>
+                        <TableCell className="text-right">{currency.code} {quote.amount.toFixed(2)}</TableCell>
+                        <TableCell>
+                        <Badge 
+                            variant={statusVariant[quote.status] || 'secondary'}
+                            className={quote.status === 'Converted' ? 'bg-green-600 text-white' : ''}
+                        >
+                            {quote.status}
+                        </Badge>
+                        </TableCell>
+                        <TableCell>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {quote.status === 'Draft' && (
+                                        <>
+                                            <DropdownMenuItem onClick={() => openCreateOrEditDialog(quote)}>
+                                                View/Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Sent')}>
+                                                Mark as Sent
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                    {quote.status === 'Sent' && (
+                                        <>
+                                            <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Approved')}>
+                                                Approve
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Rejected')} className="text-destructive">
+                                                Reject
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                    {quote.status === 'Approved' && (
+                                        <DropdownMenuItem onClick={() => handleConvertToOrder(quote.id)}>
+                                            Convert to Sale Order
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Sent')}>
-                                            Mark as Sent
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                                {quote.status === 'Sent' && (
-                                    <>
-                                        <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Approved')}>
-                                            Approve
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Rejected')} className="text-destructive">
-                                            Reject
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                                {quote.status === 'Approved' && (
-                                    <DropdownMenuItem onClick={() => handleConvertToOrder(quote.id)}>
-                                        Convert to Sale Order
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                        className="text-destructive" 
+                                        onClick={() => handleDelete(quote.id)}
+                                        disabled={!['Draft', 'Rejected'].includes(quote.status)}
+                                    >
+                                        Delete
                                     </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                    className="text-destructive" 
-                                    onClick={() => handleDelete(quote.id)}
-                                    disabled={!['Draft', 'Rejected'].includes(quote.status)}
-                                >
-                                    Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={6} className="text-center">
+                           No quotations found. Enable dummy data in the dashboard's development tab to see sample entries.
+                        </TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

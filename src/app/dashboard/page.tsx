@@ -28,7 +28,9 @@ import {
 } from 'recharts';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAtom } from 'jotai';
-import { currencyAtom } from '@/lib/store';
+import { currencyAtom, useDummyDataAtom } from '@/lib/store';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const developmentChecklist = [
   {
@@ -88,7 +90,7 @@ const developmentChecklist = [
     heading: 'Sales Flow',
     items: [
       { id: 'sales-1', label: 'Quotation creation and management', checked: true },
-      { id: 'sales-2', label: 'Order conversion and real-time tracking', checked: true },
+      { id: 'sales-2', label: 'Sale Order conversion and real-time tracking', checked: true },
     ],
   },
 ];
@@ -136,6 +138,7 @@ const salesData = [
 
 export default function DashboardPage() {
   const [currency] = useAtom(currencyAtom);
+  const [useDummyData, setUseDummyData] = useAtom(useDummyDataAtom);
 
   return (
     <>
@@ -196,10 +199,23 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Development Workflow</CardTitle>
                 <CardDescription>
-                  A step-by-step checklist to track feature implementation.
+                  A step-by-step checklist to track feature implementation and testing.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div>
+                    <h3 className="text-lg font-semibold mb-4">Data Seeding</h3>
+                     <div className="flex items-center space-x-2 p-4 border rounded-lg">
+                        <Switch id="dummy-data-switch" checked={useDummyData} onCheckedChange={setUseDummyData} />
+                        <Label htmlFor="dummy-data-switch">Enable Dummy Data</Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        Toggle this to populate the application with a rich set of sample data for testing.
+                    </p>
+                </div>
+
+                <Separator />
+
                 {developmentChecklist.map((section, index) => (
                   <div key={section.heading}>
                     <h3 className="text-lg font-semibold mb-4">

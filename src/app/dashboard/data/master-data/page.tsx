@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -51,7 +51,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAtom } from 'jotai';
-import { currencyAtom } from '@/lib/store';
+import { currencyAtom, masterDataAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
 
 const itemSchema = z.object({
     itemCode: z.string().min(1, "Item code is required"),
@@ -63,44 +63,20 @@ const itemSchema = z.object({
 
 export type MasterDataItem = z.infer<typeof itemSchema>;
 
-
-export const initialMasterData: MasterDataItem[] = [
-  {
-    itemCode: 'WD-001',
-    name: 'Oak Wood Plank',
-    type: 'Raw Material',
-    unitPrice: 25.00,
-    stockLevel: 150,
-  },
-  {
-    itemCode: 'FBR-003',
-    name: 'Linen Fabric',
-    type: 'Raw Material',
-    unitPrice: 15.50,
-    stockLevel: 300,
-  },
-  {
-    itemCode: 'MTL-002',
-    name: 'Steel Frame',
-    type: 'Raw Material',
-    unitPrice: 55.00,
-    stockLevel: 80,
-  },
-    {
-    itemCode: 'FNS-010',
-    name: 'Matte Varnish',
-    type: 'Raw Material',
-    unitPrice: 12.00,
-    stockLevel: 200,
-  },
-];
-
 export default function MasterDataPage() {
-    const [masterData, setMasterData] = useState<MasterDataItem[]>(initialMasterData);
+    const [masterData, setMasterData] = useAtom(masterDataAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [currency] = useAtom(currencyAtom);
+
+    const [useDummyData] = useAtom(useDummyDataAtom);
+    const [, seedData] = useAtom(dataSeederAtom);
+
+    useEffect(() => {
+        seedData(useDummyData);
+    }, [useDummyData, seedData]);
+
 
     const form = useForm<MasterDataItem>({
         resolver: zodResolver(itemSchema),
@@ -265,31 +241,39 @@ export default function MasterDataPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMasterData.map((item) => (
-                  <TableRow key={item.itemCode}>
-                    <TableCell className="font-mono">{item.itemCode}</TableCell>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{item.type}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{item.stockLevel}</TableCell>
-                    <TableCell>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredMasterData.length > 0 ? (
+                    filteredMasterData.map((item) => (
+                    <TableRow key={item.itemCode}>
+                        <TableCell className="font-mono">{item.itemCode}</TableCell>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>
+                        <Badge variant="secondary">{item.type}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{item.stockLevel}</TableCell>
+                        <TableCell>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem>Edit</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={6} className="text-center">
+                            No master data found. Enable dummy data in the dashboard's development tab to see sample entries.
+                        </TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

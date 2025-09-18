@@ -51,7 +51,7 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment, currencyAtom } from '@/lib/store';
+import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
 import { format } from 'date-fns';
 
 const paymentSchema = z.object({
@@ -87,25 +87,21 @@ type SaleOrder = {
 };
 
 
-const initialSaleOrders: SaleOrder[] = [
-    {
-        id: 'ORD-001',
-        customer: 'Emily Davis',
-        date: '2024-05-06',
-        amount: 2400.00,
-        status: 'Processing',
-        quotationId: 'QUO-003',
-      },
-];
-
-
 export default function SaleOrdersPage() {
-    const [orders, setOrders] = useState<SaleOrder[]>(initialSaleOrders);
+    const [orders, setOrders] = useAtom(saleOrdersAtom);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<SaleOrder | null>(null);
     const [payments, setPayments] = useAtom(paymentsAtom);
     const { toast } = useToast();
     const [currency] = useAtom(currencyAtom);
+
+    const [useDummyData] = useAtom(useDummyDataAtom);
+    const [, seedData] = useAtom(dataSeederAtom);
+
+    useEffect(() => {
+        seedData(useDummyData);
+    }, [useDummyData, seedData]);
+
 
     const form = useForm<PaymentFormValues>({
         resolver: zodResolver(paymentSchema),
@@ -130,15 +126,17 @@ export default function SaleOrdersPage() {
 
 
     useEffect(() => {
-        const convertedOrder = localStorage.getItem('convertedOrder');
-        if (convertedOrder) {
-            const newOrder = JSON.parse(convertedOrder);
-            if (!orders.some(o => o.id === newOrder.id)) {
-                setOrders(prevOrders => [newOrder, ...prevOrders]);
+        if (typeof window !== 'undefined') {
+            const convertedOrder = localStorage.getItem('convertedOrder');
+            if (convertedOrder) {
+                const newOrder = JSON.parse(convertedOrder);
+                if (!orders.some(o => o.id === newOrder.id)) {
+                    setOrders(prevOrders => [newOrder, ...prevOrders]);
+                }
+                localStorage.removeItem('convertedOrder');
             }
-            localStorage.removeItem('convertedOrder');
         }
-    }, [orders]);
+    }, [orders, setOrders]);
 
     const openPaymentDialog = (order: SaleOrder) => {
         setSelectedOrder(order);
@@ -278,7 +276,7 @@ export default function SaleOrdersPage() {
                 ) : (
                     <TableRow>
                         <TableCell colSpan={7} className="text-center">
-                            No converted sale orders yet.
+                            No converted sale orders yet. Enable dummy data in the dashboard's development tab to see sample entries.
                         </TableCell>
                     </TableRow>
                 )}

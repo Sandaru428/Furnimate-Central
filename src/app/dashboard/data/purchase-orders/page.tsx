@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -50,12 +50,20 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { initialMasterData, MasterDataItem } from '@/app/dashboard/data/master-data/page';
-import { initialSuppliers } from '../suppliers/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment, currencyAtom } from '@/lib/store';
+import { 
+    paymentsAtom, 
+    Payment, 
+    currencyAtom,
+    purchaseOrdersAtom,
+    masterDataAtom,
+    suppliersAtom,
+    useDummyDataAtom,
+    dataSeederAtom
+} from '@/lib/store';
+import type { MasterDataItem } from '../master-data/page';
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item selection is required."),
@@ -114,33 +122,10 @@ type CreatePurchaseOrder = z.infer<typeof createQuotationSchema>;
 type ReceiveItemsForm = z.infer<typeof receiveItemsSchema>;
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
-const initialPurchaseOrders: PurchaseOrder[] = [
-    {
-      id: 'PO-001',
-      supplierName: 'Timber Co.',
-      date: '2024-05-10',
-      totalAmount: 750,
-      status: 'Fulfilled',
-      lineItems: [
-        { itemId: 'WD-001', quantity: 30, unitPrice: 25, totalValue: 750 },
-      ],
-    },
-     {
-      id: 'PO-002',
-      supplierName: 'Fabric Solutions',
-      date: '2025-09-17',
-      totalAmount: 0,
-      status: 'Draft',
-      lineItems: [
-        { itemId: 'FBR-003', quantity: 20 },
-      ],
-    },
-];
-
-const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
+const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
     const [selectedItemCode, setSelectedItemCode] = useState('');
     const [quantity, setQuantity] = useState<number | ''>('');
-    const item = initialMasterData.find(i => i.itemCode === selectedItemCode);
+    const item = masterData.find(i => i.itemCode === selectedItemCode);
 
     const handleAddItem = () => {
         const numQuantity = Number(quantity);
@@ -163,7 +148,7 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof line
                         <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
                     <SelectContent>
-                        {initialMasterData.map(item => (
+                        {masterData.map(item => (
                             <SelectItem key={item.itemCode} value={item.itemCode}>
                                 {item.name} ({item.itemCode})
                             </SelectItem>
@@ -189,8 +174,9 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof line
 
 
 export default function PurchaseOrdersPage() {
-    const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
-    const [masterData, setMasterData] = useState<MasterDataItem[]>(initialMasterData);
+    const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
+    const [masterData, setMasterData] = useAtom(masterDataAtom);
+    const [suppliers] = useAtom(suppliersAtom);
     const [payments, setPayments] = useAtom(paymentsAtom);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
@@ -200,6 +186,13 @@ export default function PurchaseOrdersPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [currency] = useAtom(currencyAtom);
+
+    const [useDummyData] = useAtom(useDummyDataAtom);
+    const [, seedData] = useAtom(dataSeederAtom);
+
+    useEffect(() => {
+        seedData(useDummyData);
+    }, [useDummyData, seedData]);
 
     const createForm = useForm<CreatePurchaseOrder>({
         resolver: zodResolver(createQuotationSchema),
@@ -456,7 +449,7 @@ export default function PurchaseOrdersPage() {
                                               </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                              {initialSuppliers.map(supplier => (
+                                              {suppliers.map(supplier => (
                                                 <SelectItem key={supplier.id} value={supplier.name}>
                                                   {supplier.name}
                                                 </SelectItem>
@@ -470,12 +463,12 @@ export default function PurchaseOrdersPage() {
                                     <div>
                                         <FormLabel>Line Items</FormLabel>
                                         <div className="space-y-2 mt-2">
-                                            {createFields.map((field, index) => { const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
+                                            {createFields.map((field, index) => { const itemDetails = masterData.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
                                         </div>
                                          {createFields.length === 0 && ( <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p> )}
                                         <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
                                     </div>
-                                    <AddItemForm onAddItem={createAppend} />
+                                    <AddItemForm masterData={masterData} onAddItem={createAppend} />
                                     <DialogFooter>
                                         <div className="flex justify-end gap-2 w-full">
                                             <DialogClose asChild>
@@ -504,36 +497,44 @@ export default function PurchaseOrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPurchaseOrders.map((po) => (
-                  <TableRow key={po.id}>
-                    <TableCell className="font-mono">{po.id}</TableCell>
-                    <TableCell className="font-medium">{po.supplierName}</TableCell>
-                    <TableCell>{po.date}</TableCell>
-                    <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={statusVariant[po.status]}
-                        className={po.status === 'Paid' ? 'bg-green-600 text-white' : ''}
-                      >
-                        {po.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0"> <span className="sr-only">Open menu</span> <MoreHorizontal className="h-4 w-4" /> </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openCreateOrEditDialog(po)} disabled={po.status !== 'Draft'}> View/Edit </DropdownMenuItem>
-                            {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}> Mark as Sent </DropdownMenuItem> )}
-                            {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
-                            {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
-                             <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredPurchaseOrders.length > 0 ? (
+                    filteredPurchaseOrders.map((po) => (
+                    <TableRow key={po.id}>
+                        <TableCell className="font-mono">{po.id}</TableCell>
+                        <TableCell className="font-medium">{po.supplierName}</TableCell>
+                        <TableCell>{po.date}</TableCell>
+                        <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
+                        <TableCell>
+                        <Badge 
+                            variant={statusVariant[po.status]}
+                            className={po.status === 'Paid' ? 'bg-green-600 text-white' : ''}
+                        >
+                            {po.status}
+                        </Badge>
+                        </TableCell>
+                        <TableCell>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0"> <span className="sr-only">Open menu</span> <MoreHorizontal className="h-4 w-4" /> </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openCreateOrEditDialog(po)} disabled={po.status !== 'Draft'}> View/Edit </DropdownMenuItem>
+                                {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}> Mark as Sent </DropdownMenuItem> )}
+                                {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
+                                {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
+                                <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={6} className="text-center">
+                            No purchase orders found. Enable dummy data in the dashboard's development tab to see sample entries.
+                        </TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -550,7 +551,7 @@ export default function PurchaseOrdersPage() {
                             <TableHeader> <TableRow> <TableHead>Item</TableHead> <TableHead className="w-24">Quantity</TableHead> <TableHead className="w-40">Unit Price</TableHead> <TableHead className="w-40 text-right">Total Value</TableHead> </TableRow> </TableHeader>
                             <TableBody>
                                 {receiveFields.map((field, index) => {
-                                    const itemDetails = initialMasterData.find(i => i.itemCode === field.itemId);
+                                    const itemDetails = masterData.find(i => i.itemCode === field.itemId);
                                     const quantity = receiveForm.watch(`lineItems.${index}.quantity`);
                                     const unitPrice = receiveForm.watch(`lineItems.${index}.unitPrice`);
                                     const totalValue = (quantity || 0) * (unitPrice || 0);

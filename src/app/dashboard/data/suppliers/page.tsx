@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -48,6 +48,8 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
+import { useAtom } from 'jotai';
+import { suppliersAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
 
 const supplierSchema = z.object({
     id: z.string().optional(),
@@ -57,34 +59,18 @@ const supplierSchema = z.object({
 
 type Supplier = z.infer<typeof supplierSchema>;
 
-export const initialSuppliers: Supplier[] = [
-  {
-    id: '1',
-    name: 'Timber Co.',
-    contact: 'John Doe, 555-123-4567',
-  },
-  {
-    id: '2',
-    name: 'Fabric Solutions',
-    contact: 'Jane Smith, 555-987-6543',
-  },
-  {
-    id: '3',
-    name: 'MetalWorks Inc.',
-    contact: 'Bob Johnson, 555-456-7890',
-  },
-    {
-    id: '4',
-    name: 'Finishing Touches',
-    contact: 'Alice Williams, 555-321-9876',
-  },
-];
 
 export default function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
+  const [suppliers, setSuppliers] = useAtom(suppliersAtom);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+
+  const [useDummyData, setUseDummyData] = useAtom(dataSeederAtom);
+
+  useEffect(() => {
+    // This effect runs on mount and whenever the global toggle changes.
+  }, [useDummyData]);
 
   const form = useForm<Supplier>({
     resolver: zodResolver(supplierSchema),
@@ -196,26 +182,34 @@ export default function SuppliersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSuppliers.map((supplier) => (
-                  <TableRow key={supplier.id}>
-                    <TableCell className="font-medium">{supplier.name}</TableCell>
-                    <TableCell>{supplier.contact}</TableCell>
-                    <TableCell>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredSuppliers.length > 0 ? (
+                    filteredSuppliers.map((supplier) => (
+                    <TableRow key={supplier.id}>
+                        <TableCell className="font-medium">{supplier.name}</TableCell>
+                        <TableCell>{supplier.contact}</TableCell>
+                        <TableCell>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem>Edit</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                     <TableRow>
+                        <TableCell colSpan={3} className="text-center">
+                            No suppliers found. Enable dummy data in the dashboard's development tab to see sample entries.
+                        </TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

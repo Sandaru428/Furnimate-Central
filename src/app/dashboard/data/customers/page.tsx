@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -48,6 +48,8 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
+import { useAtom } from 'jotai';
+import { customersAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
 
 const customerSchema = z.object({
   id: z.string().optional(),
@@ -58,32 +60,19 @@ const customerSchema = z.object({
 
 type Customer = z.infer<typeof customerSchema>;
 
-export const initialCustomers: Customer[] = [
-  {
-    id: '1',
-    name: 'Modern Designs LLC',
-    email: 'sarah@moderndesigns.com',
-    phone: '555-111-2222',
-  },
-  {
-    id: '2',
-    name: 'Home Comforts',
-    email: 'mbrown@homecomforts.net',
-    phone: '555-333-4444',
-  },
-  {
-    id: '3',
-    name: 'Emily Davis',
-    email: 'emily.d@email.com',
-    phone: '555-555-6666',
-  },
-];
-
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [customers, setCustomers] = useAtom(customersAtom);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+  
+  const [useDummyData, setUseDummyData] = useAtom(dataSeederAtom);
+  
+  useEffect(() => {
+    // This effect runs on mount and whenever the global toggle changes.
+    // The `dataSeederAtom` handles the logic of populating/clearing data.
+  }, [useDummyData]);
+
 
   const form = useForm<Customer>({
     resolver: zodResolver(customerSchema),
@@ -210,29 +199,37 @@ export default function CustomersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCustomers.map((customer) => (
-                  <TableRow key={customer.id}>
-                    <TableCell className="font-medium">{customer.name}</TableCell>
-                    <TableCell>{customer.email}</TableCell>
-                    <TableCell>{customer.phone}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Archive
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((customer) => (
+                    <TableRow key={customer.id}>
+                        <TableCell className="font-medium">{customer.name}</TableCell>
+                        <TableCell>{customer.email}</TableCell>
+                        <TableCell>{customer.phone}</TableCell>
+                        <TableCell>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuItem>Edit</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">
+                                Archive
+                            </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center">
+                            No customers found. Enable dummy data in the dashboard's development tab to see sample entries.
+                        </TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
