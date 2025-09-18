@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { onAuthStateChanged, type User, sendPasswordResetEmail, signOut as firebaseSignOut } from "firebase/auth";
+import { onAuthStateChanged, type User, sendPasswordResetEmail, signOut as firebaseSignOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useToast } from "./use-toast";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,8 @@ import { useRouter } from "next/navigation";
 type AuthContextType = {
   user: User | null;
   loading: boolean;
+  handleSignIn: (email: string, pass: string) => Promise<boolean>;
+  handleSignUp: (email: string, pass: string) => Promise<boolean>;
   handlePasswordReset: () => Promise<void>;
   handleSignOut: () => Promise<void>;
 };
@@ -36,6 +38,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => unsubscribe();
   }, []);
+
+  const handleSignIn = async (email: string, pass: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      });
+      return true;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error.message,
+      });
+      return false;
+    }
+  };
+  
+  const handleSignUp = async (email: string, pass: string) => {
+    try {
+      await createUserWithEmailAndPassword(auth, email, pass);
+       toast({
+        title: "Account Created",
+        description: "You have been successfully signed up.",
+      });
+      return true;
+    } catch (error: any) {
+       toast({
+        variant: "destructive",
+        title: "Sign-up Failed",
+        description: error.message,
+      });
+      return false;
+    }
+  };
 
   const handlePasswordReset = async () => {
     if (!user?.email) {
@@ -79,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, handlePasswordReset, handleSignOut }}>
+    <AuthContext.Provider value={{ user, loading, handleSignIn, handleSignUp, handlePasswordReset, handleSignOut }}>
       {children}
     </AuthContext.Provider>
   );

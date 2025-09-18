@@ -24,18 +24,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useAuth } from "@/hooks/use-auth";
 
 const formSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
-  password: z.string().min(1, {
-    message: "Password cannot be empty.",
+  password: z.string().min(6, {
+    message: "Password must be at least 6 characters.",
   }),
 });
 
 export function SignUpForm() {
   const router = useRouter();
+  const { handleSignUp } = useAuth();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -45,8 +47,10 @@ export function SignUpForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // TODO: Re-enable Firebase authentication
-    router.push("/dashboard");
+    const success = await handleSignUp(values.email, values.password);
+    if (success) {
+        router.push("/dashboard");
+    }
   }
 
   return (
