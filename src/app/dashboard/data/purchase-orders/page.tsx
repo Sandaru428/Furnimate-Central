@@ -394,7 +394,7 @@ export default function PurchaseOrdersPage() {
         } else {
             setEditingPO(null);
             createForm.reset({ supplierName: '', lineItems: [] });
-            createRemove();
+            remove();
         }
         setIsCreateDialogOpen(true);
     };
@@ -783,3 +783,5 @@ export default function PurchaseOrdersPage() {
       </>
   );
 }
+
+    
