@@ -49,8 +49,8 @@ import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { format } from 'date-fns';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { format, parseISO } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -69,6 +69,7 @@ type Customer = z.infer<typeof customerSchema>;
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -110,42 +111,71 @@ export default function CustomersPage() {
     fetchCustomers();
   }, []);
 
-  async function onSubmit(values: Omit<Customer, 'id'>) {
+  async function onSubmit(values: Customer) {
     try {
       const dataToSave: any = {
-        ...values,
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        whatsappNumber: values.whatsappNumber,
+        address: values.address,
       };
       if (values.dateOfBirth) {
         dataToSave.dateOfBirth = new Date(values.dateOfBirth);
-      } else {
-        delete dataToSave.dateOfBirth;
       }
 
-
-      const docRef = await addDoc(collection(db, 'customers'), dataToSave);
-      
-      const newCustomer: Customer = { 
-        ...values, 
-        id: docRef.id,
-      };
-
-      setCustomers(prev => [newCustomer, ...prev]);
-
-      toast({
-        title: 'Customer Added',
-        description: `${values.name} has been successfully added.`,
-      });
+      if (editingCustomer) {
+        // Update
+        const docRef = doc(db, 'customers', editingCustomer.id!);
+        await updateDoc(docRef, dataToSave);
+        setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...values, dateOfBirth: values.dateOfBirth } : c));
+        toast({
+          title: 'Customer Updated',
+          description: `${values.name} has been successfully updated.`,
+        });
+      } else {
+        // Create
+        const docRef = await addDoc(collection(db, 'customers'), dataToSave);
+        const newCustomer: Customer = { 
+          ...values, 
+          id: docRef.id,
+        };
+        setCustomers(prev => [newCustomer, ...prev]);
+        toast({
+          title: 'Customer Added',
+          description: `${values.name} has been successfully added.`,
+        });
+      }
       form.reset();
+      setEditingCustomer(null);
       setIsDialogOpen(false);
     } catch (error) {
-      console.error("Failed to add customer: ", error);
+      console.error("Failed to save customer: ", error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to add customer.',
+        description: 'Failed to save customer.',
       });
     }
   }
+
+  const openDialog = (customer: Customer | null) => {
+    if (customer) {
+        setEditingCustomer(customer);
+        form.reset(customer);
+    } else {
+        setEditingCustomer(null);
+        form.reset({
+            name: '',
+            email: '',
+            phone: '',
+            whatsappNumber: '',
+            dateOfBirth: '',
+            address: '',
+        });
+    }
+    setIsDialogOpen(true);
+  };
 
   const filteredCustomers = customers.filter(
     (customer) =>
@@ -175,16 +205,16 @@ export default function CustomersPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                 <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingCustomer(null); setIsDialogOpen(isOpen); }}>
                   <DialogTrigger asChild>
-                    <Button>
+                    <Button onClick={() => openDialog(null)}>
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Add New Customer
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
                     <DialogHeader>
-                      <DialogTitle>Add New Customer</DialogTitle>
+                      <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
                     </DialogHeader>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
@@ -274,7 +304,7 @@ export default function CustomersPage() {
                             <DialogClose asChild>
                                 <Button variant="outline">Cancel</Button>
                             </DialogClose>
-                            <Button type="submit">Add Customer</Button>
+                            <Button type="submit">{editingCustomer ? 'Save Changes' : 'Add Customer'}</Button>
                         </DialogFooter>
                       </form>
                     </Form>
@@ -311,7 +341,7 @@ export default function CustomersPage() {
                         <TableCell>{customer.phone}</TableCell>
                         <TableCell>{customer.whatsappNumber}</TableCell>
                         <TableCell>
-                          {customer.dateOfBirth ? format(new Date(customer.dateOfBirth), 'PP') : '-'}
+                           {customer.dateOfBirth ? format(parseISO(customer.dateOfBirth), 'PP') : '-'}
                         </TableCell>
                         <TableCell>{customer.address}</TableCell>
                         <TableCell>
@@ -323,7 +353,7 @@ export default function CustomersPage() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openDialog(customer)}>Edit</DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive">
                                 Archive
                             </DropdownMenuItem>
@@ -347,3 +377,5 @@ export default function CustomersPage() {
     </>
   );
 }
+
+    

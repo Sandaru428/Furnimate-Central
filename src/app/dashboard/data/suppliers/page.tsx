@@ -49,7 +49,7 @@ import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const supplierSchema = z.object({
@@ -64,6 +64,7 @@ type Supplier = z.infer<typeof supplierSchema>;
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -80,23 +81,36 @@ export default function SuppliersPage() {
   }, []);
 
 
-  const form = useForm<Omit<Supplier, 'id'>>({
-    resolver: zodResolver(supplierSchema.omit({id: true})),
+  const form = useForm<Supplier>({
+    resolver: zodResolver(supplierSchema),
     defaultValues: {
       name: '',
       contact: '',
     },
   });
 
-  async function onSubmit(values: Omit<Supplier, 'id'>) {
+  async function onSubmit(values: Supplier) {
     try {
-        const docRef = await addDoc(collection(db, 'suppliers'), values);
-        setSuppliers([...suppliers, { ...values, id: docRef.id }]);
-        toast({
-        title: 'Supplier Added',
-        description: `${values.name} has been successfully added.`,
-        });
+        if (editingSupplier) {
+            // Update
+            const docRef = doc(db, 'suppliers', editingSupplier.id!);
+            await updateDoc(docRef, values);
+            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? values : s));
+            toast({
+              title: 'Supplier Updated',
+              description: `${values.name} has been successfully updated.`,
+            });
+        } else {
+            // Create
+            const docRef = await addDoc(collection(db, 'suppliers'), values);
+            setSuppliers([...suppliers, { ...values, id: docRef.id }]);
+            toast({
+              title: 'Supplier Added',
+              description: `${values.name} has been successfully added.`,
+            });
+        }
         form.reset();
+        setEditingSupplier(null);
         setIsDialogOpen(false);
     } catch (error) {
         toast({
@@ -106,6 +120,17 @@ export default function SuppliersPage() {
         });
     }
   }
+
+  const openDialog = (supplier: Supplier | null) => {
+    if (supplier) {
+        setEditingSupplier(supplier);
+        form.reset(supplier);
+    } else {
+        setEditingSupplier(null);
+        form.reset({ name: '', contact: '' });
+    }
+    setIsDialogOpen(true);
+  };
 
   const filteredSuppliers = suppliers.filter(
     (supplier) =>
@@ -136,16 +161,16 @@ export default function SuppliersPage() {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingSupplier(null); setIsDialogOpen(isOpen); }}>
                         <DialogTrigger asChild>
-                            <Button>
+                            <Button onClick={() => openDialog(null)}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add New Supplier
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
                             <DialogHeader>
-                                <DialogTitle>Add New Supplier</DialogTitle>
+                                <DialogTitle>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</DialogTitle>
                             </DialogHeader>
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
@@ -183,7 +208,7 @@ export default function SuppliersPage() {
                                         <DialogClose asChild>
                                             <Button variant="outline">Cancel</Button>
                                         </DialogClose>
-                                        <Button type="submit">Add Supplier</Button>
+                                        <Button type="submit">{editingSupplier ? 'Save Changes' : 'Add Supplier'}</Button>
                                     </DialogFooter>
                                 </form>
                             </Form>
@@ -218,7 +243,7 @@ export default function SuppliersPage() {
                                 </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openDialog(supplier)}>Edit</DropdownMenuItem>
                                 <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -240,3 +265,5 @@ export default function SuppliersPage() {
     </>
   );
 }
+
+    

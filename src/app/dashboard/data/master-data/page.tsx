@@ -53,7 +53,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAtom } from 'jotai';
 import { currencyAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 
@@ -71,6 +71,7 @@ export type MasterDataItem = z.infer<typeof itemSchema>;
 export default function MasterDataPage() {
     const [masterData, setMasterData] = useState<MasterDataItem[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<MasterDataItem | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [currency] = useAtom(currencyAtom);
@@ -87,8 +88,8 @@ export default function MasterDataPage() {
         fetchMasterData();
     }, []);
 
-    const form = useForm<Omit<MasterDataItem, 'id'>>({
-        resolver: zodResolver(itemSchema.omit({id: true})),
+    const form = useForm<MasterDataItem>({
+        resolver: zodResolver(itemSchema),
         defaultValues: {
             itemCode: '',
             name: '',
@@ -98,24 +99,54 @@ export default function MasterDataPage() {
         },
     });
 
-    async function onSubmit(values: Omit<MasterDataItem, 'id'>) {
+    async function onSubmit(values: MasterDataItem) {
         try {
-            const docRef = await addDoc(collection(db, 'masterData'), values);
-            setMasterData([...masterData, { ...values, id: docRef.id }]);
-            toast({
-              title: 'Item Added',
-              description: `${values.name} has been successfully added.`,
-            });
+            if (editingItem) {
+                // Update
+                const docRef = doc(db, 'masterData', editingItem.id!);
+                await updateDoc(docRef, values);
+                setMasterData(masterData.map(item => item.id === editingItem.id ? values : item));
+                toast({
+                  title: 'Item Updated',
+                  description: `${values.name} has been successfully updated.`,
+                });
+            } else {
+                // Create
+                const docRef = await addDoc(collection(db, 'masterData'), values);
+                setMasterData([...masterData, { ...values, id: docRef.id }]);
+                toast({
+                  title: 'Item Added',
+                  description: `${values.name} has been successfully added.`,
+                });
+            }
             form.reset();
+            setEditingItem(null);
             setIsDialogOpen(false);
         } catch (error) {
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: 'Failed to add item.',
+                description: 'Failed to save item.',
             });
         }
     }
+
+    const openDialog = (item: MasterDataItem | null) => {
+        if (item) {
+            setEditingItem(item);
+            form.reset(item);
+        } else {
+            setEditingItem(null);
+            form.reset({
+                itemCode: '',
+                name: '',
+                type: undefined,
+                unitPrice: '' as any,
+                stockLevel: '' as any,
+            });
+        }
+        setIsDialogOpen(true);
+    };
 
     const filteredMasterData = masterData.filter(
         (item) =>
@@ -147,16 +178,16 @@ export default function MasterDataPage() {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                     <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingItem(null); setIsDialogOpen(isOpen); }}>
                         <DialogTrigger asChild>
-                            <Button>
+                            <Button onClick={() => openDialog(null)}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add New Item
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
                             <DialogHeader>
-                                <DialogTitle>Add New Item</DialogTitle>
+                                <DialogTitle>{editingItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
                             </DialogHeader>
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
@@ -241,7 +272,7 @@ export default function MasterDataPage() {
                                         <DialogClose asChild>
                                             <Button variant="outline">Cancel</Button>
                                         </DialogClose>
-                                        <Button type="submit">Add Item</Button>
+                                        <Button type="submit">{editingItem ? 'Save Changes' : 'Add Item'}</Button>
                                     </DialogFooter>
                                 </form>
                             </Form>
@@ -267,7 +298,7 @@ export default function MasterDataPage() {
                     <TableRow><TableCell colSpan={6} className="text-center">Loading...</TableCell></TableRow>
                 ) : filteredMasterData.length > 0 ? (
                     filteredMasterData.map((item) => (
-                    <TableRow key={item.itemCode}>
+                    <TableRow key={item.id}>
                         <TableCell className="font-mono">{item.itemCode}</TableCell>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>
@@ -284,7 +315,7 @@ export default function MasterDataPage() {
                                 </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openDialog(item)}>Edit</DropdownMenuItem>
                                 <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -306,3 +337,5 @@ export default function MasterDataPage() {
     </>
   );
 }
+
+    
