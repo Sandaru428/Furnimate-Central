@@ -101,7 +101,6 @@ export default function CustomersPage() {
           return { 
               id: doc.id, 
               ...data,
-              // Convert Firestore Timestamp to string if it exists
               dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
           } as Customer
       });
@@ -348,3 +347,5 @@ export default function CustomersPage() {
     </>
   );
 }
+
+    
