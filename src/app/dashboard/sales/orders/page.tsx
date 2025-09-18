@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -53,10 +54,9 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Printer, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, useDummyDataAtom, dataSeederAtom, masterDataAtom, quotationsAtom, companyProfileAtom } from '@/lib/store';
+import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Logo } from '@/components/icons/logo';
 
 
 const paymentSchema = z.object({
@@ -94,28 +94,18 @@ type SaleOrder = {
 
 export default function SaleOrdersPage() {
     const [orders, setOrders] = useAtom(saleOrdersAtom);
-    const [quotations] = useAtom(quotationsAtom);
-    const [masterData] = useAtom(masterDataAtom);
-    const [companyProfile] = useAtom(companyProfileAtom);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<SaleOrder | null>(null);
-    const [orderToPrint, setOrderToPrint] = useState<SaleOrder | null>(null);
     const [payments, setPayments] = useAtom(paymentsAtom);
     const { toast } = useToast();
+    const router = useRouter();
     const [currency] = useAtom(currencyAtom);
 
     const [useDummyData] = useAtom(useDummyDataAtom);
     const [, seedData] = useAtom(dataSeederAtom);
     
-    useEffect(() => {
-        if (orderToPrint) {
-            window.print();
-            setOrderToPrint(null);
-        }
-    }, [orderToPrint]);
-
-    const handlePrint = (order: SaleOrder) => {
-        setOrderToPrint(order);
+    const handlePrint = (orderId: string) => {
+        router.push(`/dashboard/sales/orders/${orderId}/print`);
     };
 
     useEffect(() => {
@@ -269,319 +259,220 @@ export default function SaleOrdersPage() {
 
   return (
     <>
-        <style>
-            {`
-            @media print {
-                body * {
-                visibility: hidden;
-                }
-                #print-area, #print-area * {
-                visibility: visible;
-                }
-                #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                }
-                .no-print {
-                display: none;
-                }
-            }
-            `}
-        </style>
-        <div id="print-area" className="no-print">
-            {orderToPrint && <PrintableSO order={orderToPrint} quotations={quotations} masterData={masterData} currency={currency} companyProfile={companyProfile} />}
-        </div>
-        <div className="no-print">
-            <header className="flex items-center p-4 border-b">
-                <SidebarTrigger />
-                <h1 className="text-xl font-semibold ml-4">Sale Orders</h1>
-            </header>
-            <main className="p-4">
-                <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle>Confirmed Sale Orders</CardTitle>
-                            <CardDescription>
-                                These are quotations that have been converted into sale orders.
-                            </CardDescription>
-                        </div>
+        <header className="flex items-center p-4 border-b">
+            <SidebarTrigger />
+            <h1 className="text-xl font-semibold ml-4">Sale Orders</h1>
+        </header>
+        <main className="p-4">
+            <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Confirmed Sale Orders</CardTitle>
+                        <CardDescription>
+                            These are quotations that have been converted into sale orders.
+                        </CardDescription>
                     </div>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                    <TableHeader>
-                        <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Sale Order ID</TableHead>
-                        <TableHead>Original Quotation</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Sale Order ID</TableHead>
+                    <TableHead>Original Quotation</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {sortedOrders.length > 0 ? (
+                        sortedOrders.map((order) => (
+                        <TableRow key={order.id}>
+                            <TableCell>{order.date}</TableCell>
+                            <TableCell className="font-mono">{order.id}</TableCell>
+                            <TableCell className="font-mono">{order.quotationId}</TableCell>
+                            <TableCell className="font-medium">{order.customer}</TableCell>
+                            <TableCell className="text-right">{currency.code} {order.amount.toFixed(2)}</TableCell>
+                            <TableCell>
+                                <Badge variant={order.status === 'Paid' ? 'outline' : 'default'}>{order.status}</Badge>
+                            </TableCell>
+                            <TableCell>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => openPaymentDialog(order)} disabled={order.status === 'Paid'}>
+                                        Add Payment
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handlePrint(order.id)}>
+                                        <Printer className="mr-2 h-4 w-4" />
+                                        <span>Print</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleShare(order)}>
+                                        <Share2 className="mr-2 h-4 w-4" />
+                                        <span>Share</span>
+                                    </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
                         </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {sortedOrders.length > 0 ? (
-                            sortedOrders.map((order) => (
-                            <TableRow key={order.id}>
-                                <TableCell>{order.date}</TableCell>
-                                <TableCell className="font-mono">{order.id}</TableCell>
-                                <TableCell className="font-mono">{order.quotationId}</TableCell>
-                                <TableCell className="font-medium">{order.customer}</TableCell>
-                                <TableCell className="text-right">{currency.code} {order.amount.toFixed(2)}</TableCell>
-                                <TableCell>
-                                    <Badge variant={order.status === 'Paid' ? 'outline' : 'default'}>{order.status}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                            <span className="sr-only">Open menu</span>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => openPaymentDialog(order)} disabled={order.status === 'Paid'}>
-                                            Add Payment
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onClick={() => handlePrint(order)}>
-                                            <Printer className="mr-2 h-4 w-4" />
-                                            <span>Print</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleShare(order)}>
-                                            <Share2 className="mr-2 h-4 w-4" />
-                                            <span>Share</span>
-                                        </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
-                            </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={7} className="text-center">
-                                    No converted sale orders yet. Enable dummy data in the dashboard's development tab to see sample entries.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                    </Table>
-                </CardContent>
-                </Card>
-            </main>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={7} className="text-center">
+                                No converted sale orders yet. Enable dummy data in the dashboard's development tab to see sample entries.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+                </Table>
+            </CardContent>
+            </Card>
+        </main>
 
-            {/* Payment Dialog */}
-            <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-                    <DialogContent className="sm:max-w-lg">
-                        <DialogHeader>
-                            <DialogTitle>Record Payment for {selectedOrder?.id}</DialogTitle>
-                            <CardDescription>
-                                Total: {currency.code} {selectedOrder?.amount.toFixed(2)} | Paid: {currency.code} {amountPaid.toFixed(2)} | Remaining: {currency.code} {remainingAmount.toFixed(2)}
-                            </CardDescription>
-                        </DialogHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onPaymentSubmit)}>
-                                <ScrollArea className="max-h-[calc(100vh-12rem)]">
-                                    <div className="space-y-4 p-4">
+        {/* Payment Dialog */}
+        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Record Payment for {selectedOrder?.id}</DialogTitle>
+                        <CardDescription>
+                            Total: {currency.code} {selectedOrder?.amount.toFixed(2)} | Paid: {currency.code} {amountPaid.toFixed(2)} | Remaining: {currency.code} {remainingAmount.toFixed(2)}
+                        </CardDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onPaymentSubmit)}>
+                            <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                                <div className="space-y-4 p-4">
+                                    <FormField
+                                            control={form.control}
+                                            name="amount"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Amount</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                         <FormField
+                                            control={form.control}
+                                            name="method"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Payment Method</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select a payment method" />
+                                                    </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (
+                                                            <SelectItem key={method} value={method}>
+                                                                {method}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        {paymentMethod === 'Card' && (
+                                            <FormField
                                                 control={form.control}
-                                                name="amount"
+                                                name="cardLast4"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Amount</FormLabel>
+                                                        <FormLabel>Last 4 Digits of Card</FormLabel>
                                                         <FormControl>
-                                                            <Input type="number" {...field} />
+                                                            <Input placeholder="1234" maxLength={4} {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
-                                            <FormField
-                                                control={form.control}
-                                                name="method"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                    <FormLabel>Payment Method</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                        <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select a payment method" />
-                                                        </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (
-                                                                <SelectItem key={method} value={method}>
-                                                                    {method}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            {paymentMethod === 'Card' && (
+                                        )}
+                                        {paymentMethod === 'Online' && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-4">
+                                                    <h4 className="font-medium text-sm">From</h4>
+                                                    <FormField control={form.control} name="fromBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={form.control} name="fromAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <h4 className="font-medium text-sm">To</h4>
+                                                    <FormField control={form.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={form.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {paymentMethod === 'Cheque' && (
+                                            <div className="space-y-4">
                                                 <FormField
                                                     control={form.control}
-                                                    name="cardLast4"
+                                                    name="chequeBank"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Last 4 Digits of Card</FormLabel>
+                                                            <FormLabel>Bank Name</FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="1234" maxLength={4} {...field} />
+                                                                <Input placeholder="e.g. National Bank" {...field} />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
                                                     )}
                                                 />
-                                            )}
-                                            {paymentMethod === 'Online' && (
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div className="space-y-4">
-                                                        <h4 className="font-medium text-sm">From</h4>
-                                                        <FormField control={form.control} name="fromBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        <FormField control={form.control} name="fromAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                    </div>
-                                                    <div className="space-y-4">
-                                                        <h4 className="font-medium text-sm">To</h4>
-                                                        <FormField control={form.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        <FormField control={form.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {paymentMethod === 'Cheque' && (
-                                                <div className="space-y-4">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="chequeBank"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Bank Name</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="e.g. National Bank" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="chequeNumber"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Cheque Number</FormLabel>
-                                                                <FormControl>
-                                                                    <Input placeholder="e.g. 987654" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="chequeDate"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Cheque Date</FormLabel>
-                                                                <FormControl>
-                                                                    <Input type="date" {...field} />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                            )}
-                                    </div>
-                                </ScrollArea>
-                                <DialogFooter className="mt-4">
-                                    <DialogClose asChild>
-                                        <Button variant="outline">Cancel</Button>
-                                    </DialogClose>
-                                    <Button type="submit">Record Payment</Button>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
-        </div>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="chequeNumber"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Cheque Number</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="e.g. 987654" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="chequeDate"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Cheque Date</FormLabel>
+                                                            <FormControl>
+                                                                <Input type="date" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+                                </div>
+                            </ScrollArea>
+                            <DialogFooter className="mt-4">
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancel</Button>
+                                </DialogClose>
+                                <Button type="submit">Record Payment</Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
     </>
   );
 }
-
-// Component for printing - rendered conditionally in a hidden div
-const PrintableSO = ({ order, quotations, masterData, currency, companyProfile }: { order: SaleOrder | null, quotations: any[], masterData: any[], currency: any, companyProfile: any }) => {
-    if (!order) return null;
-
-    const originalQuotation = quotations.find(q => q.id === order.quotationId);
-
-    return (
-        <div className="p-8">
-            <header className="flex justify-between items-start mb-8 pb-4 border-b">
-                <div className="flex items-center gap-4">
-                    <Logo />
-                    <div>
-                        <h1 className="text-2xl font-bold">{companyProfile.companyName}</h1>
-                        <p className="text-muted-foreground">{companyProfile.email}</p>
-                        <p className="text-muted-foreground">{companyProfile.phone}</p>
-                    </div>
-                </div>
-                <div className="text-right">
-                    <h2 className="text-3xl font-bold uppercase text-muted-foreground">Sale Order</h2>
-                    <p className="text-muted-foreground font-mono">{order.id}</p>
-                </div>
-            </header>
-
-            <div className="grid grid-cols-2 gap-4 mb-8">
-            <div>
-                <p className='text-sm text-muted-foreground'>Customer</p>
-                <p className="font-medium">{order.customer}</p>
-                <p className="text-sm text-muted-foreground mt-2">Original Quotation: {order.quotationId}</p>
-            </div>
-            <div className="text-right">
-                <p><strong>Date:</strong> {order.date}</p>
-                <p><strong>Status:</strong> {order.status}</p>
-            </div>
-            </div>
-            
-            {originalQuotation && (
-            <>
-                <h3 className="text-lg font-semibold mb-2">Order Summary</h3>
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {originalQuotation.lineItems.map((item: any) => {
-                    const itemDetails = masterData.find(md => md.itemCode === item.itemId);
-                    return (
-                        <TableRow key={item.itemId}>
-                        <TableCell>{itemDetails?.name || item.itemId}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
-                        </TableRow>
-                    );
-                    })}
-                </TableBody>
-                </Table>
-            </>
-            )}
-    
-            <div className="text-right mt-4 pr-4 text-xl font-bold">
-                Total Amount: {currency.code} {order.amount.toFixed(2)}
-            </div>
-        </div>
-    );
-};
-
-    
