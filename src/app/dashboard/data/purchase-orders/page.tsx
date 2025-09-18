@@ -66,7 +66,6 @@ import {
     dataSeederAtom
 } from '@/lib/store';
 import type { MasterDataItem } from '../master-data/page';
-import { useReactToPrint } from 'react-to-print';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 
@@ -187,6 +186,7 @@ export default function PurchaseOrdersPage() {
     const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+    const [poToPrint, setPoToPrint] = useState<PurchaseOrder | null>(null);
     const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
@@ -199,18 +199,15 @@ export default function PurchaseOrdersPage() {
         seedData(useDummyData);
     }, [useDummyData, seedData]);
     
-    const printRef = useRef(null);
-    const handlePrint = useReactToPrint({
-        content: () => printRef.current,
-        documentTitle: `Purchase Order ${selectedPO?.id}`,
-    });
-
-    const prepareAndPrint = (po: PurchaseOrder) => {
-        setSelectedPO(po);
-        // This timeout ensures the state is set before printing begins
-        setTimeout(() => {
-            handlePrint();
-        }, 100);
+    useEffect(() => {
+        if (poToPrint) {
+            window.print();
+            setPoToPrint(null);
+        }
+    }, [poToPrint]);
+    
+    const handlePrint = (po: PurchaseOrder) => {
+        setPoToPrint(po);
     };
 
     const createForm = useForm<CreatePurchaseOrder>({
@@ -456,383 +453,405 @@ export default function PurchaseOrdersPage() {
 
   return (
     <>
-      <div className="hidden">
-        <PrintablePO ref={printRef} po={selectedPO} masterData={masterData} currency={currency} />
+      <style>
+        {`
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            #print-area, #print-area * {
+              visibility: visible;
+            }
+            #print-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            .no-print {
+              display: none;
+            }
+          }
+        `}
+      </style>
+      <div id="print-area">
+        {poToPrint && <PrintablePO po={poToPrint} masterData={masterData} currency={currency} />}
       </div>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Purchase Orders</h1>
-      </header>
-      <main className="p-4">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Purchase Orders</CardTitle>
-                    <CardDescription>
-                    Create and manage purchase orders for raw materials.
-                    </CardDescription>
-                </div>
-                 <div className="flex items-center gap-2">
-                    <Input placeholder="Search POs..." className="w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                    <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setEditingPO(null); createForm.reset(); createRemove(); } setIsCreateDialogOpen(isOpen); }}>
-                        <DialogTrigger asChild>
-                            <Button onClick={() => openCreateOrEditDialog(null)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Create New PO
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-2xl">
-                            <DialogHeader>
-                                <DialogTitle>{editingPO ? `Edit Purchase Order ${editingPO.id}` : 'Create New Purchase Order'}</DialogTitle>
-                            </DialogHeader>
-                            <Form {...createForm}>
-                                <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)}>
-                                    <ScrollArea className="max-h-[calc(100vh-12rem)]">
-                                        <div className="space-y-4 p-4">
-                                            <FormField
-                                            control={createForm.control}
-                                            name="supplierName"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>Supplier</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select a supplier" />
-                                                    </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                    {suppliers.map(supplier => (
-                                                        <SelectItem key={supplier.id} value={supplier.name}>
-                                                        {supplier.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                            />
-                                            <div>
-                                                <FormLabel>Line Items</FormLabel>
-                                                <div className="space-y-2 mt-2">
-                                                    {createFields.map((field, index) => { const itemDetails = masterData.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
-                                                </div>
-                                                {createFields.length === 0 && ( <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p> )}
-                                                <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
-                                            </div>
-                                            <AddItemForm masterData={masterData} onAddItem={createAppend} />
-                                        </div>
-                                    </ScrollArea>
-                                    <DialogFooter className="mt-4">
-                                        <div className="flex justify-end gap-2 w-full">
-                                            <DialogClose asChild>
-                                                <Button variant="outline" type="button">Cancel</Button>
-                                            </DialogClose>
-                                            <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
-                                        </div>
-                                    </DialogFooter>
-                                </form>
-                            </Form>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>PO ID</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead className="text-right">Total Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPurchaseOrders.length > 0 ? (
-                    filteredPurchaseOrders.map((po) => (
-                    <TableRow key={po.id}>
-                        <TableCell>{po.date}</TableCell>
-                        <TableCell className="font-mono">{po.id}</TableCell>
-                        <TableCell className="font-medium">{po.supplierName}</TableCell>
-                        <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
-                        <TableCell>
-                        <Badge 
-                            variant={statusVariant[po.status]}
-                            className={po.status === 'Paid' ? 'bg-green-600 text-white' : ''}
-                        >
-                            {po.status}
-                        </Badge>
-                        </TableCell>
-                        <TableCell>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0"> <span className="sr-only">Open menu</span> <MoreHorizontal className="h-4 w-4" /> </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openCreateOrEditDialog(po)} disabled={po.status !== 'Draft'}> View/Edit </DropdownMenuItem>
-                                {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}> Mark as Sent </DropdownMenuItem> )}
-                                {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
-                                {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
-                                {po.status === 'Paid' && ( <DropdownMenuItem disabled>Payment Complete</DropdownMenuItem> )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => prepareAndPrint(po)}>
-                                    <Printer className="mr-2 h-4 w-4" />
-                                    <span>Print</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleShare(po)}>
-                                    <Share2 className="mr-2 h-4 w-4" />
-                                    <span>Share</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableCell>
-                    </TableRow>
-                    ))
-                ) : (
-                    <TableRow>
-                        <TableCell colSpan={6} className="text-center">
-                            No purchase orders found. Enable dummy data in the dashboard's development tab to see sample entries.
-                        </TableCell>
-                    </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </main>
-
-       {/* Receive Items Dialog */}
-       <Dialog open={isReceiveDialogOpen} onOpenChange={setIsReceiveDialogOpen}>
-            <DialogContent className="sm:max-w-3xl">
-                <DialogHeader> <DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle> <CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription> </DialogHeader>
-                <Form {...receiveForm}>
-                    <form onSubmit={receiveForm.handleSubmit(handleReceiveSubmit)}>
-                        <ScrollArea className="max-h-[calc(100vh-12rem)]">
-                            <div className="p-4">
-                                <Table>
-                                    <TableHeader> <TableRow> <TableHead>Item</TableHead> <TableHead className="w-24">Quantity</TableHead> <TableHead className="w-40">Unit Price</TableHead> <TableHead className="w-40 text-right">Total Value</TableHead> </TableRow> </TableHeader>
-                                    <TableBody>
-                                        {receiveFields.map((field, index) => {
-                                            const itemDetails = masterData.find(i => i.itemCode === field.itemId);
-                                            const quantity = receiveForm.watch(`lineItems.${index}.quantity`);
-                                            const unitPrice = receiveForm.watch(`lineItems.${index}.unitPrice`);
-                                            const totalValue = (quantity || 0) * (unitPrice || 0);
-                                            if(receiveForm.getValues(`lineItems.${index}.totalValue`) !== totalValue) {
-                                                receiveForm.setValue(`lineItems.${index}.totalValue`, totalValue);
-                                            }
-                                            return (
-                                                <TableRow key={field.id}>
-                                                    <TableCell className="font-medium">{itemDetails?.name}</TableCell>
-                                                    <TableCell>{quantity}</TableCell>
-                                                    <TableCell> <FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => ( <FormItem> <FormControl> <Input type="number" placeholder="e.g. 10.50" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> </TableCell>
-                                                    <TableCell className="text-right font-mono">{currency.code} {totalValue.toFixed(2)}</TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </ScrollArea>
-                        <DialogFooter className="mt-4"> <DialogClose asChild> <Button variant="outline" type="button">Cancel</Button> </DialogClose> <Button type="submit">Confirm &amp; Receive Stock</Button> </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
-
-        {/* Payment Dialog */}
-        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-            <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Record Payment for PO {selectedPO?.id}</DialogTitle>
-                    <CardDescription>
-                        Total: {currency.code} {selectedPO?.totalAmount.toFixed(2)} | Paid: {currency.code} {amountPaid.toFixed(2)} | Remaining: {currency.code} {remainingAmount.toFixed(2)}
-                    </CardDescription>
-                </DialogHeader>
-                 <Form {...paymentForm}>
-                    <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)}>
-                        <ScrollArea className="max-h-[calc(100vh-12rem)]">
-                            <div className="space-y-4 p-4">
-                                <FormField
-                                        control={paymentForm.control}
-                                        name="amount"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Amount</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={paymentForm.control}
-                                        name="method"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Payment Method</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
+      <div className='no-print'>
+        <header className="flex items-center p-4 border-b">
+            <SidebarTrigger />
+            <h1 className="text-xl font-semibold ml-4">Purchase Orders</h1>
+        </header>
+        <main className="p-4">
+            <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Purchase Orders</CardTitle>
+                        <CardDescription>
+                        Create and manage purchase orders for raw materials.
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Input placeholder="Search POs..." className="w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setEditingPO(null); createForm.reset(); createRemove(); } setIsCreateDialogOpen(isOpen); }}>
+                            <DialogTrigger asChild>
+                                <Button onClick={() => openCreateOrEditDialog(null)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Create New PO
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle>{editingPO ? `Edit Purchase Order ${editingPO.id}` : 'Create New Purchase Order'}</DialogTitle>
+                                </DialogHeader>
+                                <Form {...createForm}>
+                                    <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)}>
+                                        <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                                            <div className="space-y-4 p-4">
+                                                <FormField
+                                                control={createForm.control}
+                                                name="supplierName"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                    <FormLabel>Supplier</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder="Select a payment method" />
+                                                            <SelectValue placeholder="Select a supplier" />
                                                         </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (
-                                                            <SelectItem key={method} value={method}>
-                                                                {method}
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                        {suppliers.map(supplier => (
+                                                            <SelectItem key={supplier.id} value={supplier.name}>
+                                                            {supplier.name}
                                                             </SelectItem>
                                                         ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    {paymentMethod === 'Card' && (
-                                        <FormField
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                                />
+                                                <div>
+                                                    <FormLabel>Line Items</FormLabel>
+                                                    <div className="space-y-2 mt-2">
+                                                        {createFields.map((field, index) => { const itemDetails = masterData.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
+                                                    </div>
+                                                    {createFields.length === 0 && ( <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p> )}
+                                                    <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
+                                                </div>
+                                                <AddItemForm masterData={masterData} onAddItem={createAppend} />
+                                            </div>
+                                        </ScrollArea>
+                                        <DialogFooter className="mt-4">
+                                            <div className="flex justify-end gap-2 w-full">
+                                                <DialogClose asChild>
+                                                    <Button variant="outline" type="button">Cancel</Button>
+                                                </DialogClose>
+                                                <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
+                                            </div>
+                                        </DialogFooter>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>PO ID</TableHead>
+                    <TableHead>Supplier</TableHead>
+                    <TableHead className="text-right">Total Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {filteredPurchaseOrders.length > 0 ? (
+                        filteredPurchaseOrders.map((po) => (
+                        <TableRow key={po.id}>
+                            <TableCell>{po.date}</TableCell>
+                            <TableCell className="font-mono">{po.id}</TableCell>
+                            <TableCell className="font-medium">{po.supplierName}</TableCell>
+                            <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
+                            <TableCell>
+                            <Badge 
+                                variant={statusVariant[po.status]}
+                                className={po.status === 'Paid' ? 'bg-green-600 text-white' : ''}
+                            >
+                                {po.status}
+                            </Badge>
+                            </TableCell>
+                            <TableCell>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0"> <span className="sr-only">Open menu</span> <MoreHorizontal className="h-4 w-4" /> </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => openCreateOrEditDialog(po)} disabled={po.status !== 'Draft'}> View/Edit </DropdownMenuItem>
+                                    {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}> Mark as Sent </DropdownMenuItem> )}
+                                    {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
+                                    {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
+                                    {po.status === 'Paid' && ( <DropdownMenuItem disabled>Payment Complete</DropdownMenuItem> )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handlePrint(po)}>
+                                        <Printer className="mr-2 h-4 w-4" />
+                                        <span>Print</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleShare(po)}>
+                                        <Share2 className="mr-2 h-4 w-4" />
+                                        <span>Share</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={6} className="text-center">
+                                No purchase orders found. Enable dummy data in the dashboard's development tab to see sample entries.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+                </Table>
+            </CardContent>
+            </Card>
+        </main>
+
+        {/* Receive Items Dialog */}
+        <Dialog open={isReceiveDialogOpen} onOpenChange={setIsReceiveDialogOpen}>
+                <DialogContent className="sm:max-w-3xl">
+                    <DialogHeader> <DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle> <CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription> </DialogHeader>
+                    <Form {...receiveForm}>
+                        <form onSubmit={receiveForm.handleSubmit(handleReceiveSubmit)}>
+                            <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                                <div className="p-4">
+                                    <Table>
+                                        <TableHeader> <TableRow> <TableHead>Item</TableHead> <TableHead className="w-24">Quantity</TableHead> <TableHead className="w-40">Unit Price</TableHead> <TableHead className="w-40 text-right">Total Value</TableHead> </TableRow> </TableHeader>
+                                        <TableBody>
+                                            {receiveFields.map((field, index) => {
+                                                const itemDetails = masterData.find(i => i.itemCode === field.itemId);
+                                                const quantity = receiveForm.watch(`lineItems.${index}.quantity`);
+                                                const unitPrice = receiveForm.watch(`lineItems.${index}.unitPrice`);
+                                                const totalValue = (quantity || 0) * (unitPrice || 0);
+                                                if(receiveForm.getValues(`lineItems.${index}.totalValue`) !== totalValue) {
+                                                    receiveForm.setValue(`lineItems.${index}.totalValue`, totalValue);
+                                                }
+                                                return (
+                                                    <TableRow key={field.id}>
+                                                        <TableCell className="font-medium">{itemDetails?.name}</TableCell>
+                                                        <TableCell>{quantity}</TableCell>
+                                                        <TableCell> <FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => ( <FormItem> <FormControl> <Input type="number" placeholder="e.g. 10.50" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> </TableCell>
+                                                        <TableCell className="text-right font-mono">{currency.code} {totalValue.toFixed(2)}</TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </ScrollArea>
+                            <DialogFooter className="mt-4"> <DialogClose asChild> <Button variant="outline" type="button">Cancel</Button> </DialogClose> <Button type="submit">Confirm &amp; Receive Stock</Button> </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Payment Dialog */}
+            <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Record Payment for PO {selectedPO?.id}</DialogTitle>
+                        <CardDescription>
+                            Total: {currency.code} {selectedPO?.totalAmount.toFixed(2)} | Paid: {currency.code} {amountPaid.toFixed(2)} | Remaining: {currency.code} {remainingAmount.toFixed(2)}
+                        </CardDescription>
+                    </DialogHeader>
+                    <Form {...paymentForm}>
+                        <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)}>
+                            <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                                <div className="space-y-4 p-4">
+                                    <FormField
                                             control={paymentForm.control}
-                                            name="cardLast4"
+                                            name="amount"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Last 4 Digits of Card</FormLabel>
+                                                    <FormLabel>Amount</FormLabel>
                                                     <FormControl>
-                                                        <Input placeholder="1234" maxLength={4} {...field} />
+                                                        <Input type="number" {...field} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
-                                    )}
-                                    {paymentMethod === 'Online' && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div className="space-y-4">
-                                                <h4 className="font-medium text-sm">From</h4>
-                                                <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField
+                                            control={paymentForm.control}
+                                            name="method"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Payment Method</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select a payment method" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (
+                                                                <SelectItem key={method} value={method}>
+                                                                    {method}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        {paymentMethod === 'Card' && (
+                                            <FormField
+                                                control={paymentForm.control}
+                                                name="cardLast4"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Last 4 Digits of Card</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="1234" maxLength={4} {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        )}
+                                        {paymentMethod === 'Online' && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-4">
+                                                    <h4 className="font-medium text-sm">From</h4>
+                                                    <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <h4 className="font-medium text-sm">To</h4>
+                                                    <FormField control={paymentForm.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                </div>
                                             </div>
+                                        )}
+                                        {paymentMethod === 'Cheque' && (
                                             <div className="space-y-4">
-                                                <h4 className="font-medium text-sm">To</h4>
-                                                <FormField control={paymentForm.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField
+                                                    control={paymentForm.control}
+                                                    name="chequeBank"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Bank Name</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="e.g. National Bank" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={paymentForm.control}
+                                                    name="chequeNumber"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Cheque Number</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="e.g. 987654" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={paymentForm.control}
+                                                    name="chequeDate"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Cheque Date</FormLabel>
+                                                            <FormControl>
+                                                                <Input type="date" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
                                             </div>
-                                        </div>
-                                    )}
-                                    {paymentMethod === 'Cheque' && (
-                                        <div className="space-y-4">
-                                            <FormField
-                                                control={paymentForm.control}
-                                                name="chequeBank"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Bank Name</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g. National Bank" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={paymentForm.control}
-                                                name="chequeNumber"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Cheque Number</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g. 987654" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={paymentForm.control}
-                                                name="chequeDate"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Cheque Date</FormLabel>
-                                                        <FormControl>
-                                                            <Input type="date" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </ScrollArea>
-                        <DialogFooter className="mt-4">
-                            <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button type="submit">Record Payment</Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            <DialogFooter className="mt-4">
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancel</Button>
+                                </DialogClose>
+                                <Button type="submit">Record Payment</Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+        </div>
     </>
   );
 }
 
-// Component for printing - hidden from view
-class PrintablePO extends React.Component<{ po: PurchaseOrder | null; masterData: MasterDataItem[], currency: any }> {
-    render() {
-        const { po, masterData, currency } = this.props;
-        if (!po) return null;
+// Component for printing - rendered conditionally in a hidden div
+const PrintablePO = ({ po, masterData, currency }: { po: PurchaseOrder | null; masterData: MasterDataItem[], currency: any }) => {
+    if (!po) return null;
 
-        return (
-            <div className="p-8">
-                <h1 className="text-2xl font-bold mb-4">Purchase Order: {po.id}</h1>
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                <div>
-                    <p><strong>Supplier:</strong> {po.supplierName}</p>
-                    <p><strong>Date:</strong> {po.date}</p>
-                </div>
-                <div className="text-right">
-                    <p><strong>Status:</strong> {po.status}</p>
-                </div>
-                </div>
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Item Code</TableHead>
-                    <TableHead>Item Name</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    {po.status !== 'Draft' && <TableHead className="text-right">Unit Price</TableHead>}
-                    {po.status !== 'Draft' && <TableHead className="text-right">Total Value</TableHead>}
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {po.lineItems.map(item => {
-                    const itemDetails = masterData.find(md => md.itemCode === item.itemId);
-                    return (
-                        <TableRow key={item.itemId}>
-                        <TableCell>{item.itemId}</TableCell>
-                        <TableCell>{itemDetails?.name || 'N/A'}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {item.unitPrice?.toFixed(2) || '0.00'}</TableCell>}
-                        {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {item.totalValue?.toFixed(2) || '0.00'}</TableCell>}
-                        </TableRow>
-                    );
-                    })}
-                </TableBody>
-                </Table>
-                {po.status !== 'Draft' && (
-                    <div className="text-right mt-4 text-xl font-bold">
-                        Total: {currency.code} {po.totalAmount.toFixed(2)}
-                    </div>
-                )}
+    return (
+        <div className="p-8">
+            <h1 className="text-2xl font-bold mb-4">Purchase Order: {po.id}</h1>
+            <div className="grid grid-cols-2 gap-4 mb-8">
+            <div>
+                <p><strong>Supplier:</strong> {po.supplierName}</p>
+                <p><strong>Date:</strong> {po.date}</p>
             </div>
-        );
-    }
-}
+            <div className="text-right">
+                <p><strong>Status:</strong> {po.status}</p>
+            </div>
+            </div>
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead>Item Code</TableHead>
+                <TableHead>Item Name</TableHead>
+                <TableHead className="text-right">Quantity</TableHead>
+                {po.status !== 'Draft' && <TableHead className="text-right">Unit Price</TableHead>}
+                {po.status !== 'Draft' && <TableHead className="text-right">Total Value</TableHead>}
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {po.lineItems.map(item => {
+                const itemDetails = masterData.find(md => md.itemCode === item.itemId);
+                return (
+                    <TableRow key={item.itemId}>
+                    <TableCell>{item.itemId}</TableCell>
+                    <TableCell>{itemDetails?.name || 'N/A'}</TableCell>
+                    <TableCell className="text-right">{item.quantity}</TableCell>
+                    {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {item.unitPrice?.toFixed(2) || '0.00'}</TableCell>}
+                    {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {item.totalValue?.toFixed(2) || '0.00'}</TableCell>}
+                    </TableRow>
+                );
+                })}
+            </TableBody>
+            </Table>
+            {po.status !== 'Draft' && (
+                <div className="text-right mt-4 text-xl font-bold">
+                    Total: {currency.code} {po.totalAmount.toFixed(2)}
+                </div>
+            )}
+        </div>
+    );
+};
+
+    

@@ -58,7 +58,6 @@ import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
 import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
 import type { MasterDataItem } from '../../data/master-data/page';
-import { useReactToPrint } from 'react-to-print';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const lineItemSchema = z.object({
@@ -153,7 +152,7 @@ export default function QuotationsPage() {
     const [customers] = useAtom(customersAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
-    const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+    const [quotationToPrint, setQuotationToPrint] = useState<Quotation | null>(null);
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
@@ -161,18 +160,15 @@ export default function QuotationsPage() {
     const [useDummyData] = useAtom(useDummyDataAtom);
     const [, seedData] = useAtom(dataSeederAtom);
 
-    const printRef = useRef(null);
-    const handlePrint = useReactToPrint({
-        content: () => printRef.current,
-        documentTitle: `Quotation ${selectedQuotation?.id}`,
-    });
+    useEffect(() => {
+        if (quotationToPrint) {
+            window.print();
+            setQuotationToPrint(null);
+        }
+    }, [quotationToPrint]);
 
-    const prepareAndPrint = (quote: Quotation) => {
-        setSelectedQuotation(quote);
-        // This timeout ensures the state is set before printing begins
-        setTimeout(() => {
-            handlePrint();
-        }, 100);
+    const handlePrint = (quote: Quotation) => {
+        setQuotationToPrint(quote);
     };
 
     useEffect(() => {
@@ -363,275 +359,297 @@ export default function QuotationsPage() {
 
   return (
     <>
-      <div className="hidden">
-        <PrintableQuotation ref={printRef} quotation={selectedQuotation} masterData={masterData} currency={currency} />
+      <style>
+        {`
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            #print-area, #print-area * {
+              visibility: visible;
+            }
+            #print-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            .no-print {
+              display: none;
+            }
+          }
+        `}
+      </style>
+      <div id="print-area">
+        {quotationToPrint && <PrintableQuotation quotation={quotationToPrint} masterData={masterData} currency={currency} />}
       </div>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Quotations</h1>
-      </header>
-      <main className="p-4">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Quotations</CardTitle>
-                    <CardDescription>
-                    Create and manage sales quotations for your customers.
-                    </CardDescription>
-                </div>
-                <div className='flex items-center gap-2'>
-                    <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
-                        if (!isOpen) {
-                            form.reset();
-                            remove();
-                            setEditingQuotation(null);
-                        }
-                        setIsDialogOpen(isOpen);
-                    }}>
-                        <DialogTrigger asChild>
-                            <Button onClick={() => openCreateOrEditDialog(null)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Create New Quotation
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-2xl">
-                            <DialogHeader>
-                                <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.id}` : 'Create New Quotation'}</DialogTitle>
-                            </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)}>
-                                    <ScrollArea className="max-h-[calc(100vh-12rem)]">
-                                        <div className="space-y-4 p-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="customer"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                    <FormLabel>Customer</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select a customer" />
-                                                        </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {customers.map(customer => (
-                                                                <SelectItem key={customer.id} value={customer.name}>
-                                                                    {customer.name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <div>
-                                                <FormLabel>Line Items</FormLabel>
-                                                <div className="space-y-2 mt-2">
-                                                    <Table>
-                                                        <TableHeader>
-                                                            <TableRow>
-                                                                <TableHead>Item</TableHead>
-                                                                <TableHead className="w-20">Qty</TableHead>
-                                                                <TableHead className="w-28 text-right">Unit Price</TableHead>
-                                                                <TableHead className="w-28 text-right">Total</TableHead>
-                                                                <TableHead className="w-10"></TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {fields.map((field, index) => {
-                                                                const itemDetails = masterData.find(i => i.itemCode === field.itemId);
-                                                                return (
-                                                                <TableRow key={field.id}>
-                                                                    <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
-                                                                    <TableCell>{field.quantity}</TableCell>
-                                                                    <TableCell className="text-right">{currency.code} {field.unitPrice.toFixed(2)}</TableCell>
-                                                                    <TableCell className="text-right">{currency.code} {field.totalValue.toFixed(2)}</TableCell>
-                                                                    <TableCell>
-                                                                        <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
-                                                                            <Trash2 className="h-4 w-4 text-destructive"/>
-                                                                        </Button>
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            )})}
-                                                        </TableBody>
-                                                    </Table>
-                                                    {fields.length === 0 && (
-                                                        <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
+      <div className="no-print">
+        <header className="flex items-center p-4 border-b">
+            <SidebarTrigger />
+            <h1 className="text-xl font-semibold ml-4">Quotations</h1>
+        </header>
+        <main className="p-4">
+            <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Quotations</CardTitle>
+                        <CardDescription>
+                        Create and manage sales quotations for your customers.
+                        </CardDescription>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                        <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
+                            if (!isOpen) {
+                                form.reset();
+                                remove();
+                                setEditingQuotation(null);
+                            }
+                            setIsDialogOpen(isOpen);
+                        }}>
+                            <DialogTrigger asChild>
+                                <Button onClick={() => openCreateOrEditDialog(null)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Create New Quotation
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.id}` : 'Create New Quotation'}</DialogTitle>
+                                </DialogHeader>
+                                <Form {...form}>
+                                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                                        <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                                            <div className="space-y-4 p-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="customer"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                        <FormLabel>Customer</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select a customer" />
+                                                            </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                {customers.map(customer => (
+                                                                    <SelectItem key={customer.id} value={customer.name}>
+                                                                        {customer.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                        </FormItem>
                                                     )}
-                                                    <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
+                                                />
+                                                <div>
+                                                    <FormLabel>Line Items</FormLabel>
+                                                    <div className="space-y-2 mt-2">
+                                                        <Table>
+                                                            <TableHeader>
+                                                                <TableRow>
+                                                                    <TableHead>Item</TableHead>
+                                                                    <TableHead className="w-20">Qty</TableHead>
+                                                                    <TableHead className="w-28 text-right">Unit Price</TableHead>
+                                                                    <TableHead className="w-28 text-right">Total</TableHead>
+                                                                    <TableHead className="w-10"></TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {fields.map((field, index) => {
+                                                                    const itemDetails = masterData.find(i => i.itemCode === field.itemId);
+                                                                    return (
+                                                                    <TableRow key={field.id}>
+                                                                        <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
+                                                                        <TableCell>{field.quantity}</TableCell>
+                                                                        <TableCell className="text-right">{currency.code} {field.unitPrice.toFixed(2)}</TableCell>
+                                                                        <TableCell className="text-right">{currency.code} {field.totalValue.toFixed(2)}</TableCell>
+                                                                        <TableCell>
+                                                                            <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
+                                                                                <Trash2 className="h-4 w-4 text-destructive"/>
+                                                                            </Button>
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                )})}
+                                                            </TableBody>
+                                                        </Table>
+                                                        {fields.length === 0 && (
+                                                            <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
+                                                        )}
+                                                        <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
+                                                    </div>
+                                                </div>
+                                                
+                                                <AddItemForm masterData={masterData} onAddItem={append} />
+                                            </div>
+                                        </ScrollArea>
+                                        <DialogFooter className="mt-4">
+                                            <div className='w-full flex justify-between items-center'>
+                                                <div className="text-lg font-semibold">
+                                                    Total: {currency.code} {totalAmount.toFixed(2)}
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <DialogClose asChild>
+                                                        <Button variant="outline" type="button">Cancel</Button></DialogClose>
+                                                    <Button type="submit">{editingQuotation ? 'Save Changes' : 'Create Quotation'}</Button>
                                                 </div>
                                             </div>
-                                            
-                                            <AddItemForm masterData={masterData} onAddItem={append} />
-                                        </div>
-                                    </ScrollArea>
-                                    <DialogFooter className="mt-4">
-                                        <div className='w-full flex justify-between items-center'>
-                                            <div className="text-lg font-semibold">
-                                                Total: {currency.code} {totalAmount.toFixed(2)}
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <DialogClose asChild>
-                                                    <Button variant="outline" type="button">Cancel</Button></DialogClose>
-                                                <Button type="submit">{editingQuotation ? 'Save Changes' : 'Create Quotation'}</Button>
-                                            </div>
-                                        </div>
-                                    </DialogFooter>
-                                </form>
-                            </Form>
-                        </DialogContent>
-                    </Dialog>
+                                        </DialogFooter>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                 </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Quotation ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedQuotations.length > 0 ? (
-                    sortedQuotations.map((quote) => (
-                    <TableRow key={quote.id}>
-                        <TableCell>{quote.date}</TableCell>
-                        <TableCell className="font-mono">{quote.id}</TableCell>
-                        <TableCell className="font-medium">{quote.customer}</TableCell>
-                        <TableCell className="text-right">{currency.code} {quote.amount.toFixed(2)}</TableCell>
-                        <TableCell>
-                        <Badge 
-                            variant={statusVariant[quote.status] || 'secondary'}
-                            className={quote.status === 'Converted' ? 'bg-green-600 text-white' : ''}
-                        >
-                            {quote.status}
-                        </Badge>
-                        </TableCell>
-                        <TableCell>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    {quote.status === 'Draft' && (
-                                        <>
-                                            <DropdownMenuItem onClick={() => openCreateOrEditDialog(quote)}>
-                                                View/Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Sent')}>
-                                                Mark as Sent
-                                            </DropdownMenuItem>
-                                        </>
-                                    )}
-                                    {quote.status === 'Sent' && (
-                                        <>
-                                            <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Approved')}>
-                                                Approve
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Rejected')} className="text-destructive">
-                                                Reject
-                                            </DropdownMenuItem>
-                                        </>
-                                    )}
-                                    {quote.status === 'Approved' && (
-                                        <DropdownMenuItem onClick={() => handleConvertToOrder(quote.id)}>
-                                            Convert to Sale Order
-                                        </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuSeparator />
-                                     <DropdownMenuItem onClick={() => prepareAndPrint(quote)}>
-                                        <Printer className="mr-2 h-4 w-4" />
-                                        <span>Print</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleShare(quote)}>
-                                        <Share2 className="mr-2 h-4 w-4" />
-                                        <span>Share</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
-                                        className="text-destructive" 
-                                        onClick={() => handleDelete(quote.id)}
-                                        disabled={!['Draft', 'Rejected'].includes(quote.status)}
-                                    >
-                                        Delete
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableCell>
-                    </TableRow>
-                    ))
-                ) : (
+            </CardHeader>
+            <CardContent>
+                <Table>
+                <TableHeader>
                     <TableRow>
-                        <TableCell colSpan={6} className="text-center">
-                           No quotations found. Enable dummy data in the dashboard's development tab to see sample entries.
-                        </TableCell>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Quotation ID</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </main>
+                </TableHeader>
+                <TableBody>
+                    {sortedQuotations.length > 0 ? (
+                        sortedQuotations.map((quote) => (
+                        <TableRow key={quote.id}>
+                            <TableCell>{quote.date}</TableCell>
+                            <TableCell className="font-mono">{quote.id}</TableCell>
+                            <TableCell className="font-medium">{quote.customer}</TableCell>
+                            <TableCell className="text-right">{currency.code} {quote.amount.toFixed(2)}</TableCell>
+                            <TableCell>
+                            <Badge 
+                                variant={statusVariant[quote.status] || 'secondary'}
+                                className={quote.status === 'Converted' ? 'bg-green-600 text-white' : ''}
+                            >
+                                {quote.status}
+                            </Badge>
+                            </TableCell>
+                            <TableCell>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        {quote.status === 'Draft' && (
+                                            <>
+                                                <DropdownMenuItem onClick={() => openCreateOrEditDialog(quote)}>
+                                                    View/Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Sent')}>
+                                                    Mark as Sent
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
+                                        {quote.status === 'Sent' && (
+                                            <>
+                                                <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Approved')}>
+                                                    Approve
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'Rejected')} className="text-destructive">
+                                                    Reject
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
+                                        {quote.status === 'Approved' && (
+                                            <DropdownMenuItem onClick={() => handleConvertToOrder(quote.id)}>
+                                                Convert to Sale Order
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => handlePrint(quote)}>
+                                            <Printer className="mr-2 h-4 w-4" />
+                                            <span>Print</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleShare(quote)}>
+                                            <Share2 className="mr-2 h-4 w-4" />
+                                            <span>Share</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem 
+                                            className="text-destructive" 
+                                            onClick={() => handleDelete(quote.id)}
+                                            disabled={!['Draft', 'Rejected'].includes(quote.status)}
+                                        >
+                                            Delete
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={6} className="text-center">
+                            No quotations found. Enable dummy data in the dashboard's development tab to see sample entries.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+                </Table>
+            </CardContent>
+            </Card>
+        </main>
+      </div>
     </>
   );
 }
 
-// Component for printing - hidden from view
-class PrintableQuotation extends React.Component<{ quotation: Quotation | null; masterData: MasterDataItem[], currency: any }> {
-    render() {
-        const { quotation, masterData, currency } = this.props;
-        if (!quotation) return null;
+// Component for printing - rendered conditionally in a hidden div
+const PrintableQuotation = ({ quotation, masterData, currency }: { quotation: Quotation | null; masterData: MasterDataItem[], currency: any }) => {
+    if (!quotation) return null;
 
-        return (
-            <div className="p-8">
-                <h1 className="text-2xl font-bold mb-4">Quotation: {quotation.id}</h1>
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                <div>
-                    <p><strong>Customer:</strong> {quotation.customer}</p>
-                    <p><strong>Date:</strong> {quotation.date}</p>
-                </div>
-                <div className="text-right">
-                    <p><strong>Status:</strong> {quotation.status}</p>
-                </div>
-                </div>
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {quotation.lineItems.map(item => {
-                    const itemDetails = masterData.find(md => md.itemCode === item.itemId);
-                    return (
-                        <TableRow key={item.itemId}>
-                        <TableCell>{itemDetails?.name || item.itemId}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
-                        </TableRow>
-                    );
-                    })}
-                </TableBody>
-                </Table>
-                <div className="text-right mt-4 text-xl font-bold">
-                    Total: {currency.code} {quotation.amount.toFixed(2)}
-                </div>
+    return (
+        <div className="p-8">
+            <h1 className="text-2xl font-bold mb-4">Quotation: {quotation.id}</h1>
+            <div className="grid grid-cols-2 gap-4 mb-8">
+            <div>
+                <p><strong>Customer:</strong> {quotation.customer}</p>
+                <p><strong>Date:</strong> {quotation.date}</p>
             </div>
-        );
-    }
-}
+            <div className="text-right">
+                <p><strong>Status:</strong> {quotation.status}</p>
+            </div>
+            </div>
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead className="text-right">Quantity</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {quotation.lineItems.map(item => {
+                const itemDetails = masterData.find(md => md.itemCode === item.itemId);
+                return (
+                    <TableRow key={item.itemId}>
+                    <TableCell>{itemDetails?.name || item.itemId}</TableCell>
+                    <TableCell className="text-right">{item.quantity}</TableCell>
+                    <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
+                    </TableRow>
+                );
+                })}
+            </TableBody>
+            </Table>
+            <div className="text-right mt-4 text-xl font-bold">
+                Total: {currency.code} {quotation.amount.toFixed(2)}
+            </div>
+        </div>
+    );
+};
+
+    
