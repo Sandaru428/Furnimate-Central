@@ -620,7 +620,7 @@ export default function PurchaseOrdersPage() {
                           <ScrollArea className="flex-1 pr-6">
                               <div className="py-4">
                                   <Table>
-                                      <TableHeader> <TableRow> <TableHead>Item</TableHead> <TableHead className="w-24">Quantity</TableHead> <TableHead className="w-40">Unit Price</TableHead> <TableHead className="w-40 text-right">Total Value</TableHead> </TableRow> </TableHeader>
+                                      <TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="w-24">Quantity</TableHead><TableHead className="w-40">Unit Price</TableHead><TableHead className="w-40 text-right">Total Value</TableHead></TableRow></TableHeader>
                                       <TableBody>
                                           {receiveFields.map((field, index) => {
                                               const itemDetails = masterData.find(i => i.itemCode === field.itemId);
