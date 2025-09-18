@@ -11,7 +11,7 @@ export const initialSuppliersData = [
   { id: 'SUP-001', name: 'Timber Co.', contact: 'John Doe, 555-123-4567' },
   { id: 'SUP-002', name: 'Fabric Solutions', contact: 'Jane Smith, 555-987-6543' },
   { id: 'SUP-003', name: 'MetalWorks Inc.', contact: 'Bob Johnson, 555-456-7890' },
-  { id 'SUP-004', name: 'Finishing Touches', contact: 'Alice Williams, 555-321-9876' },
+  { id: 'SUP-004', name: 'Finishing Touches', contact: 'Alice Williams, 555-321-9876' },
 ];
 
 export const initialMasterData = [
