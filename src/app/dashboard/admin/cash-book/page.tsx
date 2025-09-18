@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -19,21 +19,29 @@ import {
 } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAtom } from 'jotai';
-import { paymentsAtom, currencyAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
+import { paymentsAtom, currencyAtom } from '@/lib/store';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { db } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import type { Payment } from '@/lib/store';
 
 
 export default function CashBookPage() {
-    const [payments] = useAtom(paymentsAtom);
+    const [payments, setPayments] = useAtom(paymentsAtom);
     const [currency] = useAtom(currencyAtom);
-
-    const [useDummyData] = useAtom(useDummyDataAtom);
-    const [, seedData] = useAtom(dataSeederAtom);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        seedData(useDummyData);
-    }, [useDummyData, seedData]);
+        const fetchPayments = async () => {
+            setLoading(true);
+            const querySnapshot = await getDocs(collection(db, "payments"));
+            const paymentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+            setPayments(paymentsData);
+            setLoading(false);
+        };
+        fetchPayments();
+    }, [setPayments]);
     
     const sortedPayments = [...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -65,7 +73,13 @@ export default function CashBookPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedPayments.length > 0 ? (
+                {loading ? (
+                    <TableRow>
+                        <TableCell colSpan={6} className="text-center">
+                            Loading...
+                        </TableCell>
+                    </TableRow>
+                ) : sortedPayments.length > 0 ? (
                     sortedPayments.map((payment) => (
                     <TableRow key={payment.id}>
                         <TableCell>{payment.date}</TableCell>
@@ -92,7 +106,7 @@ export default function CashBookPage() {
                 ) : (
                     <TableRow>
                         <TableCell colSpan={6} className="text-center">
-                            No transactions found. Enable dummy data in the dashboard's development tab to see sample entries.
+                            No transactions found.
                         </TableCell>
                     </TableRow>
                 )}

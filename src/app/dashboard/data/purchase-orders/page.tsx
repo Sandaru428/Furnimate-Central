@@ -63,11 +63,11 @@ import {
     purchaseOrdersAtom,
     masterDataAtom,
     suppliersAtom,
-    useDummyDataAtom,
-    dataSeederAtom
 } from '@/lib/store';
 import type { MasterDataItem } from '../master-data/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 
 
 const lineItemSchema = z.object({
@@ -192,13 +192,30 @@ export default function PurchaseOrdersPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
-
-    const [useDummyData] = useAtom(useDummyDataAtom);
-    const [, seedData] = useAtom(dataSeederAtom);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        seedData(useDummyData);
-    }, [useDummyData, seedData]);
+        const fetchData = async () => {
+            setLoading(true);
+            const poSnapshot = await getDocs(collection(db, "purchaseOrders"));
+            const poData = poSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as PurchaseOrder));
+            setPurchaseOrders(poData);
+
+            const masterDataSnapshot = await getDocs(collection(db, "masterData"));
+            const masterData = masterDataSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MasterDataItem));
+            setMasterData(masterData);
+
+            const suppliersSnapshot = await getDocs(collection(db, "suppliers"));
+            const suppliersData = suppliersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            // We are not setting suppliers to atom store here because it is already being fetched in its own page.
+            
+            const paymentsSnapshot = await getDocs(collection(db, "payments"));
+            const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
+            setPayments(paymentsData);
+            setLoading(false);
+        };
+        fetchData();
+    }, [setPurchaseOrders, setMasterData, setPayments]);
     
     const handlePrint = (poId: string) => {
         router.push(`/dashboard/data/purchase-orders/${poId}/print`);
@@ -250,27 +267,32 @@ export default function PurchaseOrdersPage() {
     const remainingAmount = selectedPO ? selectedPO.totalAmount - amountPaid : 0;
 
 
-    function handleCreateOrUpdateSubmit(values: CreatePurchaseOrder) {
+    async function handleCreateOrUpdateSubmit(values: CreatePurchaseOrder) {
         if (editingPO) {
-            // Update logic, no price calculation here as it's done on fulfillment
+            // Update logic
             const updatedLineItems = values.lineItems.map(item => ({...item, unitPrice: undefined, totalValue: undefined }));
-
-            setPurchaseOrders(prevPOs => prevPOs.map(po => 
-                po.id === editingPO.id
-                ? { ...po, ...values, lineItems: updatedLineItems, status: 'Draft', totalAmount: 0 }
-                : po
-            ));
+            const updatedPO = { ...editingPO, ...values, lineItems: updatedLineItems, status: 'Draft', totalAmount: 0 };
+            
+            await setDoc(doc(db, "purchaseOrders", editingPO.id), updatedPO);
+            setPurchaseOrders(prevPOs => prevPOs.map(po => po.id === editingPO.id ? updatedPO : po ));
             toast({ title: 'Purchase Order Updated', description: `Purchase Order ${editingPO.id} has been updated.` });
         } else {
-            const nextId = purchaseOrders.length > 0 ? Math.max(...purchaseOrders.map(po => parseInt(po.id.split('-')[1]))) + 1 : 1;
+            // Create logic
+            const poCollection = collection(db, "purchaseOrders");
+            const poSnapshot = await getDocs(poCollection);
+            const nextId = poSnapshot.size > 0 ? Math.max(...poSnapshot.docs.map(d => parseInt(d.id.split('-')[1]))) + 1 : 1;
+            const newPOId = `PO-${String(nextId).padStart(3, '0')}`;
+            
             const newPO: PurchaseOrder = {
-                id: `PO-${String(nextId).padStart(3, '0')}`,
+                id: newPOId,
                 supplierName: values.supplierName,
                 date: format(new Date(), 'yyyy-MM-dd'),
                 status: 'Draft',
                 lineItems: values.lineItems,
-                totalAmount: 0, // Total amount is 0 for draft as prices are not final
+                totalAmount: 0,
             };
+            
+            await setDoc(doc(db, "purchaseOrders", newPOId), newPO);
             setPurchaseOrders([newPO, ...purchaseOrders]);
             toast({ title: 'Purchase Order Created', description: `Purchase Order ${newPO.id} has been saved as a draft.` });
         }
@@ -280,61 +302,47 @@ export default function PurchaseOrdersPage() {
         setEditingPO(null);
     }
     
-    function handleReceiveSubmit(values: ReceiveItemsForm) {
+    async function handleReceiveSubmit(values: ReceiveItemsForm) {
         if (!selectedPO) return;
         const totalAmount = values.lineItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-        setPurchaseOrders(prevPOs => prevPOs.map(po => 
-            po.id === selectedPO.id 
-            ? { ...po, status: 'Fulfilled', totalAmount, lineItems: values.lineItems } 
-            : po
-        ));
-        setMasterData(prevMasterData => {
-            const newMasterData = [...prevMasterData];
-            values.lineItems.forEach(receivedItem => {
-                const itemIndex = newMasterData.findIndex(md => md.itemCode === receivedItem.itemId);
-                if (itemIndex !== -1) {
-                    newMasterData[itemIndex].stockLevel += receivedItem.quantity;
-                }
-            });
-            return newMasterData;
-        });
+        const updatedPO = { ...selectedPO, status: 'Fulfilled' as const, totalAmount, lineItems: values.lineItems };
+
+        await updateDoc(doc(db, "purchaseOrders", selectedPO.id), updatedPO);
+        setPurchaseOrders(prevPOs => prevPOs.map(po => po.id === selectedPO.id ? updatedPO : po ));
+
+        for (const receivedItem of values.lineItems) {
+            const itemDocRef = doc(db, "masterData", receivedItem.itemId);
+            const itemDoc = await getDocs(collection(db, "masterData"));
+            const currentItem = itemDoc.docs.find(d => d.id === receivedItem.itemId)?.data() as MasterDataItem | undefined;
+            if (currentItem) {
+                 await updateDoc(itemDocRef, { stockLevel: currentItem.stockLevel + receivedItem.quantity });
+            }
+        }
+        
         toast({ title: 'Purchase Order Fulfilled', description: `Stock for PO ${selectedPO.id} has been updated.` });
         setIsReceiveDialogOpen(false);
         setSelectedPO(null);
     }
 
-    function onPaymentSubmit(values: PaymentFormValues) {
+    async function onPaymentSubmit(values: PaymentFormValues) {
         if (!selectedPO) return;
 
         const currentAmountPaid = payments.filter(p => p.orderId === selectedPO.id).reduce((acc, p) => acc + p.amount, 0);
         
         if (values.amount > selectedPO.totalAmount - currentAmountPaid) {
-            toast({
-                variant: 'destructive',
-                title: 'Invalid Amount',
-                description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedPO.totalAmount - currentAmountPaid).toFixed(2)}`,
-            });
+            toast({ variant: 'destructive', title: 'Invalid Amount', description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedPO.totalAmount - currentAmountPaid).toFixed(2)}`});
             return;
         }
 
         let details = '';
         switch(values.method) {
-            case 'Card':
-                details = `Card ending in ${values.cardLast4}`;
-                break;
-            case 'Online':
-                details = `From ${values.fromBankName} (${values.fromAccountNumber}) to ${values.toBankName} (${values.toAccountNumber})`;
-                break;
-             case 'Cheque':
-                details = `${values.chequeBank} Cheque #${values.chequeNumber}, dated ${values.chequeDate}`;
-                break;
-            default:
-                details = 'N/A';
+            case 'Card': details = `Card ending in ${values.cardLast4}`; break;
+            case 'Online': details = `From ${values.fromBankName} (${values.fromAccountNumber}) to ${values.toBankName} (${values.toAccountNumber})`; break;
+            case 'Cheque': details = `${values.chequeBank} Cheque #${values.chequeNumber}, dated ${values.chequeDate}`; break;
+            default: details = 'N/A';
         }
 
-
-        const newPayment: Payment = {
-            id: Date.now().toString(),
+        const newPayment: Omit<Payment, 'id'> = {
             orderId: selectedPO.id,
             description: `Payment for ${selectedPO.id}`,
             date: format(new Date(), 'yyyy-MM-dd'),
@@ -344,31 +352,29 @@ export default function PurchaseOrdersPage() {
             type: 'expense',
         };
 
-        setPayments(prev => [...prev, newPayment]);
+        const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);
+        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id}]);
 
         const totalPaid = currentAmountPaid + newPayment.amount;
 
         if (totalPaid >= selectedPO.totalAmount) {
+            await updateDoc(doc(db, "purchaseOrders", selectedPO.id), { status: 'Paid' });
             setPurchaseOrders(prev => prev.map(o => o.id === selectedPO.id ? { ...o, status: 'Paid' } : o));
-             toast({
-                title: 'Payment Complete',
-                description: `Final payment for PO ${selectedPO.id} has been recorded.`
-            });
+             toast({ title: 'Payment Complete', description: `Final payment for PO ${selectedPO.id} has been recorded.` });
         } else {
-             toast({
-                title: 'Installment Recorded',
-                description: `Payment of ${currency.code} ${values.amount.toFixed(2)} for PO ${selectedPO.id} recorded.`
-            });
+             toast({ title: 'Installment Recorded', description: `Payment of ${currency.code} ${values.amount.toFixed(2)} for PO ${selectedPO.id} recorded.` });
         }
         setIsPaymentDialogOpen(false);
     }
 
-    const handleStatusChange = (poId: string, status: 'Sent') => {
+    const handleStatusChange = async (poId: string, status: 'Sent') => {
+        await updateDoc(doc(db, "purchaseOrders", poId), { status });
         setPurchaseOrders(prev => prev.map(po => po.id === poId ? {...po, status} : po));
         toast({ title: 'Status Updated', description: `PO ${poId} marked as ${status}.` });
     };
 
-    const handleDelete = (poId: string) => {
+    const handleDelete = async (poId: string) => {
+        await deleteDoc(doc(db, "purchaseOrders", poId));
         setPurchaseOrders(prev => prev.filter(po => po.id !== poId));
         toast({ title: 'Purchase Order Deleted', description: `PO ${poId} has been removed.` });
     };
@@ -541,7 +547,13 @@ export default function PurchaseOrdersPage() {
                   </TableRow>
               </TableHeader>
               <TableBody>
-                  {filteredPurchaseOrders.length > 0 ? (
+                   {loading ? (
+                    <TableRow>
+                        <TableCell colSpan={6} className="text-center">
+                            Loading...
+                        </TableCell>
+                    </TableRow>
+                  ) : filteredPurchaseOrders.length > 0 ? (
                       filteredPurchaseOrders.map((po) => (
                       <TableRow key={po.id}>
                           <TableCell>{po.date}</TableCell>
@@ -586,7 +598,7 @@ export default function PurchaseOrdersPage() {
                   ) : (
                       <TableRow>
                           <TableCell colSpan={6} className="text-center">
-                              No purchase orders found. Enable dummy data in the dashboard's development tab to see sample entries.
+                              No purchase orders found.
                           </TableCell>
                       </TableRow>
                   )}
@@ -628,7 +640,7 @@ export default function PurchaseOrdersPage() {
                                   </Table>
                               </div>
                           </ScrollArea>
-                          <DialogFooter className="mt-4"> <DialogClose asChild> <Button variant="outline" type="button">Cancel</Button> </DialogClose> <Button type="submit">Confirm &amp; Receive Stock</Button> </DialogFooter>
+                          <DialogFooter className="mt-4"> <DialogClose asChild> <Button variant="outline" type="button">Cancel</Button> </DialogClose> <Button type="submit">Confirm & Receive Stock</Button> </DialogFooter>
                       </form>
                   </Form>
               </DialogContent>

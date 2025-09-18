@@ -33,30 +33,43 @@ import {
   quotationsAtom,
   paymentsAtom,
   currencyAtom,
-  useDummyDataAtom,
-  dataSeederAtom,
 } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { db } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 
 
 export default function ReportingPage() {
-    const [customers] = useAtom(customersAtom);
-    const [suppliers] = useAtom(suppliersAtom);
-    const [purchaseOrders] = useAtom(purchaseOrdersAtom);
-    const [saleOrders] = useAtom(saleOrdersAtom);
-    const [quotations] = useAtom(quotationsAtom);
-    const [payments] = useAtom(paymentsAtom);
+    const [customers, setCustomers] = useAtom(customersAtom);
+    const [suppliers, setSuppliers] = useAtom(suppliersAtom);
+    const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
+    const [saleOrders, setSaleOrders] = useAtom(saleOrdersAtom);
+    const [quotations, setQuotations] = useAtom(quotationsAtom);
+    const [payments, setPayments] = useAtom(paymentsAtom);
     const [currency] = useAtom(currencyAtom);
 
     const [date, setDate] = useState<DateRange | undefined>();
-    
-    const [useDummyData] = useAtom(useDummyDataAtom);
-    const [, seedData] = useAtom(dataSeederAtom);
 
     useEffect(() => {
-        seedData(useDummyData);
-    }, [useDummyData, seedData]);
+        const fetchData = async () => {
+            const collections = {
+                customers: setCustomers,
+                suppliers: setSuppliers,
+                purchaseOrders: setPurchaseOrders,
+                saleOrders: setSaleOrders,
+                quotations: setQuotations,
+                payments: setPayments,
+            };
+
+            for (const [key, setter] of Object.entries(collections)) {
+                const querySnapshot = await getDocs(collection(db, key));
+                const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setter(data as any);
+            }
+        };
+        fetchData();
+    }, [setCustomers, setSuppliers, setPurchaseOrders, setSaleOrders, setQuotations, setPayments]);
 
     const filteredData = useMemo(() => {
         if (!date?.from || !date?.to) {

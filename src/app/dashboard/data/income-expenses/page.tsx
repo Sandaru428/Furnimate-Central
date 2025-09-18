@@ -43,12 +43,14 @@ import { PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, currencyAtom, useDummyDataAtom, dataSeederAtom, Payment } from '@/lib/store';
+import { paymentsAtom, currencyAtom, Payment } from '@/lib/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense'], { required_error: 'Transaction type is required.' }),
@@ -79,13 +81,20 @@ type TransactionForm = z.infer<typeof transactionSchema>;
 export default function IncomeExpensesPage() {
   const [payments, setPayments] = useAtom(paymentsAtom);
   const [currency] = useAtom(currencyAtom);
-  const [useDummyData, seedData] = useAtom(dataSeederAtom);
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // This effect runs on mount and whenever the global toggle changes.
-  }, [useDummyData]);
+    const fetchPayments = async () => {
+        setLoading(true);
+        const querySnapshot = await getDocs(collection(db, "payments"));
+        const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+        setPayments(data);
+        setLoading(false);
+    };
+    fetchPayments();
+  }, [setPayments]);
 
   const form = useForm<TransactionForm>({
     resolver: zodResolver(transactionSchema),
@@ -107,7 +116,7 @@ export default function IncomeExpensesPage() {
 
   const paymentMethod = form.watch('method');
 
-  function onSubmit(values: TransactionForm) {
+  async function onSubmit(values: TransactionForm) {
      let details = '';
         switch(values.method) {
             case 'Card':
@@ -123,8 +132,7 @@ export default function IncomeExpensesPage() {
                 details = `Ad-hoc ${values.type}`;
         }
 
-    const newPayment: Payment = {
-      id: `PAY-${Date.now()}`,
+    const newPayment: Omit<Payment, 'id'> = {
       description: values.description,
       date: format(new Date(), 'yyyy-MM-dd'),
       amount: values.amount,
@@ -132,14 +140,23 @@ export default function IncomeExpensesPage() {
       details: details,
       type: values.type,
     };
-
-    setPayments([newPayment, ...payments]);
-    toast({
-      title: 'Transaction Added',
-      description: `A new ${values.type} of ${currency.code} ${values.amount} has been recorded.`,
-    });
-    form.reset();
-    setIsDialogOpen(false);
+    
+    try {
+        const docRef = await addDoc(collection(db, 'payments'), newPayment);
+        setPayments(prev => [{...newPayment, id: docRef.id}, ...prev]);
+        toast({
+        title: 'Transaction Added',
+        description: `A new ${values.type} of ${currency.code} ${values.amount} has been recorded.`,
+        });
+        form.reset();
+        setIsDialogOpen(false);
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to add transaction.',
+        });
+    }
   }
   
   const adHocTransactions = payments
@@ -337,7 +354,13 @@ export default function IncomeExpensesPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {adHocTransactions.length > 0 ? (
+                        {loading ? (
+                             <TableRow>
+                                <TableCell colSpan={4} className="text-center">
+                                    Loading...
+                                </TableCell>
+                            </TableRow>
+                        ) : adHocTransactions.length > 0 ? (
                             adHocTransactions.map((payment) => (
                             <TableRow key={payment.id}>
                                 <TableCell>{payment.date}</TableCell>
@@ -367,5 +390,3 @@ export default function IncomeExpensesPage() {
     </>
   );
 }
-
-    

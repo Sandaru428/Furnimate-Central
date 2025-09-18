@@ -54,9 +54,11 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Printer, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
+import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom } from '@/lib/store';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, doc, updateDoc, addDoc, setDoc } from 'firebase/firestore';
 
 
 const paymentSchema = z.object({
@@ -100,17 +102,26 @@ export default function SaleOrdersPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
+    const [loading, setLoading] = useState(true);
 
-    const [useDummyData] = useAtom(useDummyDataAtom);
-    const [, seedData] = useAtom(dataSeederAtom);
-    
     const handlePrint = (orderId: string) => {
         router.push(`/dashboard/sales/orders/${orderId}/print`);
     };
 
     useEffect(() => {
-        seedData(useDummyData);
-    }, [useDummyData, seedData]);
+        const fetchData = async () => {
+            setLoading(true);
+            const soSnapshot = await getDocs(collection(db, "saleOrders"));
+            const soData = soSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SaleOrder));
+            setOrders(soData);
+
+            const paymentsSnapshot = await getDocs(collection(db, "payments"));
+            const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
+            setPayments(paymentsData);
+            setLoading(false);
+        };
+        fetchData();
+    }, [setOrders, setPayments]);
 
 
     const form = useForm<PaymentFormValues>({
@@ -134,20 +145,6 @@ export default function SaleOrdersPage() {
     const amountPaid = selectedOrder ? payments.filter(p => p.orderId === selectedOrder.id).reduce((acc, p) => acc + p.amount, 0) : 0;
     const remainingAmount = selectedOrder ? selectedOrder.amount - amountPaid : 0;
 
-
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const convertedOrder = localStorage.getItem('convertedOrder');
-            if (convertedOrder) {
-                const newOrder = JSON.parse(convertedOrder);
-                if (!orders.some(o => o.id === newOrder.id)) {
-                    setOrders(prevOrders => [newOrder, ...prevOrders]);
-                }
-                localStorage.removeItem('convertedOrder');
-            }
-        }
-    }, [orders, setOrders]);
-
     const openPaymentDialog = (order: SaleOrder) => {
         setSelectedOrder(order);
         const currentAmountPaid = payments.filter(p => p.orderId === order.id).reduce((acc, p) => acc + p.amount, 0);
@@ -167,7 +164,7 @@ export default function SaleOrdersPage() {
         setIsPaymentDialogOpen(true);
     };
 
-    function onPaymentSubmit(values: PaymentFormValues) {
+    async function onPaymentSubmit(values: PaymentFormValues) {
         if (!selectedOrder) return;
 
         const currentAmountPaid = payments.filter(p => p.orderId === selectedOrder.id).reduce((acc, p) => acc + p.amount, 0);
@@ -183,21 +180,13 @@ export default function SaleOrdersPage() {
 
         let details = '';
         switch(values.method) {
-            case 'Card':
-                details = `Card ending in ${values.cardLast4}`;
-                break;
-            case 'Online':
-                details = `From ${values.fromBankName} (${values.fromAccountNumber}) to ${values.toBankName} (${values.toAccountNumber})`;
-                break;
-             case 'Cheque':
-                details = `${values.chequeBank} Cheque #${values.chequeNumber}, dated ${values.chequeDate}`;
-                break;
-            default:
-                details = 'N/A';
+            case 'Card': details = `Card ending in ${values.cardLast4}`; break;
+            case 'Online': details = `From ${values.fromBankName} (${values.fromAccountNumber}) to ${values.toBankName} (${values.toAccountNumber})`; break;
+            case 'Cheque': details = `${values.chequeBank} Cheque #${values.chequeNumber}, dated ${values.chequeDate}`; break;
+            default: details = 'N/A';
         }
 
-        const newPayment: Payment = {
-            id: Date.now().toString(),
+        const newPayment: Omit<Payment, 'id'> = {
             orderId: selectedOrder.id,
             description: `Payment for ${selectedOrder.id}`,
             date: format(new Date(), 'yyyy-MM-dd'),
@@ -207,11 +196,13 @@ export default function SaleOrdersPage() {
             type: 'income',
         };
 
-        setPayments(prev => [...prev, newPayment]);
+        const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);
+        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id}]);
 
         const totalPaid = currentAmountPaid + newPayment.amount;
 
         if (totalPaid >= selectedOrder.amount) {
+            await updateDoc(doc(db, "saleOrders", selectedOrder.id), { status: 'Paid' });
             setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'Paid' } : o));
              toast({
                 title: 'Payment Complete',
@@ -289,7 +280,13 @@ export default function SaleOrdersPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {sortedOrders.length > 0 ? (
+                    {loading ? (
+                         <TableRow>
+                            <TableCell colSpan={7} className="text-center">
+                                Loading...
+                            </TableCell>
+                        </TableRow>
+                    ) : sortedOrders.length > 0 ? (
                         sortedOrders.map((order) => (
                         <TableRow key={order.id}>
                             <TableCell>{order.date}</TableCell>
@@ -329,7 +326,7 @@ export default function SaleOrdersPage() {
                     ) : (
                         <TableRow>
                             <TableCell colSpan={7} className="text-center">
-                                No converted sale orders yet. Enable dummy data in the dashboard's development tab to see sample entries.
+                                No converted sale orders yet.
                             </TableCell>
                         </TableRow>
                     )}
@@ -461,8 +458,8 @@ export default function SaleOrdersPage() {
                                                 />
                                             </div>
                                         )}
-                                </div>
-                            </ScrollArea>
+                                    </div>
+                                </ScrollArea>
                             <DialogFooter className="mt-4">
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancel</Button>

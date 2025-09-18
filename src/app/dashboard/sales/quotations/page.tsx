@@ -56,9 +56,12 @@ import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
-import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
+import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, saleOrdersAtom } from '@/lib/store';
 import type { MasterDataItem } from '../../data/master-data/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required."),
@@ -148,24 +151,38 @@ const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], 
 
 export default function QuotationsPage() {
     const [quotations, setQuotations] = useAtom(quotationsAtom);
-    const [masterData] = useAtom(masterDataAtom);
-    const [customers] = useAtom(customersAtom);
+    const [masterData, setMasterData] = useAtom(masterDataAtom);
+    const [customers, setCustomers] = useAtom(customersAtom);
+    const [, setSaleOrders] = useAtom(saleOrdersAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
-
-    const [useDummyData] = useAtom(useDummyDataAtom);
-    const [, seedData] = useAtom(dataSeederAtom);
+    const [loading, setLoading] = useState(true);
 
     const handlePrint = (quoteId: string) => {
         router.push(`/dashboard/sales/quotations/${quoteId}/print`);
     };
 
     useEffect(() => {
-        seedData(useDummyData);
-    }, [useDummyData, seedData]);
+        const fetchData = async () => {
+            setLoading(true);
+            const quotationsSnapshot = await getDocs(collection(db, "quotations"));
+            const quotationsData = quotationsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Quotation));
+            setQuotations(quotationsData);
+
+            const masterDataSnapshot = await getDocs(collection(db, "masterData"));
+            const masterData = masterDataSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MasterDataItem));
+            setMasterData(masterData);
+
+            const customersSnapshot = await getDocs(collection(db, "customers"));
+            const customersData = customersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            setCustomers(customersData);
+            setLoading(false);
+        };
+        fetchData();
+    }, [setQuotations, setMasterData, setCustomers]);
 
 
     const form = useForm<CreateQuotation>({
@@ -184,7 +201,7 @@ export default function QuotationsPage() {
     const totalAmount = form.watch('lineItems').reduce((acc, item) => acc + item.totalValue, 0);
 
 
-    function onSubmit(values: CreateQuotation) {
+    async function onSubmit(values: CreateQuotation) {
         try {
              const totalAmount = values.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
             
@@ -196,16 +213,17 @@ export default function QuotationsPage() {
                     amount: totalAmount,
                     status: 'Draft',
                 };
+                await setDoc(doc(db, "quotations", editingQuotation.id), updatedQuotation);
                 setQuotations(quotations.map(q => q.id === editingQuotation.id ? updatedQuotation : q));
-                toast({
-                    title: 'Quotation Updated',
-                    description: `Quotation ${editingQuotation.id} has been updated.`
-                });
+                toast({ title: 'Quotation Updated', description: `Quotation ${editingQuotation.id} has been updated.` });
              } else {
                 // Create
-                const nextId = quotations.length > 0 ? Math.max(...quotations.map(q => parseInt(q.id.split('-')[1]))) + 1 : 1;
+                const quoSnapshot = await getDocs(collection(db, "quotations"));
+                const nextId = quoSnapshot.size > 0 ? Math.max(...quoSnapshot.docs.map(q => parseInt(q.id.split('-')[1]))) + 1 : 1;
+                const newQuotationId = `QUO-${String(nextId).padStart(3, '0')}`;
+                
                 const newQuotation: Quotation = {
-                    id: `QUO-${String(nextId).padStart(3, '0')}`,
+                    id: newQuotationId,
                     customer: values.customer,
                     date: format(new Date(), 'yyyy-MM-dd'),
                     status: 'Draft',
@@ -213,11 +231,9 @@ export default function QuotationsPage() {
                     amount: totalAmount,
                 };
     
+                await setDoc(doc(db, "quotations", newQuotationId), newQuotation);
                 setQuotations([newQuotation, ...quotations]);
-                toast({
-                  title: 'Quotation Created',
-                  description: `Quotation ${newQuotation.id} has been saved as a draft.`,
-                });
+                toast({ title: 'Quotation Created', description: `Quotation ${newQuotation.id} has been saved as a draft.` });
              }
             
             form.reset({ customer: '', lineItems: [] });
@@ -226,11 +242,7 @@ export default function QuotationsPage() {
             setEditingQuotation(null);
 
         } catch (error: any) {
-             toast({
-                variant: "destructive",
-                title: 'Error Saving Quotation',
-                description: error.message,
-            });
+             toast({ variant: "destructive", title: 'Error Saving Quotation', description: error.message, });
         }
     }
 
@@ -250,49 +262,40 @@ export default function QuotationsPage() {
         setIsDialogOpen(true);
     };
 
-    const handleStatusChange = (quotationId: string, newStatus: Quotation['status']) => {
+    const handleStatusChange = async (quotationId: string, newStatus: Quotation['status']) => {
+        await updateDoc(doc(db, "quotations", quotationId), { status: newStatus });
         setQuotations(quotations.map(q =>
             q.id === quotationId ? { ...q, status: newStatus } : q
         ));
-        toast({
-            title: 'Status Updated',
-            description: `Quotation ${quotationId} has been marked as ${newStatus}.`
-        });
+        toast({ title: 'Status Updated', description: `Quotation ${quotationId} has been marked as ${newStatus}.` });
     };
 
-    const handleDelete = (quotationId: string) => {
+    const handleDelete = async (quotationId: string) => {
+        await deleteDoc(doc(db, "quotations", quotationId));
         setQuotations(quotations.filter(q => q.id !== quotationId));
-        toast({
-            title: 'Quotation Deleted',
-            description: `Quotation ${quotationId} has been removed.`,
-        });
+        toast({ title: 'Quotation Deleted', description: `Quotation ${quotationId} has been removed.` });
     };
     
-    const handleConvertToOrder = (quotationId: string) => {
+    const handleConvertToOrder = async (quotationId: string) => {
         const quotation = quotations.find(q => q.id === quotationId);
         if (!quotation) return;
 
-        // Stock check logic
         let insufficientStock = false;
-        quotation.lineItems.forEach(item => {
-            const masterItem = masterData.find(mi => mi.itemCode === item.itemId);
+        for (const item of quotation.lineItems) {
+            const masterItemDoc = await getDocs(collection(db, "masterData"));
+            const masterItem = masterItemDoc.docs.find(d => d.id === item.itemId)?.data() as MasterDataItem | undefined;
             if (!masterItem || masterItem.stockLevel < item.quantity) {
                 insufficientStock = true;
-                toast({
-                    variant: "destructive",
-                    title: 'Stock Unavailable',
-                    description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${masterItem?.stockLevel || 0}`,
-                });
+                toast({ variant: "destructive", title: 'Stock Unavailable', description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${masterItem?.stockLevel || 0}` });
+                break;
             }
-        });
-
-        if (insufficientStock) {
-            return; // Stop conversion if any item has insufficient stock
         }
 
-        // Create the new order object
+        if (insufficientStock) return;
+
+        const newOrderId = `ORD-${quotation.id.split('-')[1]}`;
         const newOrder = {
-            id: `ORD-${quotation.id.split('-')[1]}`,
+            id: newOrderId,
             quotationId: quotation.id,
             customer: quotation.customer,
             date: format(new Date(), 'yyyy-MM-dd'),
@@ -300,22 +303,13 @@ export default function QuotationsPage() {
             status: 'Processing',
         };
         
-        // Use local storage to pass the new order to the orders page
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('convertedOrder', JSON.stringify(newOrder));
-        }
+        await setDoc(doc(db, "saleOrders", newOrderId), newOrder);
+        setSaleOrders(prev => [newOrder, ...prev] as any);
 
-        // Update the quotation status to 'Converted'
-        setQuotations(quotations.map(q => 
-            q.id === quotationId ? { ...q, status: 'Converted' } : q
-        ));
+        await updateDoc(doc(db, "quotations", quotationId), { status: 'Converted' });
+        setQuotations(quotations.map(q => q.id === quotationId ? { ...q, status: 'Converted' } : q ));
 
-        toast({
-            title: 'Quotation Converted to Sale Order',
-            description: `Stock checked and available. Sale Order created from ${quotationId}.`,
-        });
-
-        // Navigate to orders page
+        toast({ title: 'Quotation Converted to Sale Order', description: `Stock checked and available. Sale Order created from ${quotationId}.` });
         router.push('/dashboard/sales/orders');
     };
 
@@ -485,7 +479,9 @@ export default function QuotationsPage() {
                   </TableRow>
               </TableHeader>
               <TableBody>
-                  {sortedQuotations.length > 0 ? (
+                  {loading ? (
+                    <TableRow><TableCell colSpan={6} className="text-center">Loading...</TableCell></TableRow>
+                  ) : sortedQuotations.length > 0 ? (
                       sortedQuotations.map((quote) => (
                       <TableRow key={quote.id}>
                           <TableCell>{quote.date}</TableCell>
@@ -559,7 +555,7 @@ export default function QuotationsPage() {
                   ) : (
                       <TableRow>
                           <TableCell colSpan={6} className="text-center">
-                          No quotations found. Enable dummy data in the dashboard's development tab to see sample entries.
+                          No quotations found.
                           </TableCell>
                       </TableRow>
                   )}
