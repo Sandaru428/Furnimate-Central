@@ -483,7 +483,7 @@ export default function PurchaseOrdersPage() {
                               <Form {...createForm}>
                                   <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)} className="flex flex-col flex-1 overflow-hidden">
                                       <ScrollArea className="flex-1 pr-6">
-                                          <div className="space-y-4">
+                                          <div className="space-y-4 py-4">
                                               <FormField
                                               control={createForm.control}
                                               name="supplierName"
@@ -615,7 +615,7 @@ export default function PurchaseOrdersPage() {
                   <Form {...receiveForm}>
                       <form onSubmit={receiveForm.handleSubmit(handleReceiveSubmit)} className="flex flex-col flex-1 overflow-hidden">
                           <ScrollArea className="flex-1 pr-6">
-                              <div>
+                              <div className="py-4">
                                   <Table>
                                       <TableHeader> <TableRow> <TableHead>Item</TableHead> <TableHead className="w-24">Quantity</TableHead> <TableHead className="w-40">Unit Price</TableHead> <TableHead className="w-40 text-right">Total Value</TableHead> </TableRow> </TableHeader>
                                       <TableBody>
@@ -658,7 +658,7 @@ export default function PurchaseOrdersPage() {
                   <Form {...paymentForm}>
                       <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)} className="flex flex-col flex-1 overflow-hidden">
                           <ScrollArea className="flex-1 pr-6">
-                              <div className="space-y-4">
+                              <div className="space-y-4 py-4">
                                   <FormField
                                           control={paymentForm.control}
                                           name="amount"

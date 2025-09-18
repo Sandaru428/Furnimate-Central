@@ -381,7 +381,7 @@ export default function QuotationsPage() {
                               <Form {...form}>
                                   <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
                                       <ScrollArea className="flex-1 pr-6">
-                                          <div className="space-y-4">
+                                          <div className="space-y-4 py-4">
                                               <FormField
                                                   control={form.control}
                                                   name="customer"
