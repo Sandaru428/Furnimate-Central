@@ -219,7 +219,7 @@ export default function MasterDataPage() {
                                 Add New Item
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
+                        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
                             <DialogHeader>
                                 <DialogTitle>{editingItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
                             </DialogHeader>
@@ -227,10 +227,13 @@ export default function MasterDataPage() {
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
                                     <ScrollArea className="flex-1 pr-6">
                                         <div className="space-y-4 py-4">
-                                            <FormField control={form.control} name="itemCode" render={({ field }) => ( <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <FormField control={form.control} name="type" render={({ field }) => ( <FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Raw Material">Raw Material</SelectItem><SelectItem value="Finished Good">Finished Good</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
-                                            <FormField control={form.control} name="unitPrice" render={({ field }) => ( <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="itemCode" render={({ field }) => ( <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={form.control} name="type" render={({ field }) => ( <FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Raw Material">Raw Material</SelectItem><SelectItem value="Finished Good">Finished Good</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                                <FormField control={form.control} name="unitPrice" render={({ field }) => ( <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            </div>
+                                            
                                             <div className="grid grid-cols-3 gap-4">
                                                 <FormField control={form.control} name="stockLevel" render={({ field }) => ( <FormItem><FormLabel>Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem> )} />
                                                 <FormField control={form.control} name="minimumLevel" render={({ field }) => ( <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -242,7 +245,7 @@ export default function MasterDataPage() {
                                                     control={form.control}
                                                     name="linkedItems"
                                                     render={({ field }) => (
-                                                        <FormItem>
+                                                        <FormItem className="md:col-span-2">
                                                             <FormLabel>{itemType === 'Raw Material' ? 'Link to Finished Good(s)' : 'Link to Raw Material(s)'}</FormLabel>
                                                             <Controller
                                                                 control={form.control}
