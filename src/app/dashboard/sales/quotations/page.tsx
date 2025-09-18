@@ -59,6 +59,7 @@ import { useAtom } from 'jotai';
 import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
 import type { MasterDataItem } from '../../data/master-data/page';
 import { useReactToPrint } from 'react-to-print';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required."),
@@ -399,72 +400,75 @@ export default function QuotationsPage() {
                                 <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.id}` : 'Create New Quotation'}</DialogTitle>
                             </DialogHeader>
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="customer"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>Customer</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a customer" />
-                                                </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {customers.map(customer => (
-                                                        <SelectItem key={customer.id} value={customer.name}>
-                                                            {customer.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <div>
-                                        <FormLabel>Line Items</FormLabel>
-                                        <div className="space-y-2 mt-2">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Item</TableHead>
-                                                        <TableHead className="w-20">Qty</TableHead>
-                                                        <TableHead className="w-28 text-right">Unit Price</TableHead>
-                                                        <TableHead className="w-28 text-right">Total</TableHead>
-                                                        <TableHead className="w-10"></TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {fields.map((field, index) => {
-                                                        const itemDetails = masterData.find(i => i.itemCode === field.itemId);
-                                                        return (
-                                                        <TableRow key={field.id}>
-                                                            <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
-                                                            <TableCell>{field.quantity}</TableCell>
-                                                            <TableCell className="text-right">{currency.code} {field.unitPrice.toFixed(2)}</TableCell>
-                                                            <TableCell className="text-right">{currency.code} {field.totalValue.toFixed(2)}</TableCell>
-                                                            <TableCell>
-                                                                <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
-                                                                    <Trash2 className="h-4 w-4 text-destructive"/>
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )})}
-                                                </TableBody>
-                                            </Table>
-                                            {fields.length === 0 && (
-                                                <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
-                                            )}
-                                            <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
+                                <form onSubmit={form.handleSubmit(onSubmit)}>
+                                    <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                                        <div className="space-y-4 p-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="customer"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                    <FormLabel>Customer</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select a customer" />
+                                                        </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {customers.map(customer => (
+                                                                <SelectItem key={customer.id} value={customer.name}>
+                                                                    {customer.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <div>
+                                                <FormLabel>Line Items</FormLabel>
+                                                <div className="space-y-2 mt-2">
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead>Item</TableHead>
+                                                                <TableHead className="w-20">Qty</TableHead>
+                                                                <TableHead className="w-28 text-right">Unit Price</TableHead>
+                                                                <TableHead className="w-28 text-right">Total</TableHead>
+                                                                <TableHead className="w-10"></TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {fields.map((field, index) => {
+                                                                const itemDetails = masterData.find(i => i.itemCode === field.itemId);
+                                                                return (
+                                                                <TableRow key={field.id}>
+                                                                    <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
+                                                                    <TableCell>{field.quantity}</TableCell>
+                                                                    <TableCell className="text-right">{currency.code} {field.unitPrice.toFixed(2)}</TableCell>
+                                                                    <TableCell className="text-right">{currency.code} {field.totalValue.toFixed(2)}</TableCell>
+                                                                    <TableCell>
+                                                                        <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
+                                                                            <Trash2 className="h-4 w-4 text-destructive"/>
+                                                                        </Button>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            )})}
+                                                        </TableBody>
+                                                    </Table>
+                                                    {fields.length === 0 && (
+                                                        <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
+                                                    )}
+                                                    <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
+                                                </div>
+                                            </div>
+                                            
+                                            <AddItemForm masterData={masterData} onAddItem={append} />
                                         </div>
-                                    </div>
-                                    
-                                    <AddItemForm masterData={masterData} onAddItem={append} />
-
-                                    <DialogFooter>
+                                    </ScrollArea>
+                                    <DialogFooter className="mt-4">
                                         <div className='w-full flex justify-between items-center'>
                                             <div className="text-lg font-semibold">
                                                 Total: {currency.code} {totalAmount.toFixed(2)}
