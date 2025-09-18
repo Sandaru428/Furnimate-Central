@@ -4,11 +4,13 @@
 import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
-import { saleOrdersAtom, quotationsAtom, masterDataAtom, currencyAtom, companyProfileAtom } from '@/lib/store';
+import { saleOrdersAtom, quotationsAtom, masterDataAtom, currencyAtom, companyProfileAtom, paymentsAtom } from '@/lib/store';
 import { Logo } from '@/components/icons/logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { Payment } from '@/lib/store';
 
 export default function SaleOrderPrintPage() {
     const params = useParams();
@@ -18,6 +20,7 @@ export default function SaleOrderPrintPage() {
     const [saleOrders] = useAtom(saleOrdersAtom);
     const [quotations] = useAtom(quotationsAtom);
     const [masterData] = useAtom(masterDataAtom);
+    const [payments] = useAtom(paymentsAtom);
     const [currency] = useAtom(currencyAtom);
     const [companyProfile] = useAtom(companyProfileAtom);
 
@@ -29,6 +32,21 @@ export default function SaleOrderPrintPage() {
         if (!order) return null;
         return quotations.find(q => q.id === order.quotationId);
     }, [order, quotations]);
+
+    const orderPayments = useMemo(() => {
+        if (!order) return [];
+        return payments.filter((p: Payment) => p.orderId === order.id);
+    }, [order, payments]);
+
+    const totalPaid = useMemo(() => {
+        return orderPayments.reduce((acc, p) => acc + p.amount, 0);
+    }, [orderPayments]);
+
+    const amountDue = useMemo(() => {
+        if (!order) return 0;
+        return order.amount - totalPaid;
+    }, [order, totalPaid]);
+
 
     if (!order) {
         return <div className="p-8">Loading or Sale Order not found...</div>;
@@ -90,7 +108,7 @@ export default function SaleOrderPrintPage() {
                 </div>
                 
                 {originalQuotation && (
-                    <>
+                    <div className="mb-8">
                         <h3 className="text-lg font-semibold mb-2">Order Summary</h3>
                         <Table>
                             <TableHeader>
@@ -115,12 +133,53 @@ export default function SaleOrderPrintPage() {
                                 })}
                             </TableBody>
                         </Table>
-                    </>
+                    </div>
+                )}
+
+                {orderPayments.length > 0 && (
+                    <div className="mb-8">
+                        <h3 className="text-lg font-semibold mb-2">Payment History</h3>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Method</TableHead>
+                                    <TableHead>Details</TableHead>
+                                    <TableHead className="text-right">Amount Paid</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {orderPayments.map(payment => (
+                                    <TableRow key={payment.id}>
+                                        <TableCell>{payment.date}</TableCell>
+                                        <TableCell>{payment.method}</TableCell>
+                                        <TableCell>{payment.details}</TableCell>
+                                        <TableCell className="text-right">{currency.code} {payment.amount.toFixed(2)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                 )}
         
-                <div className="text-right mt-4 pr-4 text-xl font-bold">
-                    Total Amount: {currency.code} {order.amount.toFixed(2)}
+                <div className="grid grid-cols-2 mt-8">
+                    <div></div>
+                    <div className="space-y-2 text-right">
+                        <div className="flex justify-between font-semibold text-lg">
+                            <span>Total Amount:</span>
+                            <span>{currency.code} {order.amount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Total Paid:</span>
+                            <span>{currency.code} {totalPaid.toFixed(2)}</span>
+                        </div>
+                        <div className={cn("flex justify-between font-bold text-xl", amountDue > 0 ? 'text-red-600' : 'text-green-600')}>
+                            <span>Amount Due:</span>
+                            <span>{currency.code} {amountDue.toFixed(2)}</span>
+                        </div>
+                    </div>
                 </div>
+
                 <footer className="text-center text-xs text-muted-foreground mt-12 border-t pt-4">
                     Thank you for your business!
                 </footer>
