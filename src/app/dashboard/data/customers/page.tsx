@@ -48,8 +48,8 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
-import { useAtom } from 'jotai';
-import { customersAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const customerSchema = z.object({
   id: z.string().optional(),
@@ -61,21 +61,25 @@ const customerSchema = z.object({
 type Customer = z.infer<typeof customerSchema>;
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useAtom(customersAtom);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
-  
-  const [useDummyData, setUseDummyData] = useAtom(dataSeederAtom);
-  
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    // This effect runs on mount and whenever the global toggle changes.
-    // The `dataSeederAtom` handles the logic of populating/clearing data.
-  }, [useDummyData]);
+    const fetchCustomers = async () => {
+      setLoading(true);
+      const querySnapshot = await getDocs(collection(db, "customers"));
+      const customersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+      setCustomers(customersData);
+      setLoading(false);
+    };
+    fetchCustomers();
+  }, []);
 
-
-  const form = useForm<Customer>({
-    resolver: zodResolver(customerSchema),
+  const form = useForm<Omit<Customer, 'id'>>({
+    resolver: zodResolver(customerSchema.omit({ id: true })),
     defaultValues: {
       name: '',
       email: '',
@@ -83,15 +87,23 @@ export default function CustomersPage() {
     },
   });
 
-  function onSubmit(values: Customer) {
-    const newCustomer = { ...values, id: Date.now().toString() };
-    setCustomers([...customers, newCustomer]);
-    toast({
-      title: 'Customer Added',
-      description: `${values.name} has been successfully added.`,
-    });
-    form.reset();
-    setIsDialogOpen(false);
+  async function onSubmit(values: Omit<Customer, 'id'>) {
+    try {
+      const docRef = await addDoc(collection(db, 'customers'), values);
+      setCustomers([...customers, { ...values, id: docRef.id }]);
+      toast({
+        title: 'Customer Added',
+        description: `${values.name} has been successfully added.`,
+      });
+      form.reset();
+      setIsDialogOpen(false);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to add customer.',
+      });
+    }
   }
 
   const filteredCustomers = customers.filter(
@@ -100,7 +112,6 @@ export default function CustomersPage() {
       customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.phone.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
 
   return (
     <>
@@ -199,7 +210,13 @@ export default function CustomersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCustomers.length > 0 ? (
+                {loading ? (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center">
+                            Loading...
+                        </TableCell>
+                    </TableRow>
+                ) : filteredCustomers.length > 0 ? (
                     filteredCustomers.map((customer) => (
                     <TableRow key={customer.id}>
                         <TableCell className="font-medium">{customer.name}</TableCell>
@@ -226,7 +243,7 @@ export default function CustomersPage() {
                 ) : (
                     <TableRow>
                         <TableCell colSpan={4} className="text-center">
-                            No customers found. Enable dummy data in the dashboard's development tab to see sample entries.
+                            No customers found.
                         </TableCell>
                     </TableRow>
                 )}

@@ -27,50 +27,22 @@ export type CompanyProfile = {
   currency: string;
 };
 
-// Dummy data control atom
-export const useDummyDataAtom = atom(true);
-
 // Global state atoms
 export const currencyAtom = atom<Currency>({ code: 'LKR', name: 'Sri Lankan Rupee' });
 
 export const companyProfileAtom = atom<CompanyProfile>({
   companyName: 'Siraiva ltd',
-  email: 'absiraiva@gmail.com',
+  email: 'absiraivaws@gmail.com',
   phone: '+94773606494',
   logo: undefined,
   currency: 'LKR',
 });
 
-// Data atoms
-export const customersAtom = atom<typeof initialCustomersData>([]);
-export const suppliersAtom = atom<typeof initialSuppliersData>([]);
-export const masterDataAtom = atom<typeof initialMasterData>([]);
-export const purchaseOrdersAtom = atom<typeof initialPurchaseOrdersData>([]);
-export const quotationsAtom = atom<typeof initialQuotationsData>([]);
-export const saleOrdersAtom = atom<typeof initialSaleOrdersData>([]);
+// Data atoms - These will be populated from Firestore
+export const customersAtom = atom<any[]>([]);
+export const suppliersAtom = atom<any[]>([]);
+export const masterDataAtom = atom<any[]>([]);
+export const purchaseOrdersAtom = atom<any[]>([]);
+export const quotationsAtom = atom<any[]>([]);
+export const saleOrdersAtom = atom<any[]>([]);
 export const paymentsAtom = atom<Payment[]>([]);
-
-// This writable atom clears or seeds all data based on the useDummyDataAtom
-export const dataSeederAtom = atom(
-    get => get(useDummyDataAtom),
-    (get, set, useDummyData: boolean) => {
-        set(useDummyDataAtom, useDummyData);
-        if (useDummyData) {
-            set(customersAtom, initialCustomersData);
-            set(suppliersAtom, initialSuppliersData);
-            set(masterDataAtom, initialMasterData);
-            set(purchaseOrdersAtom, initialPurchaseOrdersData);
-            set(quotationsAtom, initialQuotationsData);
-            set(saleOrdersAtom, initialSaleOrdersData);
-            set(paymentsAtom, initialPaymentsData);
-        } else {
-            set(customersAtom, []);
-            set(suppliersAtom, []);
-            set(masterDataAtom, []);
-            set(purchaseOrdersAtom, []);
-            set(quotationsAtom, []);
-            set(saleOrdersAtom, []);
-            set(paymentsAtom, []);
-        }
-    }
-)

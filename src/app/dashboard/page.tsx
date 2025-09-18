@@ -30,7 +30,7 @@ import {
 } from 'recharts';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAtom } from 'jotai';
-import { currencyAtom, useDummyDataAtom } from '@/lib/store';
+import { currencyAtom } from '@/lib/store';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
@@ -143,7 +143,6 @@ const salesData = [
 
 export default function DashboardPage() {
   const [currency] = useAtom(currencyAtom);
-  const [useDummyData, setUseDummyData] = useAtom(useDummyDataAtom);
 
   return (
     <>
@@ -226,11 +225,11 @@ export default function DashboardPage() {
                 <div>
                     <h3 className="text-lg font-semibold mb-4">Data Seeding</h3>
                      <div className="flex items-center space-x-2 p-4 border rounded-lg">
-                        <Switch id="dummy-data-switch" checked={useDummyData} onCheckedChange={setUseDummyData} />
+                        <Switch id="dummy-data-switch" disabled />
                         <Label htmlFor="dummy-data-switch">Enable Dummy Data</Label>
                     </div>
                     <p className="text-sm text-muted-foreground mt-2">
-                        Toggle this to populate the application with a rich set of sample data for testing.
+                        Data is now being fetched from Firestore. This switch is disabled.
                     </p>
                 </div>
                 

@@ -48,8 +48,8 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
-import { useAtom } from 'jotai';
-import { suppliersAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
 
 const supplierSchema = z.object({
     id: z.string().optional(),
@@ -61,34 +61,49 @@ type Supplier = z.infer<typeof supplierSchema>;
 
 
 export default function SuppliersPage() {
-  const [suppliers, setSuppliers] = useAtom(suppliersAtom);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
-
-  const [useDummyData, setUseDummyData] = useAtom(dataSeederAtom);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // This effect runs on mount and whenever the global toggle changes.
-  }, [useDummyData]);
+    const fetchSuppliers = async () => {
+        setLoading(true);
+        const querySnapshot = await getDocs(collection(db, "suppliers"));
+        const suppliersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier));
+        setSuppliers(suppliersData);
+        setLoading(false);
+    };
+    fetchSuppliers();
+  }, []);
 
-  const form = useForm<Supplier>({
-    resolver: zodResolver(supplierSchema),
+
+  const form = useForm<Omit<Supplier, 'id'>>({
+    resolver: zodResolver(supplierSchema.omit({id: true})),
     defaultValues: {
       name: '',
       contact: '',
     },
   });
 
-  function onSubmit(values: Supplier) {
-    const newSupplier = { ...values, id: Date.now().toString() };
-    setSuppliers([...suppliers, newSupplier]);
-    toast({
-      title: 'Supplier Added',
-      description: `${values.name} has been successfully added.`,
-    });
-    form.reset();
-    setIsDialogOpen(false);
+  async function onSubmit(values: Omit<Supplier, 'id'>) {
+    try {
+        const docRef = await addDoc(collection(db, 'suppliers'), values);
+        setSuppliers([...suppliers, { ...values, id: docRef.id }]);
+        toast({
+        title: 'Supplier Added',
+        description: `${values.name} has been successfully added.`,
+        });
+        form.reset();
+        setIsDialogOpen(false);
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to add supplier.',
+        });
+    }
   }
 
   const filteredSuppliers = suppliers.filter(
@@ -182,7 +197,9 @@ export default function SuppliersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSuppliers.length > 0 ? (
+                {loading ? (
+                    <TableRow><TableCell colSpan={3} className="text-center">Loading...</TableCell></TableRow>
+                ) : filteredSuppliers.length > 0 ? (
                     filteredSuppliers.map((supplier) => (
                     <TableRow key={supplier.id}>
                         <TableCell className="font-medium">{supplier.name}</TableCell>
@@ -206,7 +223,7 @@ export default function SuppliersPage() {
                 ) : (
                      <TableRow>
                         <TableCell colSpan={3} className="text-center">
-                            No suppliers found. Enable dummy data in the dashboard's development tab to see sample entries.
+                            No suppliers found.
                         </TableCell>
                     </TableRow>
                 )}

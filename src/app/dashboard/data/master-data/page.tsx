@@ -51,9 +51,13 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAtom } from 'jotai';
-import { currencyAtom, masterDataAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
+import { currencyAtom } from '@/lib/store';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
+
 
 const itemSchema = z.object({
+    id: z.string().optional(),
     itemCode: z.string().min(1, "Item code is required"),
     name: z.string().min(1, "Item name is required"),
     type: z.enum(['Raw Material', 'Finished Good']),
@@ -64,22 +68,26 @@ const itemSchema = z.object({
 export type MasterDataItem = z.infer<typeof itemSchema>;
 
 export default function MasterDataPage() {
-    const [masterData, setMasterData] = useAtom(masterDataAtom);
+    const [masterData, setMasterData] = useState<MasterDataItem[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [currency] = useAtom(currencyAtom);
-
-    const [useDummyData] = useAtom(useDummyDataAtom);
-    const [, seedData] = useAtom(dataSeederAtom);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        seedData(useDummyData);
-    }, [useDummyData, seedData]);
+        const fetchMasterData = async () => {
+            setLoading(true);
+            const querySnapshot = await getDocs(collection(db, "masterData"));
+            const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MasterDataItem));
+            setMasterData(data);
+            setLoading(false);
+        };
+        fetchMasterData();
+    }, []);
 
-
-    const form = useForm<MasterDataItem>({
-        resolver: zodResolver(itemSchema),
+    const form = useForm<Omit<MasterDataItem, 'id'>>({
+        resolver: zodResolver(itemSchema.omit({id: true})),
         defaultValues: {
             itemCode: '',
             name: '',
@@ -89,15 +97,24 @@ export default function MasterDataPage() {
         },
     });
 
-    function onSubmit(values: MasterDataItem) {
-        setMasterData([...masterData, values]);
-        toast({
-          title: 'Item Added',
-          description: `${values.name} has been successfully added.`,
-        });
-        form.reset();
-        setIsDialogOpen(false);
-      }
+    async function onSubmit(values: Omit<MasterDataItem, 'id'>) {
+        try {
+            const docRef = await addDoc(collection(db, 'masterData'), values);
+            setMasterData([...masterData, { ...values, id: docRef.id }]);
+            toast({
+              title: 'Item Added',
+              description: `${values.name} has been successfully added.`,
+            });
+            form.reset();
+            setIsDialogOpen(false);
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to add item.',
+            });
+        }
+    }
 
     const filteredMasterData = masterData.filter(
         (item) =>
@@ -241,7 +258,9 @@ export default function MasterDataPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMasterData.length > 0 ? (
+                {loading ? (
+                    <TableRow><TableCell colSpan={6} className="text-center">Loading...</TableCell></TableRow>
+                ) : filteredMasterData.length > 0 ? (
                     filteredMasterData.map((item) => (
                     <TableRow key={item.itemCode}>
                         <TableCell className="font-mono">{item.itemCode}</TableCell>
@@ -270,7 +289,7 @@ export default function MasterDataPage() {
                 ) : (
                     <TableRow>
                         <TableCell colSpan={6} className="text-center">
-                            No master data found. Enable dummy data in the dashboard's development tab to see sample entries.
+                            No master data found.
                         </TableCell>
                     </TableRow>
                 )}
