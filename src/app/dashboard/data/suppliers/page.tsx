@@ -59,6 +59,8 @@ const supplierSchema = z.object({
     email: z.string().email("Invalid email address"),
     whatsappNumber: z.string().min(1, "WhatsApp number is required"),
     contactNumber: z.string().min(1, "Contact number is required"),
+    bankName: z.string().optional(),
+    accountNumber: z.string().optional(),
 });
 
 type Supplier = z.infer<typeof supplierSchema>;
@@ -80,6 +82,8 @@ export default function SuppliersPage() {
       email: '',
       whatsappNumber: '',
       contactNumber: '',
+      bankName: '',
+      accountNumber: '',
     },
   });
 
@@ -110,6 +114,8 @@ export default function SuppliersPage() {
             email: values.email,
             whatsappNumber: values.whatsappNumber,
             contactNumber: values.contactNumber,
+            bankName: values.bankName || '',
+            accountNumber: values.accountNumber || '',
         };
 
         if (editingSupplier && editingSupplier.id) {
@@ -154,6 +160,8 @@ export default function SuppliersPage() {
             email: '',
             whatsappNumber: '',
             contactNumber: '',
+            bankName: '',
+            accountNumber: '',
         });
     }
     setIsDialogOpen(true);
@@ -162,7 +170,7 @@ export default function SuppliersPage() {
   const filteredSuppliers = suppliers.filter(
     (supplier) =>
       supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (supplier.contactPerson && supplier.contactPerson.toLowerCase().includes(searchTerm.toLowerCase())) ||
       supplier.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -205,11 +213,13 @@ export default function SuppliersPage() {
                                     <ScrollArea className="flex-1 pr-6">
                                         <div className="space-y-4 py-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Supplier Name</FormLabel><FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                <FormField control={form.control} name="contactPerson" render={({ field }) => ( <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => ( <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                <FormField control={form.control} name="contactNumber" render={({ field }) => ( <FormItem><FormLabel>Contact Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Supplier Name</FormLabel> <FormControl> <Input placeholder="e.g. Timber Co." {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                                                <FormField control={form.control} name="contactPerson" render={({ field }) => ( <FormItem> <FormLabel>Contact Person</FormLabel> <FormControl> <Input placeholder="e.g. John Doe" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email Address</FormLabel> <FormControl> <Input placeholder="e.g. contact@timberco.com" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => ( <FormItem> <FormLabel>WhatsApp Number</FormLabel> <FormControl> <Input placeholder="e.g. +1 555-123-4567" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                                                <FormField control={form.control} name="contactNumber" render={({ field }) => ( <FormItem> <FormLabel>Contact Number</FormLabel> <FormControl> <Input placeholder="e.g. +1 555-123-4567" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                                                <FormField control={form.control} name="bankName" render={({ field }) => ( <FormItem> <FormLabel>Bank Name</FormLabel> <FormControl> <Input placeholder="e.g. National Bank" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                                                <FormField control={form.control} name="accountNumber" render={({ field }) => ( <FormItem> <FormLabel>Account Number</FormLabel> <FormControl> <Input placeholder="e.g. 1234567890" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
                                             </div>
                                         </div>
                                     </ScrollArea>
@@ -232,21 +242,23 @@ export default function SuppliersPage() {
                 <TableRow>
                   <TableHead>Supplier Name</TableHead>
                   <TableHead>Contact Person</TableHead>
-                  <TableHead>Email</TableHead>
                   <TableHead>Contact No.</TableHead>
+                  <TableHead>Bank</TableHead>
+                  <TableHead>Account No.</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center">Loading...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center">Loading...</TableCell></TableRow>
                 ) : filteredSuppliers.length > 0 ? (
                     filteredSuppliers.map((supplier) => (
                     <TableRow key={supplier.id}>
                         <TableCell className="font-medium">{supplier.name}</TableCell>
                         <TableCell>{supplier.contactPerson}</TableCell>
-                        <TableCell>{supplier.email}</TableCell>
                         <TableCell>{supplier.contactNumber}</TableCell>
+                        <TableCell>{supplier.bankName || '-'}</TableCell>
+                        <TableCell>{supplier.accountNumber || '-'}</TableCell>
                         <TableCell>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -265,7 +277,7 @@ export default function SuppliersPage() {
                     ))
                 ) : (
                      <TableRow>
-                        <TableCell colSpan={5} className="text-center">
+                        <TableCell colSpan={6} className="text-center">
                             No suppliers found.
                         </TableCell>
                     </TableRow>
@@ -278,3 +290,5 @@ export default function SuppliersPage() {
     </>
   );
 }
+
+    
