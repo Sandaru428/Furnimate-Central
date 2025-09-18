@@ -10,7 +10,7 @@ export const MAIN_TABS = [
     { id: 'notification-templates', label: 'Notification Templates' },
     { id: 'cash-book', label: 'Cash Book' },
     { id: 'income-expenses', label: 'Income & Expenses' },
-    { id: 'master-data', label: 'Master Data' },
+    { id: 'stocks', label: 'Stocks' },
     { id: 'staff', label: 'Staff'},
     { id: 'suppliers', label: 'Suppliers' },
     { id: 'customers', label: 'Customers' },

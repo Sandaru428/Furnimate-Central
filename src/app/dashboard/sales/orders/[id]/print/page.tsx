@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
-import { saleOrdersAtom, quotationsAtom, masterDataAtom, currencyAtom, companyProfileAtom, paymentsAtom } from '@/lib/store';
+import { saleOrdersAtom, quotationsAtom, stocksAtom, currencyAtom, companyProfileAtom, paymentsAtom } from '@/lib/store';
 import { Logo } from '@/components/icons/logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ export default function SaleOrderPrintPage() {
 
     const [saleOrders] = useAtom(saleOrdersAtom);
     const [quotations] = useAtom(quotationsAtom);
-    const [masterData] = useAtom(masterDataAtom);
+    const [stocks] = useAtom(stocksAtom);
     const [payments] = useAtom(paymentsAtom);
     const [currency] = useAtom(currencyAtom);
     const [companyProfile] = useAtom(companyProfileAtom);
@@ -154,7 +155,7 @@ export default function SaleOrderPrintPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {originalQuotation.lineItems.map((item: any) => {
-                                        const itemDetails = masterData.find(md => md.itemCode === item.itemId);
+                                        const itemDetails = stocks.find(md => md.itemCode === item.itemId);
                                         return (
                                             <TableRow key={item.itemId}>
                                                 <TableCell>{itemDetails?.name || item.itemId}</TableCell>

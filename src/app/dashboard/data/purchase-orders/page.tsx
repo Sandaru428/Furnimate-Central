@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -60,11 +61,11 @@ import {
     Payment, 
     currencyAtom,
     purchaseOrdersAtom,
-    masterDataAtom,
+    stocksAtom,
     suppliersAtom,
     companyProfileAtom,
 } from '@/lib/store';
-import type { MasterDataItem } from '../master-data/page';
+import type { StockItem } from '../stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
@@ -127,10 +128,10 @@ type CreatePurchaseOrder = z.infer<typeof createPurchaseOrderSchema>;
 type ReceiveItemsForm = z.infer<typeof receiveItemsSchema>;
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
-const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
+const AddItemForm = ({ stocks, onAddItem }: { stocks: StockItem[], onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
     const [selectedItemCode, setSelectedItemCode] = useState('');
     const [quantity, setQuantity] = useState<number | ''>('');
-    const item = masterData.find(i => i.itemCode === selectedItemCode);
+    const item = stocks.find(i => i.itemCode === selectedItemCode);
 
     const handleAddItem = () => {
         const numQuantity = Number(quantity);
@@ -153,7 +154,7 @@ const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], 
                         <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
                     <SelectContent>
-                        {masterData.map(item => (
+                        {stocks.map(item => (
                             <SelectItem key={item.itemCode} value={item.itemCode}>
                                 {item.name} ({item.itemCode})
                             </SelectItem>
@@ -180,7 +181,7 @@ const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], 
 
 export default function PurchaseOrdersPage() {
     const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
-    const [masterData, setMasterData] = useAtom(masterDataAtom);
+    const [stocks, setStocks] = useAtom(stocksAtom);
     const [suppliers, setSuppliers] = useAtom(suppliersAtom);
     const [payments, setPayments] = useAtom(paymentsAtom);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -210,10 +211,10 @@ export default function PurchaseOrdersPage() {
             const poData = poSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as PurchaseOrder));
             setPurchaseOrders(poData);
 
-            const masterDataQuery = query(collection(db, "masterData"), where("companyId", "==", companyId));
-            const masterDataSnapshot = await getDocs(masterDataQuery);
-            const masterData = masterDataSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MasterDataItem));
-            setMasterData(masterData);
+            const stocksQuery = query(collection(db, "stocks"), where("companyId", "==", companyId));
+            const stocksSnapshot = await getDocs(stocksQuery);
+            const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
+            setStocks(stocksData);
 
             const suppliersQuery = query(collection(db, "suppliers"), where("companyId", "==", companyId));
             const suppliersSnapshot = await getDocs(suppliersQuery);
@@ -227,7 +228,7 @@ export default function PurchaseOrdersPage() {
             setLoading(false);
         };
         fetchData();
-    }, [setPurchaseOrders, setMasterData, setSuppliers, setPayments, companyProfile]);
+    }, [setPurchaseOrders, setStocks, setSuppliers, setPayments, companyProfile]);
     
     const handlePrint = (poId: string) => {
         router.push(`/dashboard/data/purchase-orders/${poId}/print`);
@@ -331,12 +332,12 @@ toBankName: '',
         setPurchaseOrders(prevPOs => prevPOs.map(po => po.id === selectedPO.id ? updatedPO : po ));
 
         for (const receivedItem of values.lineItems) {
-            const masterDataQuery = query(collection(db, "masterData"), where("companyId", "==", companyProfile.companyName), where("itemCode", "==", receivedItem.itemId));
-            const itemDocSnapshot = await getDocs(masterDataQuery);
+            const stocksQuery = query(collection(db, "stocks"), where("companyId", "==", companyProfile.companyName), where("itemCode", "==", receivedItem.itemId));
+            const itemDocSnapshot = await getDocs(stocksQuery);
             
             if (!itemDocSnapshot.empty) {
                 const itemDocRef = itemDocSnapshot.docs[0].ref;
-                const currentItem = itemDocSnapshot.docs[0].data() as MasterDataItem;
+                const currentItem = itemDocSnapshot.docs[0].data() as StockItem;
                 await updateDoc(itemDocRef, { stockLevel: currentItem.stockLevel + receivedItem.quantity });
             }
         }
@@ -525,12 +526,12 @@ toBankName: '',
                                         <div>
                                             <FormLabel>Line Items</FormLabel>
                                             <div className="space-y-2 mt-2">
-                                                {createFields.map((field, index) => { const itemDetails = masterData.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
+                                                {createFields.map((field, index) => { const itemDetails = stocks.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
                                             </div>
                                             {createFields.length === 0 && ( <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p> )}
                                             <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
                                         </div>
-                                        <AddItemForm masterData={masterData} onAddItem={createAppend} />
+                                        <AddItemForm stocks={stocks} onAddItem={createAppend} />
                                     </div>
                                 </ScrollArea>
                                 <DialogFooter className="pt-4">
@@ -640,7 +641,7 @@ toBankName: '',
                                       <TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="w-24">Quantity</TableHead><TableHead className="w-40">Unit Price</TableHead><TableHead className="w-40 text-right">Total Value</TableHead></TableRow></TableHeader>
                                       <TableBody>
                                           {receiveFields.map((field, index) => {
-                                              const itemDetails = masterData.find(i => i.itemCode === field.itemId);
+                                              const itemDetails = stocks.find(i => i.itemCode === field.itemId);
                                               const quantity = receiveForm.watch(`lineItems.${index}.quantity`);
                                               const unitPrice = receiveForm.watch(`lineItems.${index}.unitPrice`);
                                               const totalValue = (quantity || 0) * (unitPrice || 0);

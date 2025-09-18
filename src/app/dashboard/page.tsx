@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -32,7 +33,7 @@ import {
 } from 'recharts';
 
 import { useAtom } from 'jotai';
-import { currencyAtom, paymentsAtom, saleOrdersAtom, masterDataAtom } from '@/lib/store';
+import { currencyAtom, paymentsAtom, saleOrdersAtom, stocksAtom } from '@/lib/store';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
@@ -89,7 +90,7 @@ const developmentChecklist = [
     items: [
       {
         id: 'data-1',
-        label: 'Master Data Management for products and materials',
+        label: 'Stocks Management for products and materials',
         checked: true,
       },
       { id: 'data-2', label: 'Supplier and Customer data management', checked: true },
@@ -108,7 +109,7 @@ export default function DashboardPage() {
   const [currency] = useAtom(currencyAtom);
   const [payments] = useAtom(paymentsAtom);
   const [saleOrders] = useAtom(saleOrdersAtom);
-  const [masterData] = useAtom(masterDataAtom);
+  const [stocks] = useAtom(stocksAtom);
   const { user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
 
@@ -127,7 +128,7 @@ export default function DashboardPage() {
     
     const pendingShipments = saleOrders.filter(o => o.status === 'Processing').length;
     
-    const itemsToRestock = masterData.filter(item => item.stockLevel === 0).length;
+    const itemsToRestock = stocks.filter(item => item.stockLevel === 0).length;
 
     return [
       {
@@ -160,7 +161,7 @@ export default function DashboardPage() {
         icon: <Archive className="text-muted-foreground" />,
       },
     ];
-  }, [payments, saleOrders, masterData]);
+  }, [payments, saleOrders, stocks]);
 
  const salesData = useMemo(() => {
     const monthlySales: { [key: string]: number } = {};

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -55,8 +56,8 @@ import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
-import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, saleOrdersAtom, companyProfileAtom } from '@/lib/store';
-import type { MasterDataItem } from '../../data/master-data/page';
+import { currencyAtom, stocksAtom, customersAtom, quotationsAtom, saleOrdersAtom, companyProfileAtom } from '@/lib/store';
+import type { StockItem } from '../../data/stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
@@ -95,10 +96,10 @@ const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "
     'Converted': 'default'
 }
 
-const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], onAddItem: (item: z.infer<typeof lineItemSchema>) => void }) => {
+const AddItemForm = ({ stocks, onAddItem }: { stocks: StockItem[], onAddItem: (item: z.infer<typeof lineItemSchema>) => void }) => {
     const [selectedItemCode, setSelectedItemCode] = useState('');
     const [quantity, setQuantity] = useState<number | ''>('');
-    const item = masterData.find(i => i.itemCode === selectedItemCode);
+    const item = stocks.find(i => i.itemCode === selectedItemCode);
 
     const handleAddItem = () => {
         const numQuantity = Number(quantity);
@@ -123,7 +124,7 @@ const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], 
                         <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
                     <SelectContent>
-                        {masterData.filter(i => i.type === 'Finished Good').map(item => (
+                        {stocks.filter(i => i.type === 'Finished Good').map(item => (
                             <SelectItem key={item.itemCode} value={item.itemCode}>
                                 {item.name} ({item.itemCode})
                             </SelectItem>
@@ -150,7 +151,7 @@ const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], 
 
 export default function QuotationsPage() {
     const [quotations, setQuotations] = useAtom(quotationsAtom);
-    const [masterData, setMasterData] = useAtom(masterDataAtom);
+    const [stocks, setStocks] = useAtom(stocksAtom);
     const [customers, setCustomers] = useAtom(customersAtom);
     const [, setSaleOrders] = useAtom(saleOrdersAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -180,10 +181,10 @@ export default function QuotationsPage() {
             const quotationsData = quotationsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Quotation));
             setQuotations(quotationsData);
 
-            const masterDataQuery = query(collection(db, "masterData"), where("companyId", "==", companyId));
-            const masterDataSnapshot = await getDocs(masterDataQuery);
-            const masterData = masterDataSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MasterDataItem));
-            setMasterData(masterData);
+            const stocksQuery = query(collection(db, "stocks"), where("companyId", "==", companyId));
+            const stocksSnapshot = await getDocs(stocksQuery);
+            const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
+            setStocks(stocksData);
 
             const customersQuery = query(collection(db, "customers"), where("companyId", "==", companyId));
             const customersSnapshot = await getDocs(customersQuery);
@@ -192,7 +193,7 @@ export default function QuotationsPage() {
             setLoading(false);
         };
         fetchData();
-    }, [setQuotations, setMasterData, setCustomers, companyProfile]);
+    }, [setQuotations, setStocks, setCustomers, companyProfile]);
 
 
     const form = useForm<CreateQuotation>({
@@ -298,8 +299,8 @@ export default function QuotationsPage() {
 
         let insufficientStock = false;
         for (const item of quotation.lineItems) {
-            const masterDataQuery = query(collection(db, "masterData"), where("companyId", "==", companyProfile.companyName), where("itemCode", "==", item.itemId));
-            const masterItemSnapshot = await getDocs(masterDataQuery);
+            const stocksQuery = query(collection(db, "stocks"), where("companyId", "==", companyProfile.companyName), where("itemCode", "==", item.itemId));
+            const masterItemSnapshot = await getDocs(stocksQuery);
             
             if (masterItemSnapshot.empty) {
                 insufficientStock = true;
@@ -307,7 +308,7 @@ export default function QuotationsPage() {
                 break;
             }
 
-            const masterItem = masterItemSnapshot.docs[0].data() as MasterDataItem;
+            const masterItem = masterItemSnapshot.docs[0].data() as StockItem;
             if (masterItem.stockLevel < item.quantity) {
                 insufficientStock = true;
                 toast({ variant: "destructive", title: 'Stock Unavailable', description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${masterItem.stockLevel}` });
@@ -436,7 +437,7 @@ export default function QuotationsPage() {
                                                 </TableHeader>
                                                 <TableBody>
                                                     {fields.map((field, index) => {
-                                                        const itemDetails = masterData.find(i => i.itemCode === field.itemId);
+                                                        const itemDetails = stocks.find(i => i.itemCode === field.itemId);
                                                         return (
                                                         <TableRow key={field.id}>
                                                             <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
@@ -459,7 +460,7 @@ export default function QuotationsPage() {
                                         </div>
                                     </div>
                                     
-                                    <AddItemForm masterData={masterData} onAddItem={append} />
+                                    <AddItemForm stocks={stocks} onAddItem={append} />
                                 </div>
                             </ScrollArea>
                             <DialogFooter className="pt-4">

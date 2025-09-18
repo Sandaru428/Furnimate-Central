@@ -67,7 +67,7 @@ export const authProfileAtom = atom<AuthProfile | null>(null);
 // Data atoms - These will be populated from Firestore
 export const customersAtom = atom<any[]>([]);
 export const suppliersAtom = atom<any[]>([]);
-export const masterDataAtom = atom<any[]>([]);
+export const stocksAtom = atom<any[]>([]);
 export const purchaseOrdersAtom = atom<any[]>([]);
 export const quotationsAtom = atom<any[]>([]);
 export const saleOrdersAtom = atom<any[]>([]);

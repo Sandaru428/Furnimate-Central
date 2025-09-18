@@ -38,7 +38,7 @@ const menuConfig = {
         label: 'Data Management',
         items: {
             'income-expenses': { icon: Landmark, label: 'Income & Expenses', href: '/dashboard/data/income-expenses' },
-            'master-data': { icon: Database, label: 'Master Data', href: '/dashboard/data/master-data' },
+            'stocks': { icon: Database, label: 'Stocks', href: '/dashboard/data/stocks' },
             staff: { icon: UserRound, label: 'Staff', href: '/dashboard/data/staff' },
             suppliers: { icon: Building, label: 'Suppliers', href: '/dashboard/data/suppliers' },
             customers: { icon: Users, label: 'Customers', href: '/dashboard/data/customers' },

@@ -1,13 +1,14 @@
 
+
 'use client';
 
 import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
-import { quotationsAtom, masterDataAtom, currencyAtom, companyProfileAtom } from '@/lib/store';
+import { quotationsAtom, stocksAtom, currencyAtom, companyProfileAtom } from '@/lib/store';
 import { Logo } from '@/components/icons/logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { MasterDataItem } from '../../../../data/master-data/page';
+import type { StockItem } from '../../../../data/stocks/page';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft } from 'lucide-react';
 
@@ -17,7 +18,7 @@ export default function QuotationPrintPage() {
     const { id } = params;
 
     const [quotations] = useAtom(quotationsAtom);
-    const [masterData] = useAtom(masterDataAtom);
+    const [stocks] = useAtom(stocksAtom);
     const [currency] = useAtom(currencyAtom);
     const [companyProfile] = useAtom(companyProfileAtom);
 
@@ -94,7 +95,7 @@ export default function QuotationPrintPage() {
                     </TableHeader>
                     <TableBody>
                         {quotation.lineItems.map(item => {
-                            const itemDetails = masterData.find((md: MasterDataItem) => md.itemCode === item.itemId);
+                            const itemDetails = stocks.find((md: StockItem) => md.itemCode === item.itemId);
                             return (
                                 <TableRow key={item.itemId}>
                                     <TableCell>{itemDetails?.name || item.itemId}</TableCell>
