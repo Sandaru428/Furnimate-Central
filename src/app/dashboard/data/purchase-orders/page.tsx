@@ -391,22 +391,22 @@ export default function PurchaseOrdersPage() {
                                       name="supplierName"
                                       render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Supplier</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select a supplier" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {initialSuppliers.map(supplier => (
-                                                        <SelectItem key={supplier.id} value={supplier.name}>
-                                                            {supplier.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
+                                          <FormLabel>Supplier</FormLabel>
+                                          <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue placeholder="Select a supplier" />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              {initialSuppliers.map(supplier => (
+                                                <SelectItem key={supplier.id} value={supplier.name}>
+                                                  {supplier.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <FormMessage />
                                         </FormItem>
                                       )}
                                     />
