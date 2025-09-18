@@ -212,7 +212,7 @@ export default function PurchaseOrdersPage() {
             const paymentsSnapshot = await getDocs(collection(db, "payments"));
             const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
             setPayments(paymentsData);
-            setLoading(false);
+setLoading(false);
         };
         fetchData();
     }, [setPurchaseOrders, setMasterData, setPayments]);
@@ -397,7 +397,7 @@ export default function PurchaseOrdersPage() {
         } else {
             setEditingPO(null);
             createForm.reset({ supplierName: '', lineItems: [] });
-            remove();
+            createRemove();
         }
         setIsCreateDialogOpen(true);
     };
@@ -786,5 +786,3 @@ export default function PurchaseOrdersPage() {
       </>
   );
 }
-
-    
