@@ -55,7 +55,7 @@ import { initialSuppliers } from '../suppliers/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment } from '@/lib/store';
+import { paymentsAtom, Payment, currencyAtom } from '@/lib/store';
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item selection is required."),
@@ -199,6 +199,7 @@ export default function PurchaseOrdersPage() {
     const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
+    const [currency] = useAtom(currencyAtom);
 
     const createForm = useForm<CreatePurchaseOrder>({
         resolver: zodResolver(createQuotationSchema),
@@ -308,7 +309,7 @@ export default function PurchaseOrdersPage() {
             toast({
                 variant: 'destructive',
                 title: 'Invalid Amount',
-                description: `Payment exceeds remaining balance. Max payable: $${(selectedPO.totalAmount - currentAmountPaid).toFixed(2)}`,
+                description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedPO.totalAmount - currentAmountPaid).toFixed(2)}`,
             });
             return;
         }
@@ -352,7 +353,7 @@ export default function PurchaseOrdersPage() {
         } else {
              toast({
                 title: 'Installment Recorded',
-                description: `Payment of $${values.amount.toFixed(2)} for PO ${selectedPO.id} recorded.`
+                description: `Payment of ${currency.code} ${values.amount.toFixed(2)} for PO ${selectedPO.id} recorded.`
             });
         }
         setIsPaymentDialogOpen(false);
@@ -508,7 +509,7 @@ export default function PurchaseOrdersPage() {
                     <TableCell className="font-mono">{po.id}</TableCell>
                     <TableCell className="font-medium">{po.supplierName}</TableCell>
                     <TableCell>{po.date}</TableCell>
-                    <TableCell className="text-right">${po.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge 
                         variant={statusVariant[po.status]}
@@ -561,7 +562,7 @@ export default function PurchaseOrdersPage() {
                                             <TableCell className="font-medium">{itemDetails?.name}</TableCell>
                                             <TableCell>{quantity}</TableCell>
                                             <TableCell> <FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => ( <FormItem> <FormControl> <Input type="number" placeholder="e.g. 10.50" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> </TableCell>
-                                            <TableCell className="text-right font-mono">${totalValue.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right font-mono">{currency.code} {totalValue.toFixed(2)}</TableCell>
                                         </TableRow>
                                     );
                                 })}
@@ -579,7 +580,7 @@ export default function PurchaseOrdersPage() {
                 <DialogHeader>
                     <DialogTitle>Record Payment for PO {selectedPO?.id}</DialogTitle>
                     <CardDescription>
-                        Total: ${selectedPO?.totalAmount.toFixed(2)} | Paid: ${amountPaid.toFixed(2)} | Remaining: ${remainingAmount.toFixed(2)}
+                        Total: {currency.code} {selectedPO?.totalAmount.toFixed(2)} | Paid: {currency.code} {amountPaid.toFixed(2)} | Remaining: {currency.code} {remainingAmount.toFixed(2)}
                     </CardDescription>
                 </DialogHeader>
                  <Form {...paymentForm}>
@@ -706,5 +707,3 @@ export default function PurchaseOrdersPage() {
     </>
   );
 }
-
-    

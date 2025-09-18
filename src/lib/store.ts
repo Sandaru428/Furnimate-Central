@@ -12,3 +12,10 @@ export type Payment = {
 };
 
 export const paymentsAtom = atom<Payment[]>([]);
+
+export type Currency = {
+    code: string;
+    name: string;
+}
+
+export const currencyAtom = atom<Currency>({ code: 'USD', name: 'United States Dollar' });

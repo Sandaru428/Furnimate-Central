@@ -49,11 +49,14 @@ import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAtom } from 'jotai';
+import { currencyAtom } from '@/lib/store';
 
 const itemSchema = z.object({
     itemCode: z.string().min(1, "Item code is required"),
     name: z.string().min(1, "Item name is required"),
-    type: z.string().min(1, "Type is required"),
+    type: z.enum(['Raw Material', 'Finished Good']),
     unitPrice: z.coerce.number().positive("Unit price must be a positive number."),
     stockLevel: z.coerce.number().int().min(0, "Stock level cannot be negative."),
 });
@@ -65,28 +68,28 @@ export const initialMasterData: MasterDataItem[] = [
   {
     itemCode: 'WD-001',
     name: 'Oak Wood Plank',
-    type: 'Wood',
+    type: 'Raw Material',
     unitPrice: 25.00,
     stockLevel: 150,
   },
   {
     itemCode: 'FBR-003',
     name: 'Linen Fabric',
-    type: 'Fabric',
+    type: 'Raw Material',
     unitPrice: 15.50,
     stockLevel: 300,
   },
   {
     itemCode: 'MTL-002',
     name: 'Steel Frame',
-    type: 'Metal',
+    type: 'Raw Material',
     unitPrice: 55.00,
     stockLevel: 80,
   },
     {
     itemCode: 'FNS-010',
     name: 'Matte Varnish',
-    type: 'Finishing',
+    type: 'Raw Material',
     unitPrice: 12.00,
     stockLevel: 200,
   },
@@ -97,13 +100,14 @@ export default function MasterDataPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
+    const [currency] = useAtom(currencyAtom);
 
     const form = useForm<MasterDataItem>({
         resolver: zodResolver(itemSchema),
         defaultValues: {
             itemCode: '',
             name: '',
-            type: '',
+            type: undefined,
             unitPrice: '' as any,
             stockLevel: '' as any,
         },
@@ -189,17 +193,25 @@ export default function MasterDataPage() {
                                     )}
                                     />
                                     <FormField
-                                    control={form.control}
-                                    name="type"
-                                    render={({ field }) => (
+                                      control={form.control}
+                                      name="type"
+                                      render={({ field }) => (
                                         <FormItem>
-                                        <FormLabel>Type</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., Wood" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
+                                          <FormLabel>Type</FormLabel>
+                                          <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue placeholder="Select item type" />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              <SelectItem value="Raw Material">Raw Material</SelectItem>
+                                              <SelectItem value="Finished Good">Finished Good</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          <FormMessage />
                                         </FormItem>
-                                    )}
+                                      )}
                                     />
                                     <FormField
                                     control={form.control}
@@ -260,7 +272,7 @@ export default function MasterDataPage() {
                     <TableCell>
                       <Badge variant="secondary">{item.type}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
                     <TableCell className="text-right">{item.stockLevel}</TableCell>
                     <TableCell>
                         <DropdownMenu>

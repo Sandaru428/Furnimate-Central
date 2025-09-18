@@ -18,23 +18,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useState, useEffect } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { currencies } from '@/lib/currencies';
+import { useAtom } from 'jotai';
+import { currencyAtom } from '@/lib/store';
 
 const formSchema = z.object({
   companyName: z.string().min(1, 'Company name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone number is required'),
   logo: z.any().optional(),
+  currency: z.string().min(1, 'Currency is required'),
 });
 
 type CompanyProfile = z.infer<typeof formSchema>;
 
 export default function CompanyProfilePage() {
   const { toast } = useToast();
+  const [selectedCurrency, setCurrency] = useAtom(currencyAtom);
+
   const [profile, setProfile] = useState<CompanyProfile>({
     companyName: 'Siraiva ltd',
     email: 'absiraiva@gmail.com',
     phone: '+94773606494',
     logo: undefined,
+    currency: selectedCurrency.code,
   });
 
   const form = useForm<CompanyProfile>({
@@ -48,13 +56,22 @@ export default function CompanyProfilePage() {
         logo: values.logo && values.logo.length > 0 ? values.logo[0].name : profile.logo
     };
     setProfile(newProfileData);
-    console.log(newProfileData);
+    const newCurrency = currencies.find(c => c.code === values.currency);
+    if (newCurrency) {
+        setCurrency(newCurrency);
+    }
     toast({
       title: 'Profile Updated',
       description: 'Your company profile has been saved.',
     });
-    // The form will automatically re-render with the new state values
   }
+
+  useEffect(() => {
+    form.setValue('companyName', profile.companyName);
+    form.setValue('email', profile.email);
+    form.setValue('phone', profile.phone);
+    form.setValue('currency', profile.currency);
+  }, [profile, form]);
 
   return (
     <>
@@ -105,6 +122,30 @@ export default function CompanyProfilePage() {
                       <FormControl>
                         <Input placeholder="+1 (234) 567-890" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Currency</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a currency" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {currencies.map(currency => (
+                            <SelectItem key={currency.code} value={currency.code}>
+                              {currency.name} ({currency.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

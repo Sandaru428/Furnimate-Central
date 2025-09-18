@@ -56,6 +56,8 @@ import { initialCustomers } from '@/app/dashboard/data/customers/page';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useAtom } from 'jotai';
+import { currencyAtom } from '@/lib/store';
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required."),
@@ -148,7 +150,7 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: z.infer<typeof lineItemS
                         <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
                     <SelectContent>
-                        {initialMasterData.map(item => (
+                        {initialMasterData.filter(i => i.type === 'Finished Good').map(item => (
                             <SelectItem key={item.itemCode} value={item.itemCode}>
                                 {item.name} ({item.itemCode})
                             </SelectItem>
@@ -179,6 +181,7 @@ export default function QuotationsPage() {
     const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
     const { toast } = useToast();
     const router = useRouter();
+    const [currency] = useAtom(currencyAtom);
 
     const form = useForm<CreateQuotation>({
         resolver: zodResolver(createQuotationSchema),
@@ -410,8 +413,8 @@ export default function QuotationsPage() {
                                                     <TableRow key={field.id}>
                                                         <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
                                                         <TableCell>{field.quantity}</TableCell>
-                                                        <TableCell className="text-right">${field.unitPrice.toFixed(2)}</TableCell>
-                                                        <TableCell className="text-right">${field.totalValue.toFixed(2)}</TableCell>
+                                                        <TableCell className="text-right">{currency.code} {field.unitPrice.toFixed(2)}</TableCell>
+                                                        <TableCell className="text-right">{currency.code} {field.totalValue.toFixed(2)}</TableCell>
                                                         <TableCell>
                                                             <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
                                                                 <Trash2 className="h-4 w-4 text-destructive"/>
@@ -433,7 +436,7 @@ export default function QuotationsPage() {
                                 <DialogFooter>
                                     <div className='w-full flex justify-between items-center'>
                                         <div className="text-lg font-semibold">
-                                            Total: ${totalAmount.toFixed(2)}
+                                            Total: {currency.code} {totalAmount.toFixed(2)}
                                         </div>
                                         <div className="flex gap-2">
                                             <DialogClose asChild>
@@ -467,7 +470,7 @@ export default function QuotationsPage() {
                     <TableCell className="font-mono">{quote.id}</TableCell>
                     <TableCell className="font-medium">{quote.customer}</TableCell>
                     <TableCell>{quote.date}</TableCell>
-                    <TableCell className="text-right">${quote.amount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{currency.code} {quote.amount.toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge 
                         variant={statusVariant[quote.status] || 'secondary'}
@@ -531,5 +534,3 @@ export default function QuotationsPage() {
     </>
   );
 }
-
-    

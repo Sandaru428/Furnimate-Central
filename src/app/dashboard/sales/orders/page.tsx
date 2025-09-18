@@ -51,7 +51,7 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment } from '@/lib/store';
+import { paymentsAtom, Payment, currencyAtom } from '@/lib/store';
 import { format } from 'date-fns';
 
 const paymentSchema = z.object({
@@ -105,6 +105,7 @@ export default function OrdersPage() {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [payments, setPayments] = useAtom(paymentsAtom);
     const { toast } = useToast();
+    const [currency] = useAtom(currencyAtom);
 
     const form = useForm<PaymentFormValues>({
         resolver: zodResolver(paymentSchema),
@@ -167,7 +168,7 @@ export default function OrdersPage() {
             toast({
                 variant: 'destructive',
                 title: 'Invalid Amount',
-                description: `Payment exceeds remaining balance. Max payable: $${(selectedOrder.amount - currentAmountPaid).toFixed(2)}`,
+                description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedOrder.amount - currentAmountPaid).toFixed(2)}`,
             });
             return;
         }
@@ -210,7 +211,7 @@ export default function OrdersPage() {
         } else {
              toast({
                 title: 'Installment Recorded',
-                description: `Payment of $${values.amount.toFixed(2)} for order ${selectedOrder.id} recorded.`
+                description: `Payment of ${currency.code} ${values.amount.toFixed(2)} for order ${selectedOrder.id} recorded.`
             });
         }
 
@@ -253,7 +254,7 @@ export default function OrdersPage() {
                         <TableCell className="font-mono">{order.quotationId}</TableCell>
                         <TableCell className="font-medium">{order.customer}</TableCell>
                         <TableCell>{order.date}</TableCell>
-                        <TableCell className="text-right">${order.amount.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{currency.code} {order.amount.toFixed(2)}</TableCell>
                         <TableCell>
                             <Badge variant={order.status === 'Paid' ? 'outline' : 'default'}>{order.status}</Badge>
                         </TableCell>
@@ -293,7 +294,7 @@ export default function OrdersPage() {
                 <DialogHeader>
                     <DialogTitle>Record Payment for {selectedOrder?.id}</DialogTitle>
                     <CardDescription>
-                        Total: ${selectedOrder?.amount.toFixed(2)} | Paid: ${amountPaid.toFixed(2)} | Remaining: ${remainingAmount.toFixed(2)}
+                        Total: {currency.code} {selectedOrder?.amount.toFixed(2)} | Paid: {currency.code} {amountPaid.toFixed(2)} | Remaining: {currency.code} {remainingAmount.toFixed(2)}
                     </CardDescription>
                 </DialogHeader>
                  <Form {...form}>
