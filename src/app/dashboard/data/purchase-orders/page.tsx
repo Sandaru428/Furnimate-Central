@@ -785,52 +785,54 @@ export default function PurchaseOrdersPage() {
 }
 
 // Component for printing - hidden from view
-const PrintablePO = React.forwardRef<HTMLDivElement, { po: PurchaseOrder | null; masterData: MasterDataItem[], currency: any }>(({ po, masterData, currency }, ref) => {
-    if (!po) return null;
-  
-    return (
-      <div ref={ref} className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Purchase Order: {po.id}</h1>
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div>
-            <p><strong>Supplier:</strong> {po.supplierName}</p>
-            <p><strong>Date:</strong> {po.date}</p>
-          </div>
-          <div className="text-right">
-            <p><strong>Status:</strong> {po.status}</p>
-          </div>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item Code</TableHead>
-              <TableHead>Item Name</TableHead>
-              <TableHead className="text-right">Quantity</TableHead>
-              {po.status !== 'Draft' && <TableHead className="text-right">Unit Price</TableHead>}
-              {po.status !== 'Draft' && <TableHead className="text-right">Total Value</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {po.lineItems.map(item => {
-              const itemDetails = masterData.find(md => md.itemCode === item.itemId);
-              return (
-                <TableRow key={item.itemId}>
-                  <TableCell>{item.itemId}</TableCell>
-                  <TableCell>{itemDetails?.name || 'N/A'}</TableCell>
-                  <TableCell className="text-right">{item.quantity}</TableCell>
-                  {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {item.unitPrice?.toFixed(2) || '0.00'}</TableCell>}
-                  {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {item.totalValue?.toFixed(2) || '0.00'}</TableCell>}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-        {po.status !== 'Draft' && (
-            <div className="text-right mt-4 text-xl font-bold">
-                Total: {currency.code} {po.totalAmount.toFixed(2)}
+class PrintablePO extends React.Component<{ po: PurchaseOrder | null; masterData: MasterDataItem[], currency: any }> {
+    render() {
+        const { po, masterData, currency } = this.props;
+        if (!po) return null;
+
+        return (
+            <div className="p-8">
+                <h1 className="text-2xl font-bold mb-4">Purchase Order: {po.id}</h1>
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                <div>
+                    <p><strong>Supplier:</strong> {po.supplierName}</p>
+                    <p><strong>Date:</strong> {po.date}</p>
+                </div>
+                <div className="text-right">
+                    <p><strong>Status:</strong> {po.status}</p>
+                </div>
+                </div>
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Item Code</TableHead>
+                    <TableHead>Item Name</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    {po.status !== 'Draft' && <TableHead className="text-right">Unit Price</TableHead>}
+                    {po.status !== 'Draft' && <TableHead className="text-right">Total Value</TableHead>}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {po.lineItems.map(item => {
+                    const itemDetails = masterData.find(md => md.itemCode === item.itemId);
+                    return (
+                        <TableRow key={item.itemId}>
+                        <TableCell>{item.itemId}</TableCell>
+                        <TableCell>{itemDetails?.name || 'N/A'}</TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {item.unitPrice?.toFixed(2) || '0.00'}</TableCell>}
+                        {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {item.totalValue?.toFixed(2) || '0.00'}</TableCell>}
+                        </TableRow>
+                    );
+                    })}
+                </TableBody>
+                </Table>
+                {po.status !== 'Draft' && (
+                    <div className="text-right mt-4 text-xl font-bold">
+                        Total: {currency.code} {po.totalAmount.toFixed(2)}
+                    </div>
+                )}
             </div>
-        )}
-      </div>
-    );
-});
-PrintablePO.displayName = "PrintablePO";
+        );
+    }
+}

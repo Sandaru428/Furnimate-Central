@@ -588,48 +588,50 @@ export default function QuotationsPage() {
 }
 
 // Component for printing - hidden from view
-const PrintableQuotation = React.forwardRef<HTMLDivElement, { quotation: Quotation | null; masterData: MasterDataItem[], currency: any }>(({ quotation, masterData, currency }, ref) => {
-    if (!quotation) return null;
-  
-    return (
-      <div ref={ref} className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Quotation: {quotation.id}</h1>
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div>
-            <p><strong>Customer:</strong> {quotation.customer}</p>
-            <p><strong>Date:</strong> {quotation.date}</p>
-          </div>
-          <div className="text-right">
-            <p><strong>Status:</strong> {quotation.status}</p>
-          </div>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead className="text-right">Quantity</TableHead>
-              <TableHead className="text-right">Unit Price</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {quotation.lineItems.map(item => {
-              const itemDetails = masterData.find(md => md.itemCode === item.itemId);
-              return (
-                <TableRow key={item.itemId}>
-                  <TableCell>{itemDetails?.name || item.itemId}</TableCell>
-                  <TableCell className="text-right">{item.quantity}</TableCell>
-                  <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-        <div className="text-right mt-4 text-xl font-bold">
-            Total: {currency.code} {quotation.amount.toFixed(2)}
-        </div>
-      </div>
-    );
-  });
-PrintableQuotation.displayName = "PrintableQuotation";
+class PrintableQuotation extends React.Component<{ quotation: Quotation | null; masterData: MasterDataItem[], currency: any }> {
+    render() {
+        const { quotation, masterData, currency } = this.props;
+        if (!quotation) return null;
+
+        return (
+            <div className="p-8">
+                <h1 className="text-2xl font-bold mb-4">Quotation: {quotation.id}</h1>
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                <div>
+                    <p><strong>Customer:</strong> {quotation.customer}</p>
+                    <p><strong>Date:</strong> {quotation.date}</p>
+                </div>
+                <div className="text-right">
+                    <p><strong>Status:</strong> {quotation.status}</p>
+                </div>
+                </div>
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead className="text-right">Unit Price</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {quotation.lineItems.map(item => {
+                    const itemDetails = masterData.find(md => md.itemCode === item.itemId);
+                    return (
+                        <TableRow key={item.itemId}>
+                        <TableCell>{itemDetails?.name || item.itemId}</TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
+                        </TableRow>
+                    );
+                    })}
+                </TableBody>
+                </Table>
+                <div className="text-right mt-4 text-xl font-bold">
+                    Total: {currency.code} {quotation.amount.toFixed(2)}
+                </div>
+            </div>
+        );
+    }
+}

@@ -492,58 +492,60 @@ export default function SaleOrdersPage() {
 }
 
 // Component for printing - hidden from view
-const PrintableSO = React.forwardRef<HTMLDivElement, { order: SaleOrder | null, quotations: any[], masterData: any[], currency: any }>(({ order, quotations, masterData, currency }, ref) => {
-    if (!order) return null;
-  
-    const originalQuotation = quotations.find(q => q.id === order.quotationId);
-  
-    return (
-      <div ref={ref} className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Sale Order: {order.id}</h1>
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div>
-            <p><strong>Customer:</strong> {order.customer}</p>
-            <p><strong>Date:</strong> {order.date}</p>
-            <p><strong>Original Quotation:</strong> {order.quotationId}</p>
-          </div>
-          <div className="text-right">
-            <p><strong>Status:</strong> {order.status}</p>
-          </div>
-        </div>
+class PrintableSO extends React.Component<{ order: SaleOrder | null, quotations: any[], masterData: any[], currency: any }> {
+    render() {
+        const { order, quotations, masterData, currency } = this.props;
+        if (!order) return null;
+
+        const originalQuotation = quotations.find(q => q.id === order.quotationId);
+
+        return (
+            <div className="p-8">
+                <h1 className="text-2xl font-bold mb-4">Sale Order: {order.id}</h1>
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                <div>
+                    <p><strong>Customer:</strong> {order.customer}</p>
+                    <p><strong>Date:</strong> {order.date}</p>
+                    <p><strong>Original Quotation:</strong> {order.quotationId}</p>
+                </div>
+                <div className="text-right">
+                    <p><strong>Status:</strong> {order.status}</p>
+                </div>
+                </div>
+                
+                {originalQuotation && (
+                <>
+                    <h2 className="text-lg font-semibold mb-2">Line Items</h2>
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead className="text-right">Unit Price</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {originalQuotation.lineItems.map((item: any) => {
+                        const itemDetails = masterData.find(md => md.itemCode === item.itemId);
+                        return (
+                            <TableRow key={item.itemId}>
+                            <TableCell>{itemDetails?.name || item.itemId}</TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
+                            <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
+                            </TableRow>
+                        );
+                        })}
+                    </TableBody>
+                    </Table>
+                </>
+                )}
         
-        {originalQuotation && (
-          <>
-            <h2 className="text-lg font-semibold mb-2">Line Items</h2>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead className="text-right">Unit Price</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {originalQuotation.lineItems.map((item: any) => {
-                  const itemDetails = masterData.find(md => md.itemCode === item.itemId);
-                  return (
-                    <TableRow key={item.itemId}>
-                      <TableCell>{itemDetails?.name || item.itemId}</TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </>
-        )}
-  
-        <div className="text-right mt-4 text-xl font-bold">
-            Total Amount: {currency.code} {order.amount.toFixed(2)}
-        </div>
-      </div>
-    );
-  });
-PrintableSO.displayName = "PrintableSO";
+                <div className="text-right mt-4 text-xl font-bold">
+                    Total Amount: {currency.code} {order.amount.toFixed(2)}
+                </div>
+            </div>
+        );
+    }
+}
