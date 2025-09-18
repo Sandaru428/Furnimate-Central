@@ -27,6 +27,8 @@ import {
   YAxis,
 } from 'recharts';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useAtom } from 'jotai';
+import { currencyAtom } from '@/lib/store';
 
 const developmentChecklist = [
   {
@@ -94,25 +96,30 @@ const developmentChecklist = [
 const kpiData = [
   {
     title: 'Total Revenue',
-    value: '$45,231.89',
+    amount: 45231.89,
+    valuePrefix: '',
     change: '+20.1% from last month',
     icon: <DollarSign className="text-muted-foreground" />,
   },
   {
     title: 'New Orders',
-    value: '+2350',
+    amount: 2350,
+    valuePrefix: '+',
     change: '+180.1% from last month',
     icon: <ShoppingCart className="text-muted-foreground" />,
   },
   {
     title: 'Pending Shipments',
-    value: '125',
+    amount: 125,
+    valuePrefix: '',
     change: '+19% from last month',
     icon: <Package className="text-muted-foreground" />,
   },
   {
     title: 'Production Yield',
-    value: '98.5%',
+    amount: 98.5,
+    valuePrefix: '',
+    valueSuffix: '%',
     change: '+2.5% from last month',
     icon: <TrendingUp className="text-muted-foreground" />,
   },
@@ -128,6 +135,8 @@ const salesData = [
   ];
 
 export default function DashboardPage() {
+  const [currency] = useAtom(currencyAtom);
+
   return (
     <>
       <header className="flex items-center p-4 border-b">
@@ -151,7 +160,12 @@ export default function DashboardPage() {
                     {kpi.icon}
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{kpi.value}</div>
+                    <div className="text-2xl font-bold">
+                        {kpi.title === 'Total Revenue' 
+                            ? `${kpi.valuePrefix || ''}${currency.code} ${kpi.amount.toLocaleString()}`
+                            : `${kpi.valuePrefix || ''}${kpi.amount.toLocaleString()}${kpi.valueSuffix || ''}`
+                        }
+                    </div>
                     <p className="text-xs text-muted-foreground">{kpi.change}</p>
                   </CardContent>
                 </Card>
