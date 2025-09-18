@@ -391,7 +391,7 @@ export default function PurchaseOrdersPage() {
                                       name="supplierName"
                                       render={({ field }) => (
                                         <FormItem>
-                                          <FormLabel>Supplier</FormLabel>
+                                            <FormLabel>Supplier</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
@@ -399,14 +399,14 @@ export default function PurchaseOrdersPage() {
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                {initialSuppliers.map(supplier => (
-                                                    <SelectItem key={supplier.id} value={supplier.name}>
-                                                    {supplier.name}
-                                                    </SelectItem>
-                                                ))}
+                                                    {initialSuppliers.map(supplier => (
+                                                        <SelectItem key={supplier.id} value={supplier.name}>
+                                                            {supplier.name}
+                                                        </SelectItem>
+                                                    ))}
                                                 </SelectContent>
                                             </Select>
-                                          <FormMessage />
+                                            <FormMessage />
                                         </FormItem>
                                       )}
                                     />
