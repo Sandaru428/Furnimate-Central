@@ -476,14 +476,14 @@ export default function PurchaseOrdersPage() {
                                   Create New PO
                               </Button>
                           </DialogTrigger>
-                          <DialogContent className="sm:max-w-2xl">
+                          <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
                               <DialogHeader>
                                   <DialogTitle>{editingPO ? `Edit Purchase Order ${editingPO.id}` : 'Create New Purchase Order'}</DialogTitle>
                               </DialogHeader>
                               <Form {...createForm}>
-                                  <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)}>
-                                      <ScrollArea className="max-h-[70vh] w-full">
-                                          <div className="space-y-4 p-4">
+                                  <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                                      <ScrollArea className="flex-1 pr-6">
+                                          <div className="space-y-4">
                                               <FormField
                                               control={createForm.control}
                                               name="supplierName"
@@ -519,7 +519,7 @@ export default function PurchaseOrdersPage() {
                                               <AddItemForm masterData={masterData} onAddItem={createAppend} />
                                           </div>
                                       </ScrollArea>
-                                      <DialogFooter className="mt-4">
+                                      <DialogFooter className="pt-4">
                                           <div className="flex justify-end gap-2 w-full">
                                               <DialogClose asChild>
                                                   <Button variant="outline" type="button">Cancel</Button>
@@ -610,12 +610,12 @@ export default function PurchaseOrdersPage() {
 
       {/* Receive Items Dialog */}
       <Dialog open={isReceiveDialogOpen} onOpenChange={setIsReceiveDialogOpen}>
-              <DialogContent className="sm:max-w-3xl">
+              <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
                   <DialogHeader> <DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle> <CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription> </DialogHeader>
                   <Form {...receiveForm}>
-                      <form onSubmit={receiveForm.handleSubmit(handleReceiveSubmit)}>
-                          <ScrollArea className="max-h-[70vh] w-full">
-                              <div className="p-4">
+                      <form onSubmit={receiveForm.handleSubmit(handleReceiveSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                          <ScrollArea className="flex-1 pr-6">
+                              <div>
                                   <Table>
                                       <TableHeader> <TableRow> <TableHead>Item</TableHead> <TableHead className="w-24">Quantity</TableHead> <TableHead className="w-40">Unit Price</TableHead> <TableHead className="w-40 text-right">Total Value</TableHead> </TableRow> </TableHeader>
                                       <TableBody>
@@ -640,7 +640,7 @@ export default function PurchaseOrdersPage() {
                                   </Table>
                               </div>
                           </ScrollArea>
-                          <DialogFooter className="mt-4"> <DialogClose asChild> <Button variant="outline" type="button">Cancel</Button> </DialogClose> <Button type="submit">Confirm & Receive Stock</Button> </DialogFooter>
+                          <DialogFooter className="pt-4"> <DialogClose asChild> <Button variant="outline" type="button">Cancel</Button> </DialogClose> <Button type="submit">Confirm & Receive Stock</Button> </DialogFooter>
                       </form>
                   </Form>
               </DialogContent>
@@ -648,7 +648,7 @@ export default function PurchaseOrdersPage() {
 
           {/* Payment Dialog */}
           <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-              <DialogContent className="sm:max-w-lg">
+              <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
                   <DialogHeader>
                       <DialogTitle>Record Payment for PO {selectedPO?.id}</DialogTitle>
                       <CardDescription>
@@ -656,9 +656,9 @@ export default function PurchaseOrdersPage() {
                       </CardDescription>
                   </DialogHeader>
                   <Form {...paymentForm}>
-                      <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)}>
-                          <ScrollArea className="max-h-[70vh] w-full">
-                              <div className="space-y-4 p-4">
+                      <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                          <ScrollArea className="flex-1 pr-6">
+                              <div className="space-y-4">
                                   <FormField
                                           control={paymentForm.control}
                                           name="amount"
@@ -770,7 +770,7 @@ export default function PurchaseOrdersPage() {
                                       )}
                                   </div>
                               </ScrollArea>
-                          <DialogFooter className="mt-4">
+                          <DialogFooter className="pt-4">
                               <DialogClose asChild>
                                   <Button variant="outline">Cancel</Button>
                               </DialogClose>
@@ -783,5 +783,3 @@ export default function PurchaseOrdersPage() {
       </>
   );
 }
-
-    

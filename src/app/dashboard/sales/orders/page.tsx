@@ -338,7 +338,7 @@ export default function SaleOrdersPage() {
 
         {/* Payment Dialog */}
         <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Record Payment for {selectedOrder?.id}</DialogTitle>
                         <CardDescription>
@@ -346,9 +346,9 @@ export default function SaleOrdersPage() {
                         </CardDescription>
                     </DialogHeader>
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onPaymentSubmit)}>
-                            <ScrollArea className="max-h-[70vh] w-full">
-                                <div className="space-y-4 p-4">
+                        <form onSubmit={form.handleSubmit(onPaymentSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                            <ScrollArea className="flex-1 pr-6">
+                                <div className="space-y-4">
                                     <FormField
                                             control={form.control}
                                             name="amount"
@@ -460,7 +460,7 @@ export default function SaleOrdersPage() {
                                         )}
                                     </div>
                                 </ScrollArea>
-                            <DialogFooter className="mt-4">
+                            <DialogFooter className="pt-4">
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancel</Button>
                                 </DialogClose>
@@ -472,5 +472,3 @@ export default function SaleOrdersPage() {
     </>
   );
 }
-
-    

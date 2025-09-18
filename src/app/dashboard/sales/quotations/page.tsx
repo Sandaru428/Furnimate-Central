@@ -374,14 +374,14 @@ export default function QuotationsPage() {
                                   Create New Quotation
                               </Button>
                           </DialogTrigger>
-                          <DialogContent className="sm:max-w-2xl">
+                          <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
                               <DialogHeader>
                                   <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.id}` : 'Create New Quotation'}</DialogTitle>
                               </DialogHeader>
                               <Form {...form}>
-                                  <form onSubmit={form.handleSubmit(onSubmit)}>
-                                      <ScrollArea className="max-h-[70vh] w-full">
-                                          <div className="space-y-4 p-4">
+                                  <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                                      <ScrollArea className="flex-1 pr-6">
+                                          <div className="space-y-4">
                                               <FormField
                                                   control={form.control}
                                                   name="customer"
@@ -447,7 +447,7 @@ export default function QuotationsPage() {
                                               <AddItemForm masterData={masterData} onAddItem={append} />
                                           </div>
                                       </ScrollArea>
-                                      <DialogFooter className="mt-4">
+                                      <DialogFooter className="pt-4">
                                           <div className='w-full flex justify-between items-center'>
                                               <div className="text-lg font-semibold">
                                                   Total: {currency.code} {totalAmount.toFixed(2)}
@@ -567,5 +567,3 @@ export default function QuotationsPage() {
     </>
   );
 }
-
-    

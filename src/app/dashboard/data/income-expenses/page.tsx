@@ -184,15 +184,15 @@ export default function IncomeExpensesPage() {
                           Add Transaction
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-lg">
+                      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
                         <DialogHeader>
                           <DialogTitle>New Transaction</DialogTitle>
                           <CardDescription>Record a miscellaneous income or expense.</CardDescription>
                         </DialogHeader>
                         <Form {...form}>
-                          <form onSubmit={form.handleSubmit(onSubmit)}>
-                             <ScrollArea className="max-h-[70vh] w-full">
-                                <div className="space-y-6 p-4">
+                          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                             <ScrollArea className="flex-1 pr-6">
+                                <div className="space-y-6">
                                     <FormField
                                         control={form.control}
                                         name="type"
@@ -390,5 +390,3 @@ export default function IncomeExpensesPage() {
     </>
   );
 }
-
-    

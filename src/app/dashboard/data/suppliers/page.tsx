@@ -143,14 +143,14 @@ export default function SuppliersPage() {
                                 Add New Supplier
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
+                        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
                             <DialogHeader>
                                 <DialogTitle>Add New Supplier</DialogTitle>
                             </DialogHeader>
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)}>
-                                    <ScrollArea className="max-h-[70vh] w-full">
-                                        <div className="space-y-4 py-4 px-1">
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                                    <ScrollArea className="flex-1 pr-6">
+                                        <div className="space-y-4">
                                             <FormField
                                             control={form.control}
                                             name="name"
@@ -240,5 +240,3 @@ export default function SuppliersPage() {
     </>
   );
 }
-
-    
