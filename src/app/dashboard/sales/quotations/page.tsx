@@ -668,3 +668,5 @@ const PrintableQuotation = ({ quotation, masterData, currency, companyProfile }:
         </div>
     );
 };
+
+    
