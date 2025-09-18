@@ -5,12 +5,13 @@ import { initialCustomersData, initialSuppliersData, initialMasterData, initialP
 // Data types
 export type Payment = {
     id: string;
-    orderId: string; // Can be a Sales Order ID or a Purchase Order ID
+    orderId?: string; // Optional: Can be a SO or PO ID
+    description: string; // Used for ad-hoc entries
     date: string;
     amount: number;
     method: 'Cash' | 'Card' | 'Online' | 'QR' | 'Cheque';
     details: string;
-    type: 'income' | 'expense'; // To distinguish between SO and PO payments
+    type: 'income' | 'expense';
 };
 
 export type Currency = {

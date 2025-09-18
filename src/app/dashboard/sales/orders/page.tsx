@@ -208,6 +208,7 @@ export default function SaleOrdersPage() {
         const newPayment: Payment = {
             id: Date.now().toString(),
             orderId: selectedOrder.id,
+            description: `Payment for ${selectedOrder.id}`,
             date: format(new Date(), 'yyyy-MM-dd'),
             amount: values.amount,
             method: values.method,

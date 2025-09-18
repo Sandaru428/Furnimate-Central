@@ -177,12 +177,12 @@ export default function ReportingPage() {
                     <CardHeader><CardTitle>Cash Book</CardTitle></CardHeader>
                     <CardContent>
                         <Table>
-                            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Reference ID</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Details</TableHead></TableRow></TableHeader>
+                            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Reference</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Details</TableHead></TableRow></TableHeader>
                             <TableBody>
                             {filteredData.payments.length > 0 ? filteredData.payments.map(p => (
                                 <TableRow key={p.id}>
                                 <TableCell>{p.date}</TableCell>
-                                <TableCell className="font-mono">{p.type === 'income' ? 'Sale Order: ' : 'Purchase Order: '}{p.orderId}</TableCell>
+                                <TableCell className="font-mono">{p.orderId ? `${p.type === 'income' ? 'Sale Order: ' : 'Purchase Order: '}${p.orderId}` : p.description}</TableCell>
                                 <TableCell><Badge variant={p.type === 'income' ? 'default' : 'destructive'} className={cn(p.type === 'income' ? 'bg-green-600' : 'bg-red-600', 'text-white')}>{p.type}</Badge></TableCell>
                                 <TableCell className={cn("text-right", p.type === 'income' ? 'text-green-600' : 'text-red-600')}>{p.type === 'income' ? '+' : '-'}{currency.code} {p.amount.toFixed(2)}</TableCell>
                                 <TableCell>{p.details}</TableCell>

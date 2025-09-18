@@ -75,8 +75,11 @@ export const initialSaleOrdersData = [
 
 export const initialPaymentsData = [
     // Expenses (from POs)
-    { id: 'PAY-001', orderId: 'PO-001', date: '2024-05-20', amount: 750, method: 'Online', details: 'From City Bank to Supplier Bank', type: 'expense' },
+    { id: 'PAY-001', orderId: 'PO-001', date: '2024-05-20', amount: 750, method: 'Online', details: 'From City Bank to Supplier Bank', type: 'expense', description: 'Payment for PO-001' },
     // Incomes (from SOs)
-    { id: 'PAY-002', orderId: 'ORD-001', date: '2024-05-15', amount: 1500, method: 'Card', details: 'Card ending in 1234', type: 'income' },
-    { id: 'PAY-003', orderId: 'ORD-001', date: '2024-06-01', amount: 1500, method: 'Cheque', details: 'National Bank, #54321, dated 2024-06-01', type: 'income' },
+    { id: 'PAY-002', orderId: 'ORD-001', date: '2024-05-15', amount: 1500, method: 'Card', details: 'Card ending in 1234', type: 'income', description: 'Payment for ORD-001' },
+    { id: 'PAY-003', orderId: 'ORD-001', date: '2024-06-01', amount: 1500, method: 'Cheque', details: 'National Bank, #54321, dated 2024-06-01', type: 'income', description: 'Payment for ORD-001' },
+    // Ad-hoc expenses
+    { id: 'PAY-ADHOC-1', date: '2024-06-01', amount: 1200, method: 'Online', details: 'Ad-hoc expense', type: 'expense', description: 'June Office Rent' },
+    { id: 'PAY-ADHOC-2', date: '2024-06-05', amount: 85, method: 'Cash', details: 'Ad-hoc expense', type: 'expense', description: 'Office Supplies' },
 ];

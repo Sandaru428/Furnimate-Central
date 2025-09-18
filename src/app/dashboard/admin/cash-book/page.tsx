@@ -49,7 +49,7 @@ export default function CashBookPage() {
           <CardHeader>
             <CardTitle>Cash Book</CardTitle>
             <CardDescription>
-                A record of all financial transactions, both income and expenses.
+                A record of all financial transactions, including order-related payments and other income/expenses.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -57,7 +57,7 @@ export default function CashBookPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Reference ID</TableHead>
+                  <TableHead>Reference</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Payment Method</TableHead>
@@ -70,8 +70,10 @@ export default function CashBookPage() {
                     <TableRow key={payment.id}>
                         <TableCell>{payment.date}</TableCell>
                         <TableCell className="font-mono">
-                            {payment.type === 'income' ? 'Sale Order: ' : 'Purchase Order: '} 
-                            {payment.orderId}
+                            {payment.orderId 
+                                ? `${payment.type === 'income' ? 'Sale Order: ' : 'Purchase Order: '}${payment.orderId}`
+                                : payment.description
+                            }
                         </TableCell>
                         <TableCell>
                             <Badge variant={payment.type === 'income' ? 'default' : 'destructive'} className={cn(payment.type === 'income' ? 'bg-green-600' : 'bg-red-600', 'text-white')}>

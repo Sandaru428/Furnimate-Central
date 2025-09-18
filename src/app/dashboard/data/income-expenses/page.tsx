@@ -1,0 +1,229 @@
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { PlusCircle } from 'lucide-react';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useToast } from '@/hooks/use-toast';
+import { useAtom } from 'jotai';
+import { paymentsAtom, currencyAtom, useDummyDataAtom, dataSeederAtom, Payment } from '@/lib/store';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+
+const transactionSchema = z.object({
+  type: z.enum(['income', 'expense'], { required_error: 'Transaction type is required.' }),
+  description: z.string().min(1, 'Description is required.'),
+  amount: z.coerce.number().positive('Amount must be a positive number.'),
+  method: z.enum(['Cash', 'Card', 'Online', 'QR', 'Cheque'], { required_error: 'Payment method is required.' }),
+});
+
+type TransactionForm = z.infer<typeof transactionSchema>;
+
+export default function IncomeExpensesPage() {
+  const [payments, setPayments] = useAtom(paymentsAtom);
+  const [currency] = useAtom(currencyAtom);
+  const [useDummyData, seedData] = useAtom(dataSeederAtom);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // This effect runs on mount and whenever the global toggle changes.
+  }, [useDummyData]);
+
+  const form = useForm<TransactionForm>({
+    resolver: zodResolver(transactionSchema),
+    defaultValues: {
+      type: undefined,
+      description: '',
+      amount: '' as any,
+      method: undefined,
+    },
+  });
+
+  function onSubmit(values: TransactionForm) {
+    const newPayment: Payment = {
+      id: `PAY-${Date.now()}`,
+      description: values.description,
+      date: format(new Date(), 'yyyy-MM-dd'),
+      amount: values.amount,
+      method: values.method,
+      details: `Ad-hoc ${values.type}`,
+      type: values.type,
+    };
+    setPayments([newPayment, ...payments]);
+    toast({
+      title: 'Transaction Added',
+      description: `A new ${values.type} of ${currency.code} ${values.amount} has been recorded.`,
+    });
+    form.reset();
+  }
+  
+  const adHocTransactions = payments
+    .filter(p => !p.orderId)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  return (
+    <>
+      <header className="flex items-center p-4 border-b">
+        <SidebarTrigger />
+        <h1 className="text-xl font-semibold ml-4">Income & Expenses</h1>
+      </header>
+      <main className="p-4 grid gap-4 md:grid-cols-3">
+        <div className="md:col-span-1">
+            <Card>
+                <CardHeader>
+                    <CardTitle>New Transaction</CardTitle>
+                    <CardDescription>Record a miscellaneous income or expense.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <FormField
+                            control={form.control}
+                            name="type"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Type</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="income">Income</SelectItem>
+                                            <SelectItem value="expense">Expense</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="description"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Description</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g., Office electricity bill" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="amount"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Amount</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="e.g., 50.00" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="method"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Payment Method</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger><SelectValue placeholder="Select method..." /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <Button type="submit" className="w-full">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Transaction
+                        </Button>
+                      </form>
+                    </Form>
+                </CardContent>
+            </Card>
+        </div>
+        <div className="md:col-span-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Transaction History</CardTitle>
+                    <CardDescription>A list of non-order related income and expenses.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {adHocTransactions.length > 0 ? (
+                                adHocTransactions.map((payment) => (
+                                <TableRow key={payment.id}>
+                                    <TableCell>{payment.date}</TableCell>
+                                    <TableCell className="font-medium">{payment.description}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={payment.type === 'income' ? 'default' : 'destructive'} className={cn(payment.type === 'income' ? 'bg-green-600' : 'bg-red-600', 'text-white')}>
+                                            {payment.type}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className={cn("text-right", payment.type === 'income' ? 'text-green-600' : 'text-red-600')}>
+                                        {payment.type === 'income' ? '+' : '-'}{currency.code} {payment.amount.toFixed(2)}
+                                    </TableCell>
+                                </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center">
+                                        No ad-hoc transactions found.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
+      </main>
+    </>
+  );
+}
