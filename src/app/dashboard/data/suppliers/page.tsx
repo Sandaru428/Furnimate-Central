@@ -181,32 +181,10 @@ export default function SuppliersPage() {
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
                                     <ScrollArea className="flex-1 pr-6">
                                         <div className="space-y-4 py-4">
-                                            <FormField
-                                            control={form.control}
-                                            name="name"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>Supplier Name</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g. Timber Co." {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                            />
-                                            <FormField
-                                            control={form.control}
-                                            name="contact"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                <FormLabel>Contact Info</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g. John Doe, 555-123-4567" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                                </FormItem>
-                                            )}
-                                            />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Supplier Name</FormLabel> <FormControl> <Input placeholder="e.g. Timber Co." {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                                                <FormField control={form.control} name="contact" render={({ field }) => ( <FormItem> <FormLabel>Contact Info</FormLabel> <FormControl> <Input placeholder="e.g. John Doe, 555-123-4567" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                                            </div>
                                         </div>
                                     </ScrollArea>
                                     <DialogFooter className="pt-4">
@@ -270,5 +248,3 @@ export default function SuppliersPage() {
     </>
   );
 }
-
-    
