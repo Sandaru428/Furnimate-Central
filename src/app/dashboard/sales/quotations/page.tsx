@@ -178,7 +178,7 @@ export default function QuotationsPage() {
 
             const customersSnapshot = await getDocs(collection(db, "customers"));
             const customersData = customersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setCustomers(customersData);
+            setCustomers(customersData as any);
             setLoading(false);
         };
         fetchData();
@@ -215,7 +215,7 @@ export default function QuotationsPage() {
                 };
                 
                 const { id, ...dataToSave } = updatedQuotation;
-                await setDoc(doc(db, "quotations", editingQuotation.id), dataToSave);
+                await updateDoc(doc(db, "quotations", editingQuotation.id), dataToSave);
                 setQuotations(quotations.map(q => q.id === editingQuotation.id ? updatedQuotation : q));
                 toast({ title: 'Quotation Updated', description: `Quotation ${editingQuotation.id} has been updated.` });
              } else {
@@ -286,7 +286,7 @@ export default function QuotationsPage() {
         let insufficientStock = false;
         for (const item of quotation.lineItems) {
             const masterItemDoc = await getDocs(collection(db, "masterData"));
-            const masterItem = masterItemDoc.docs.find(d => d.id === item.itemId)?.data() as MasterDataItem | undefined;
+            const masterItem = masterItemDoc.docs.find(d => d.data().itemCode === item.itemId)?.data() as MasterDataItem | undefined;
             if (!masterItem || masterItem.stockLevel < item.quantity) {
                 insufficientStock = true;
                 toast({ variant: "destructive", title: 'Stock Unavailable', description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${masterItem?.stockLevel || 0}` });
@@ -399,8 +399,8 @@ export default function QuotationsPage() {
                                                           </FormControl>
                                                           <SelectContent>
                                                               {customers.map(customer => (
-                                                                  <SelectItem key={customer.id} value={customer.name}>
-                                                                      {customer.name}
+                                                                  <SelectItem key={(customer as any).id} value={(customer as any).name}>
+                                                                      {(customer as any).name}
                                                                   </SelectItem>
                                                               ))}
                                                           </SelectContent>
@@ -570,5 +570,3 @@ export default function QuotationsPage() {
     </>
   );
 }
-
-    
