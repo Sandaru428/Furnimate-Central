@@ -191,7 +191,7 @@ export default function IncomeExpensesPage() {
                         </DialogHeader>
                         <Form {...form}>
                           <form onSubmit={form.handleSubmit(onSubmit)}>
-                             <ScrollArea className="max-h-[calc(100vh-20rem)]">
+                             <ScrollArea className="max-h-[70vh] w-full">
                                 <div className="space-y-6 p-4">
                                     <FormField
                                         control={form.control}
@@ -390,5 +390,3 @@ export default function IncomeExpensesPage() {
     </>
   );
 }
-
-    

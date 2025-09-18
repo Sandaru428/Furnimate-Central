@@ -113,10 +113,15 @@ export default function CustomersPage() {
 
   async function onSubmit(values: Omit<Customer, 'id'>) {
     try {
-      const dataToSave = {
+      const dataToSave: any = {
         ...values,
-        dateOfBirth: values.dateOfBirth ? new Date(values.dateOfBirth) : null,
       };
+      if (values.dateOfBirth) {
+        dataToSave.dateOfBirth = new Date(values.dateOfBirth);
+      } else {
+        delete dataToSave.dateOfBirth;
+      }
+
 
       const docRef = await addDoc(collection(db, 'customers'), dataToSave);
       
@@ -125,7 +130,7 @@ export default function CustomersPage() {
         id: docRef.id,
       };
 
-      setCustomers([...customers, newCustomer]);
+      setCustomers(prev => [newCustomer, ...prev]);
 
       toast({
         title: 'Customer Added',
@@ -134,6 +139,7 @@ export default function CustomersPage() {
       form.reset();
       setIsDialogOpen(false);
     } catch (error) {
+      console.error("Failed to add customer: ", error);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -183,7 +189,7 @@ export default function CustomersPage() {
                     </DialogHeader>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)}>
-                        <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                        <ScrollArea className="max-h-[70vh] w-full">
                           <div className="space-y-4 p-4">
                             <FormField
                               control={form.control}
@@ -244,7 +250,7 @@ export default function CustomersPage() {
                                 <FormItem>
                                   <FormLabel>Date of birth</FormLabel>
                                   <FormControl>
-                                    <Input type="date" {...field} />
+                                    <Input type="date" {...field} value={field.value || ''} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>

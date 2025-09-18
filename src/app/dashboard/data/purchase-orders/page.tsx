@@ -482,7 +482,7 @@ export default function PurchaseOrdersPage() {
                               </DialogHeader>
                               <Form {...createForm}>
                                   <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)}>
-                                      <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                                      <ScrollArea className="max-h-[70vh] w-full">
                                           <div className="space-y-4 p-4">
                                               <FormField
                                               control={createForm.control}
@@ -614,7 +614,7 @@ export default function PurchaseOrdersPage() {
                   <DialogHeader> <DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle> <CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription> </DialogHeader>
                   <Form {...receiveForm}>
                       <form onSubmit={receiveForm.handleSubmit(handleReceiveSubmit)}>
-                          <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                          <ScrollArea className="max-h-[70vh] w-full">
                               <div className="p-4">
                                   <Table>
                                       <TableHeader> <TableRow> <TableHead>Item</TableHead> <TableHead className="w-24">Quantity</TableHead> <TableHead className="w-40">Unit Price</TableHead> <TableHead className="w-40 text-right">Total Value</TableHead> </TableRow> </TableHeader>
@@ -657,7 +657,7 @@ export default function PurchaseOrdersPage() {
                   </DialogHeader>
                   <Form {...paymentForm}>
                       <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)}>
-                          <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                          <ScrollArea className="max-h-[70vh] w-full">
                               <div className="space-y-4 p-4">
                                   <FormField
                                           control={paymentForm.control}

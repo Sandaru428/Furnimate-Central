@@ -149,7 +149,7 @@ export default function SuppliersPage() {
                             </DialogHeader>
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)}>
-                                    <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                                    <ScrollArea className="max-h-[70vh] w-full">
                                         <div className="space-y-4 py-4 px-1">
                                             <FormField
                                             control={form.control}
@@ -240,5 +240,3 @@ export default function SuppliersPage() {
     </>
   );
 }
-
-    

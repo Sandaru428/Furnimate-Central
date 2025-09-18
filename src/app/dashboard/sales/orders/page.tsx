@@ -347,7 +347,7 @@ export default function SaleOrdersPage() {
                     </DialogHeader>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onPaymentSubmit)}>
-                            <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                            <ScrollArea className="max-h-[70vh] w-full">
                                 <div className="space-y-4 p-4">
                                     <FormField
                                             control={form.control}
