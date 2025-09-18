@@ -22,6 +22,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import {
   Form,
   FormControl,
   FormField,
@@ -54,6 +63,7 @@ export default function IncomeExpensesPage() {
   const [currency] = useAtom(currencyAtom);
   const [useDummyData, seedData] = useAtom(dataSeederAtom);
   const { toast } = useToast();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
     // This effect runs on mount and whenever the global toggle changes.
@@ -85,6 +95,7 @@ export default function IncomeExpensesPage() {
       description: `A new ${values.type} of ${currency.code} ${values.amount} has been recorded.`,
     });
     form.reset();
+    setIsDialogOpen(false);
   }
   
   const adHocTransactions = payments
@@ -97,132 +108,140 @@ export default function IncomeExpensesPage() {
         <SidebarTrigger />
         <h1 className="text-xl font-semibold ml-4">Income & Expenses</h1>
       </header>
-      <main className="p-4 grid gap-4 md:grid-cols-3">
-        <div className="md:col-span-1">
-            <Card>
-                <CardHeader>
-                    <CardTitle>New Transaction</CardTitle>
-                    <CardDescription>Record a miscellaneous income or expense.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <FormField
-                            control={form.control}
-                            name="type"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Type</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="income">Income</SelectItem>
-                                            <SelectItem value="expense">Expense</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Description</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g., Office electricity bill" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="amount"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Amount</FormLabel>
-                                    <FormControl>
-                                        <Input type="number" placeholder="e.g., 50.00" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="method"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Payment Method</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger><SelectValue placeholder="Select method..." /></SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <Button type="submit" className="w-full">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Transaction
+      <main className="p-4">
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Transaction History</CardTitle>
+                        <CardDescription>A list of non-order related income and expenses.</CardDescription>
+                    </div>
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Add Transaction
                         </Button>
-                      </form>
-                    </Form>
-                </CardContent>
-            </Card>
-        </div>
-        <div className="md:col-span-2">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Transaction History</CardTitle>
-                    <CardDescription>A list of non-order related income and expenses.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead className="text-right">Amount</TableHead>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>New Transaction</DialogTitle>
+                          <CardDescription>Record a miscellaneous income or expense.</CardDescription>
+                        </DialogHeader>
+                        <Form {...form}>
+                          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+                            <FormField
+                                control={form.control}
+                                name="type"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Type</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="income">Income</SelectItem>
+                                                <SelectItem value="expense">Expense</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="description"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Description</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Office electricity bill" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="amount"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Amount</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" placeholder="e.g., 50.00" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="method"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Payment Method</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger><SelectValue placeholder="Select method..." /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancel</Button>
+                                </DialogClose>
+                                <Button type="submit">Add Transaction</Button>
+                            </DialogFooter>
+                          </form>
+                        </Form>
+                      </DialogContent>
+                    </Dialog>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {adHocTransactions.length > 0 ? (
+                            adHocTransactions.map((payment) => (
+                            <TableRow key={payment.id}>
+                                <TableCell>{payment.date}</TableCell>
+                                <TableCell className="font-medium">{payment.description}</TableCell>
+                                <TableCell>
+                                    <Badge variant={payment.type === 'income' ? 'default' : 'destructive'} className={cn(payment.type === 'income' ? 'bg-green-600' : 'bg-red-600', 'text-white')}>
+                                        {payment.type}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className={cn("text-right", payment.type === 'income' ? 'text-green-600' : 'text-red-600')}>
+                                    {payment.type === 'income' ? '+' : '-'}{currency.code} {payment.amount.toFixed(2)}
+                                </TableCell>
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {adHocTransactions.length > 0 ? (
-                                adHocTransactions.map((payment) => (
-                                <TableRow key={payment.id}>
-                                    <TableCell>{payment.date}</TableCell>
-                                    <TableCell className="font-medium">{payment.description}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={payment.type === 'income' ? 'default' : 'destructive'} className={cn(payment.type === 'income' ? 'bg-green-600' : 'bg-red-600', 'text-white')}>
-                                            {payment.type}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className={cn("text-right", payment.type === 'income' ? 'text-green-600' : 'text-red-600')}>
-                                        {payment.type === 'income' ? '+' : '-'}{currency.code} {payment.amount.toFixed(2)}
-                                    </TableCell>
-                                </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={4} className="text-center">
-                                        No ad-hoc transactions found.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </div>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center">
+                                    No ad-hoc transactions found.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
       </main>
     </>
   );
