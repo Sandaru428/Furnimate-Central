@@ -49,10 +49,12 @@ import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
 import { format, parseISO } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAtom } from 'jotai';
+import { companyProfileAtom } from '@/lib/store';
 
 const customerSchema = z.object({
   id: z.string().optional(),
@@ -73,6 +75,7 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [companyProfile] = useAtom(companyProfileAtom);
 
   const form = useForm<Customer>({
     resolver: zodResolver(customerSchema),
@@ -95,8 +98,13 @@ export default function CustomersPage() {
 
   useEffect(() => {
     const fetchCustomers = async () => {
+      if (!companyProfile.companyName) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
-      const querySnapshot = await getDocs(collection(db, "customers"));
+      const q = query(collection(db, "customers"), where("companyId", "==", companyProfile.companyName));
+      const querySnapshot = await getDocs(q);
       const customersData = querySnapshot.docs.map(doc => {
           const data = doc.data();
           return { 
@@ -109,11 +117,12 @@ export default function CustomersPage() {
       setLoading(false);
     };
     fetchCustomers();
-  }, []);
+  }, [companyProfile]);
 
   async function onSubmit(values: Customer) {
     try {
       const dataToSave: any = {
+        companyId: companyProfile.companyName,
         name: values.name,
         email: values.email,
         phone: values.phone,
@@ -219,16 +228,16 @@ export default function CustomersPage() {
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
                         <ScrollArea className="flex-1 pr-6">
-                          <div className="space-y-4 py-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Customer Name</FormLabel><FormControl><Input placeholder="e.g. Modern Designs LLC" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. sarah@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => (<FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="dateOfBirth" render={({ field }) => (<FormItem><FormLabel>Date of birth</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                            <div className="space-y-4 py-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Customer Name</FormLabel><FormControl><Input placeholder="e.g. Modern Designs LLC" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. sarah@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="whatsappNumber" render={({ field }) => (<FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="dateOfBirth" render={({ field }) => (<FormItem><FormLabel>Date of birth</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                                </div>
+                                <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel>Address</FormLabel><FormControl><Textarea placeholder="123 Main St, Anytown, USA" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
-                            <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel>Address</FormLabel><FormControl><Textarea placeholder="123 Main St, Anytown, USA" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                          </div>
                         </ScrollArea>
                         <DialogFooter className="pt-4">
                             <DialogClose asChild>

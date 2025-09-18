@@ -56,11 +56,11 @@ import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
-import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, saleOrdersAtom } from '@/lib/store';
+import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, saleOrdersAtom, companyProfileAtom } from '@/lib/store';
 import type { MasterDataItem } from '../../data/master-data/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 
 
 const lineItemSchema = z.object({
@@ -159,6 +159,7 @@ export default function QuotationsPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
+    const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
 
     const handlePrint = (quoteId: string) => {
@@ -167,22 +168,32 @@ export default function QuotationsPage() {
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!companyProfile.companyName) {
+                setLoading(false);
+                return;
+            }
             setLoading(true);
-            const quotationsSnapshot = await getDocs(collection(db, "quotations"));
+
+            const companyId = companyProfile.companyName;
+
+            const quotationsQuery = query(collection(db, "quotations"), where("companyId", "==", companyId));
+            const quotationsSnapshot = await getDocs(quotationsQuery);
             const quotationsData = quotationsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Quotation));
             setQuotations(quotationsData);
 
-            const masterDataSnapshot = await getDocs(collection(db, "masterData"));
+            const masterDataQuery = query(collection(db, "masterData"), where("companyId", "==", companyId));
+            const masterDataSnapshot = await getDocs(masterDataQuery);
             const masterData = masterDataSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MasterDataItem));
             setMasterData(masterData);
 
-            const customersSnapshot = await getDocs(collection(db, "customers"));
+            const customersQuery = query(collection(db, "customers"), where("companyId", "==", companyId));
+            const customersSnapshot = await getDocs(customersQuery);
             const customersData = customersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setCustomers(customersData as any);
             setLoading(false);
         };
         fetchData();
-    }, [setQuotations, setMasterData, setCustomers]);
+    }, [setQuotations, setMasterData, setCustomers, companyProfile]);
 
 
     const form = useForm<CreateQuotation>({
@@ -207,31 +218,34 @@ export default function QuotationsPage() {
             
              if (editingQuotation) {
                 // Update
-                const updatedQuotation: Quotation = {
+                const updatedQuotation: Omit<Quotation, 'id'> & { companyId: string } = {
                     ...editingQuotation,
                     ...values,
+                    companyId: companyProfile.companyName,
                     amount: totalAmount,
                     status: 'Draft',
                 };
                 
                 const { id, ...dataToSave } = updatedQuotation;
                 await updateDoc(doc(db, "quotations", editingQuotation.id), dataToSave);
-                setQuotations(quotations.map(q => q.id === editingQuotation.id ? updatedQuotation : q));
+                setQuotations(quotations.map(q => q.id === editingQuotation.id ? { ...updatedQuotation, id: q.id } : q));
                 toast({ title: 'Quotation Updated', description: `Quotation ${editingQuotation.id} has been updated.` });
              } else {
                 // Create
-                const quoSnapshot = await getDocs(collection(db, "quotations"));
+                const quoQuery = query(collection(db, "quotations"), where("companyId", "==", companyProfile.companyName));
+                const quoSnapshot = await getDocs(quoQuery);
                 const nextId = quoSnapshot.size > 0 ? Math.max(...quoSnapshot.docs.map(q => parseInt(q.id.split('-')[1]))) + 1 : 1;
                 const newQuotationId = `QUO-${String(nextId).padStart(3, '0')}`;
                 
                 const newQuotation: Quotation = {
                     id: newQuotationId,
+                    companyId: companyProfile.companyName,
                     customer: values.customer,
                     date: format(new Date(), 'yyyy-MM-dd'),
                     status: 'Draft',
                     lineItems: values.lineItems,
                     amount: totalAmount,
-                };
+                } as any;
                 
                 const { id, ...dataToSave } = newQuotation;
                 await setDoc(doc(db, "quotations", newQuotationId), dataToSave);
@@ -285,11 +299,19 @@ export default function QuotationsPage() {
 
         let insufficientStock = false;
         for (const item of quotation.lineItems) {
-            const masterItemDoc = await getDocs(collection(db, "masterData"));
-            const masterItem = masterItemDoc.docs.find(d => d.data().itemCode === item.itemId)?.data() as MasterDataItem | undefined;
-            if (!masterItem || masterItem.stockLevel < item.quantity) {
+            const masterDataQuery = query(collection(db, "masterData"), where("companyId", "==", companyProfile.companyName), where("itemCode", "==", item.itemId));
+            const masterItemSnapshot = await getDocs(masterDataQuery);
+            
+            if (masterItemSnapshot.empty) {
                 insufficientStock = true;
-                toast({ variant: "destructive", title: 'Stock Unavailable', description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${masterItem?.stockLevel || 0}` });
+                toast({ variant: "destructive", title: 'Item Not Found', description: `Item with code ${item.itemId} not found.` });
+                break;
+            }
+
+            const masterItem = masterItemSnapshot.docs[0].data() as MasterDataItem;
+            if (masterItem.stockLevel < item.quantity) {
+                insufficientStock = true;
+                toast({ variant: "destructive", title: 'Stock Unavailable', description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${masterItem.stockLevel}` });
                 break;
             }
         }
@@ -299,6 +321,7 @@ export default function QuotationsPage() {
         const newOrderId = `ORD-${quotation.id.split('-')[1]}`;
         const newOrder = {
             id: newOrderId,
+            companyId: companyProfile.companyName,
             quotationId: quotation.id,
             customer: quotation.customer,
             date: format(new Date(), 'yyyy-MM-dd'),
@@ -385,6 +408,7 @@ export default function QuotationsPage() {
                                   <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
                                       <ScrollArea className="flex-1 pr-6">
                                           <div className="space-y-4 py-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                               <FormField
                                                   control={form.control}
                                                   name="customer"
@@ -409,6 +433,7 @@ export default function QuotationsPage() {
                                                       </FormItem>
                                                   )}
                                               />
+                                            </div>
                                               <div>
                                                   <FormLabel>Line Items</FormLabel>
                                                   <div className="space-y-2 mt-2">

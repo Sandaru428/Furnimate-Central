@@ -54,11 +54,11 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Printer, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, quotationsAtom } from '@/lib/store';
+import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, quotationsAtom, companyProfileAtom } from '@/lib/store';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, updateDoc, addDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, addDoc, query, where } from 'firebase/firestore';
 
 
 const paymentSchema = z.object({
@@ -103,6 +103,7 @@ export default function SaleOrdersPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
+    const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
 
     const handlePrint = (orderId: string) => {
@@ -111,23 +112,32 @@ export default function SaleOrdersPage() {
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!companyProfile.companyName) {
+                setLoading(false);
+                return;
+            };
             setLoading(true);
-            const soSnapshot = await getDocs(collection(db, "saleOrders"));
+            const companyId = companyProfile.companyName;
+
+            const soQuery = query(collection(db, "saleOrders"), where("companyId", "==", companyId));
+            const soSnapshot = await getDocs(soQuery);
             const soData = soSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SaleOrder));
             setOrders(soData);
 
-            const paymentsSnapshot = await getDocs(collection(db, "payments"));
+            const paymentsQuery = query(collection(db, "payments"), where("companyId", "==", companyId));
+            const paymentsSnapshot = await getDocs(paymentsQuery);
             const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
             setPayments(paymentsData);
 
-            const quotationsSnapshot = await getDocs(collection(db, "quotations"));
+            const quotationsQuery = query(collection(db, "quotations"), where("companyId", "==", companyId));
+            const quotationsSnapshot = await getDocs(quotationsQuery);
             const quotationsData = quotationsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setQuotations(quotationsData as any);
             
             setLoading(false);
         };
         fetchData();
-    }, [setOrders, setPayments, setQuotations]);
+    }, [setOrders, setPayments, setQuotations, companyProfile]);
 
 
     const form = useForm<PaymentFormValues>({
@@ -193,6 +203,7 @@ export default function SaleOrdersPage() {
         }
 
         const newPayment: Omit<Payment, 'id'> = {
+            companyId: companyProfile.companyName,
             orderId: selectedOrder.id,
             description: `Payment for ${selectedOrder.id}`,
             date: format(new Date(), 'yyyy-MM-dd'),
@@ -370,7 +381,7 @@ export default function SaleOrdersPage() {
                                         <FormField control={form.control} name="cardLast4" render={({ field }) => (<FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                     )}
                                     {paymentMethod === 'Online' && (
-                                        <>
+                                        <div className="space-y-4">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <FormField control={form.control} name="fromBankName" render={({ field }) => (<FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name="fromAccountNumber" render={({ field }) => (<FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -379,7 +390,7 @@ export default function SaleOrdersPage() {
                                                 <FormField control={form.control} name="toBankName" render={({ field }) => (<FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name="toAccountNumber" render={({ field }) => (<FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
-                                        </>
+                                        </div>
                                     )}
                                     {paymentMethod === 'Cheque' && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

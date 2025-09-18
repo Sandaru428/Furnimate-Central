@@ -63,11 +63,12 @@ import {
     purchaseOrdersAtom,
     masterDataAtom,
     suppliersAtom,
+    companyProfileAtom,
 } from '@/lib/store';
 import type { MasterDataItem } from '../master-data/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
 
 
 const lineItemSchema = z.object({
@@ -192,30 +193,42 @@ export default function PurchaseOrdersPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
+    const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!companyProfile.companyName) {
+                setLoading(false);
+                return;
+            };
             setLoading(true);
-            const poSnapshot = await getDocs(collection(db, "purchaseOrders"));
+
+            const companyId = companyProfile.companyName;
+            
+            const poQuery = query(collection(db, "purchaseOrders"), where("companyId", "==", companyId));
+            const poSnapshot = await getDocs(poQuery);
             const poData = poSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as PurchaseOrder));
             setPurchaseOrders(poData);
 
-            const masterDataSnapshot = await getDocs(collection(db, "masterData"));
+            const masterDataQuery = query(collection(db, "masterData"), where("companyId", "==", companyId));
+            const masterDataSnapshot = await getDocs(masterDataQuery);
             const masterData = masterDataSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MasterDataItem));
             setMasterData(masterData);
 
-            const suppliersSnapshot = await getDocs(collection(db, "suppliers"));
+            const suppliersQuery = query(collection(db, "suppliers"), where("companyId", "==", companyId));
+            const suppliersSnapshot = await getDocs(suppliersQuery);
             const suppliersData = suppliersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setSuppliers(suppliersData as any);
             
-            const paymentsSnapshot = await getDocs(collection(db, "payments"));
+            const paymentsQuery = query(collection(db, "payments"), where("companyId", "==", companyId));
+            const paymentsSnapshot = await getDocs(paymentsQuery);
             const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
             setPayments(paymentsData);
             setLoading(false);
         };
         fetchData();
-    }, [setPurchaseOrders, setMasterData, setSuppliers, setPayments]);
+    }, [setPurchaseOrders, setMasterData, setSuppliers, setPayments, companyProfile]);
     
     const handlePrint = (poId: string) => {
         router.push(`/dashboard/data/purchase-orders/${poId}/print`);
@@ -244,7 +257,7 @@ export default function PurchaseOrdersPage() {
             cardLast4: '',
             fromBankName: '',
             fromAccountNumber: '',
-            toBankName: '',
+toBankName: '',
             toAccountNumber: '',
             chequeBank: '',
             chequeDate: '',
@@ -268,34 +281,38 @@ export default function PurchaseOrdersPage() {
 
 
     async function handleCreateOrUpdateSubmit(values: CreatePurchaseOrder) {
+        const dataToSave = {
+            companyId: companyProfile.companyName,
+            ...values,
+        };
+
         if (editingPO) {
             // Update logic
             const updatedLineItems = values.lineItems.map(item => ({...item, unitPrice: undefined, totalValue: undefined }));
-            const updatedPO: PurchaseOrder = { ...editingPO, ...values, lineItems: updatedLineItems, status: 'Draft', totalAmount: 0 };
+            const updatedPO: PurchaseOrder = { ...editingPO, ...dataToSave, lineItems: updatedLineItems, status: 'Draft', totalAmount: 0 };
             
             const poRef = doc(db, "purchaseOrders", editingPO.id);
-            const { id, ...dataToSave } = updatedPO;
-            await setDoc(poRef, dataToSave);
+            const { id, ...save } = updatedPO;
+            await setDoc(poRef, save);
             setPurchaseOrders(prevPOs => prevPOs.map(po => po.id === editingPO.id ? updatedPO : po ));
             toast({ title: 'Purchase Order Updated', description: `Purchase Order ${editingPO.id} has been updated.` });
         } else {
             // Create logic
             const poCollection = collection(db, "purchaseOrders");
-            const poSnapshot = await getDocs(poCollection);
+            const poSnapshot = await getDocs(query(poCollection, where("companyId", "==", companyProfile.companyName)));
             const nextId = poSnapshot.size > 0 ? Math.max(...poSnapshot.docs.map(d => parseInt(d.id.split('-')[1]))) + 1 : 1;
             const newPOId = `PO-${String(nextId).padStart(3, '0')}`;
             
             const newPO: PurchaseOrder = {
                 id: newPOId,
-                supplierName: values.supplierName,
+                ...dataToSave,
                 date: format(new Date(), 'yyyy-MM-dd'),
                 status: 'Draft',
-                lineItems: values.lineItems,
                 totalAmount: 0,
             };
             
-            const { id, ...dataToSave } = newPO;
-            await setDoc(doc(db, "purchaseOrders", newPOId), dataToSave);
+            const { id, ...save } = newPO;
+            await setDoc(doc(db, "purchaseOrders", newPOId), save);
             setPurchaseOrders([newPO, ...purchaseOrders]);
             toast({ title: 'Purchase Order Created', description: `Purchase Order ${newPO.id} has been saved as a draft.` });
         }
@@ -310,15 +327,18 @@ export default function PurchaseOrdersPage() {
         const totalAmount = values.lineItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
         const updatedPO = { ...selectedPO, status: 'Fulfilled' as const, totalAmount, lineItems: values.lineItems };
 
-        await updateDoc(doc(db, "purchaseOrders", selectedPO.id), updatedPO);
+        const { id, ...dataToSave } = updatedPO;
+        await updateDoc(doc(db, "purchaseOrders", selectedPO.id), dataToSave);
         setPurchaseOrders(prevPOs => prevPOs.map(po => po.id === selectedPO.id ? updatedPO : po ));
 
         for (const receivedItem of values.lineItems) {
-            const itemDocRef = doc(db, "masterData", receivedItem.itemId);
-            const itemDoc = await getDocs(collection(db, "masterData"));
-            const currentItem = itemDoc.docs.find(d => d.id === receivedItem.itemId)?.data() as MasterDataItem | undefined;
-            if (currentItem) {
-                 await updateDoc(itemDocRef, { stockLevel: currentItem.stockLevel + receivedItem.quantity });
+            const masterDataQuery = query(collection(db, "masterData"), where("companyId", "==", companyProfile.companyName), where("itemCode", "==", receivedItem.itemId));
+            const itemDocSnapshot = await getDocs(masterDataQuery);
+            
+            if (!itemDocSnapshot.empty) {
+                const itemDocRef = itemDocSnapshot.docs[0].ref;
+                const currentItem = itemDocSnapshot.docs[0].data() as MasterDataItem;
+                await updateDoc(itemDocRef, { stockLevel: currentItem.stockLevel + receivedItem.quantity });
             }
         }
         
@@ -346,6 +366,7 @@ export default function PurchaseOrdersPage() {
         }
 
         const newPayment: Omit<Payment, 'id'> = {
+            companyId: companyProfile.companyName,
             orderId: selectedPO.id,
             description: `Payment for ${selectedPO.id}`,
             date: format(new Date(), 'yyyy-MM-dd'),
@@ -576,13 +597,13 @@ export default function PurchaseOrdersPage() {
                           <TableCell>
                               <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" className="h-8 w-8 p-0"> <span className="sr-only">Open menu</span> <MoreHorizontal className="h-4 w-4" /> </Button>
+                                  <Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => openCreateOrEditDialog(po)} disabled={po.status !== 'Draft'}> View/Edit </DropdownMenuItem>
-                                  {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}> Mark as Sent </DropdownMenuItem> )}
-                                  {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
-                                  {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
+                                  <DropdownMenuItem onClick={() => openCreateOrEditDialog(po)} disabled={po.status !== 'Draft'}>View/Edit</DropdownMenuItem>
+                                  {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}>Mark as Sent</DropdownMenuItem> )}
+                                  {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}>Receive Items</DropdownMenuItem> )}
+                                  {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}>Add Payment</DropdownMenuItem> )}
                                   {po.status === 'Paid' && ( <DropdownMenuItem disabled>Payment Complete</DropdownMenuItem> )}
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => handlePrint(po.id)}>
@@ -594,7 +615,7 @@ export default function PurchaseOrdersPage() {
                                       <span>Share</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}>Delete</DropdownMenuItem>
                                   </DropdownMenuContent>
                               </DropdownMenu>
                           </TableCell>
@@ -616,7 +637,7 @@ export default function PurchaseOrdersPage() {
       {/* Receive Items Dialog */}
       <Dialog open={isReceiveDialogOpen} onOpenChange={setIsReceiveDialogOpen}>
               <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
-                  <DialogHeader> <DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle> <CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription> </DialogHeader>
+                  <DialogHeader><DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle><CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription></DialogHeader>
                   <Form {...receiveForm}>
                       <form onSubmit={receiveForm.handleSubmit(handleReceiveSubmit)} className="flex flex-col flex-1 overflow-hidden">
                           <ScrollArea className="flex-1 pr-6">
@@ -645,7 +666,10 @@ export default function PurchaseOrdersPage() {
                                   </Table>
                               </div>
                           </ScrollArea>
-                          <DialogFooter className="pt-4"><DialogClose asChild><Button variant="outline" type="button">Cancel</Button></DialogClose><Button type="submit">Confirm & Receive Stock</Button></DialogFooter>
+                          <DialogFooter className="pt-4">
+                            <DialogClose asChild><Button variant="outline" type="button">Cancel</Button></DialogClose>
+                            <Button type="submit">Confirm & Receive Stock</Button>
+                          </DialogFooter>
                       </form>
                   </Form>
               </DialogContent>
@@ -665,15 +689,15 @@ export default function PurchaseOrdersPage() {
                           <ScrollArea className="flex-1 pr-6">
                               <div className="space-y-4 py-4">
                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <FormField control={paymentForm.control} name="amount" render={({ field }) => ( <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                      <FormField control={paymentForm.control} name="method" render={({ field }) => ( <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => ( <SelectItem key={method} value={method}>{method}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                                      <FormField control={paymentForm.control} name="amount" render={({ field }) => (<FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                      <FormField control={paymentForm.control} name="method" render={({ field }) => (<FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (<SelectItem key={method} value={method}>{method}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/>
                                   </div>
 
                                   {paymentMethod === 'Card' && (
-                                      <FormField control={paymentForm.control} name="cardLast4" render={({ field }) => ( <FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                      <FormField control={paymentForm.control} name="cardLast4" render={({ field }) => (<FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                   )}
                                   {paymentMethod === 'Online' && (
-                                      <>
+                                      <div className="space-y-4">
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                               <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => (<FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                               <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => (<FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -682,13 +706,13 @@ export default function PurchaseOrdersPage() {
                                               <FormField control={paymentForm.control} name="toBankName" render={({ field }) => (<FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                               <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => (<FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                           </div>
-                                      </>
+                                      </div>
                                   )}
                                   {paymentMethod === 'Cheque' && (
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                          <FormField control={paymentForm.control} name="chequeBank" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                          <FormField control={paymentForm.control} name="chequeNumber" render={({ field }) => ( <FormItem><FormLabel>Cheque Number</FormLabel><FormControl><Input placeholder="e.g. 987654" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                          <FormField control={paymentForm.control} name="chequeDate" render={({ field }) => ( <FormItem><FormLabel>Cheque Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                          <FormField control={paymentForm.control} name="chequeBank" render={({ field }) => (<FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                          <FormField control={paymentForm.control} name="chequeNumber" render={({ field }) => (<FormItem><FormLabel>Cheque Number</FormLabel><FormControl><Input placeholder="e.g. 987654" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                          <FormField control={paymentForm.control} name="chequeDate" render={({ field }) => (<FormItem><FormLabel>Cheque Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                       </div>
                                   )}
                               </div>

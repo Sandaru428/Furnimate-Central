@@ -5,6 +5,7 @@ import { initialCustomersData, initialSuppliersData, initialMasterData, initialP
 // Data types
 export type Payment = {
     id: string;
+    companyId: string;
     orderId?: string; // Optional: Can be a SO or PO ID
     description: string; // Used for ad-hoc entries
     date: string;

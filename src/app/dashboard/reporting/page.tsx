@@ -33,11 +33,12 @@ import {
   quotationsAtom,
   paymentsAtom,
   currencyAtom,
+  companyProfileAtom,
 } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const reportTypes = [
@@ -57,6 +58,7 @@ export default function ReportingPage() {
     const [quotations, setQuotations] = useAtom(quotationsAtom);
     const [payments, setPayments] = useAtom(paymentsAtom);
     const [currency] = useAtom(currencyAtom);
+    const [companyProfile] = useAtom(companyProfileAtom);
 
     const [date, setDate] = useState<DateRange | undefined>();
     const [reportType, setReportType] = useState('all');
@@ -64,7 +66,11 @@ export default function ReportingPage() {
 
     useEffect(() => {
         const fetchData = async () => {
-            const collections = {
+            if (!companyProfile.companyName) return;
+
+            const companyId = companyProfile.companyName;
+
+            const collections: { [key: string]: (data: any) => void } = {
                 customers: setCustomers,
                 suppliers: setSuppliers,
                 purchaseOrders: setPurchaseOrders,
@@ -74,13 +80,14 @@ export default function ReportingPage() {
             };
 
             for (const [key, setter] of Object.entries(collections)) {
-                const querySnapshot = await getDocs(collection(db, key));
+                const q = query(collection(db, key), where("companyId", "==", companyId));
+                const querySnapshot = await getDocs(q);
                 const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setter(data as any);
             }
         };
         fetchData();
-    }, [setCustomers, setSuppliers, setPurchaseOrders, setSaleOrders, setQuotations, setPayments]);
+    }, [setCustomers, setSuppliers, setPurchaseOrders, setSaleOrders, setQuotations, setPayments, companyProfile]);
 
     const filteredData = useMemo(() => {
         if (!date?.from || !date?.to) {

@@ -43,14 +43,14 @@ import { PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, currencyAtom, Payment } from '@/lib/store';
+import { paymentsAtom, currencyAtom, Payment, companyProfileAtom } from '@/lib/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense'], { required_error: 'Transaction type is required.' }),
@@ -81,20 +81,26 @@ type TransactionForm = z.infer<typeof transactionSchema>;
 export default function IncomeExpensesPage() {
   const [payments, setPayments] = useAtom(paymentsAtom);
   const [currency] = useAtom(currencyAtom);
+  const [companyProfile] = useAtom(companyProfileAtom);
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPayments = async () => {
+        if (!companyProfile.companyName) {
+            setLoading(false);
+            return;
+        };
         setLoading(true);
-        const querySnapshot = await getDocs(collection(db, "payments"));
+        const q = query(collection(db, "payments"), where("companyId", "==", companyProfile.companyName));
+        const querySnapshot = await getDocs(q);
         const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
         setPayments(data);
         setLoading(false);
     };
     fetchPayments();
-  }, [setPayments]);
+  }, [setPayments, companyProfile]);
 
   const form = useForm<TransactionForm>({
     resolver: zodResolver(transactionSchema),
@@ -133,6 +139,7 @@ export default function IncomeExpensesPage() {
         }
 
     const newPayment: Omit<Payment, 'id'> = {
+      companyId: companyProfile.companyName,
       description: values.description,
       date: format(new Date(), 'yyyy-MM-dd'),
       amount: values.amount,
@@ -204,7 +211,7 @@ export default function IncomeExpensesPage() {
                                         <FormField control={form.control} name="cardLast4" render={({ field }) => (<FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     )}
                                     {paymentMethod === 'Online' && (
-                                        <>
+                                        <div className="space-y-4">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <FormField control={form.control} name="fromBankName" render={({ field }) => (<FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name="fromAccountNumber" render={({ field }) => (<FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -213,7 +220,7 @@ export default function IncomeExpensesPage() {
                                                 <FormField control={form.control} name="toBankName" render={({ field }) => (<FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name="toAccountNumber" render={({ field }) => (<FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
-                                        </>
+                                        </div>
                                     )}
                                     {paymentMethod === 'Cheque' && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -51,9 +51,9 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAtom } from 'jotai';
-import { currencyAtom } from '@/lib/store';
+import { currencyAtom, companyProfileAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -89,18 +89,24 @@ export default function MasterDataPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [currency] = useAtom(currencyAtom);
+    const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchMasterData = async () => {
+            if (!companyProfile.companyName) {
+                setLoading(false);
+                return;
+            };
             setLoading(true);
-            const querySnapshot = await getDocs(collection(db, "masterData"));
+            const q = query(collection(db, "masterData"), where("companyId", "==", companyProfile.companyName));
+            const querySnapshot = await getDocs(q);
             const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MasterDataItem));
             setMasterData(data);
             setLoading(false);
         };
         fetchMasterData();
-    }, []);
+    }, [companyProfile]);
 
     const form = useForm<MasterDataItem>({
         resolver: zodResolver(itemSchema),
@@ -120,7 +126,8 @@ export default function MasterDataPage() {
 
     async function onSubmit(values: MasterDataItem) {
         try {
-            const dataToSave: Omit<MasterDataItem, 'id'> = {
+            const dataToSave: Omit<MasterDataItem, 'id'> & { companyId: string } = {
+                companyId: companyProfile.companyName,
                 itemCode: values.itemCode,
                 name: values.name,
                 type: values.type,
@@ -228,16 +235,16 @@ export default function MasterDataPage() {
                                     <ScrollArea className="flex-1 pr-6">
                                         <div className="space-y-4 py-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="itemCode" render={({ field }) => ( <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="type" render={({ field }) => ( <FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Raw Material">Raw Material</SelectItem><SelectItem value="Finished Good">Finished Good</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="unitPrice" render={({ field }) => ( <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={form.control} name="itemCode" render={({ field }) => (<FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="type" render={({ field }) => (<FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Raw Material">Raw Material</SelectItem><SelectItem value="Finished Good">Finished Good</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="unitPrice" render={({ field }) => (<FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                             
-                                            <div className="grid grid-cols-3 gap-4">
-                                                <FormField control={form.control} name="stockLevel" render={({ field }) => ( <FormItem><FormLabel>Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="minimumLevel" render={({ field }) => ( <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                                <FormField control={form.control} name="maximumLevel" render={({ field }) => ( <FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 200" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <FormField control={form.control} name="stockLevel" render={({ field }) => (<FormItem><FormLabel>Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="minimumLevel" render={({ field }) => (<FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="maximumLevel" render={({ field }) => (<FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 200" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
 
                                             {itemType && (
@@ -245,7 +252,7 @@ export default function MasterDataPage() {
                                                     control={form.control}
                                                     name="linkedItems"
                                                     render={({ field }) => (
-                                                        <FormItem className="md:col-span-2">
+                                                        <FormItem>
                                                             <FormLabel>{itemType === 'Raw Material' ? 'Link to Finished Good(s)' : 'Link to Raw Material(s)'}</FormLabel>
                                                             <Controller
                                                                 control={form.control}
@@ -256,7 +263,7 @@ export default function MasterDataPage() {
                                                                         <Popover>
                                                                             <PopoverTrigger asChild>
                                                                                 <FormControl>
-                                                                                    <Button variant="outline" role="combobox" className={cn( "w-full justify-between", !field.value?.length && "text-muted-foreground" )}>
+                                                                                    <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}>
                                                                                         {field.value?.length ? `${field.value.length} selected` : "Select items..."}
                                                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                                     </Button>
