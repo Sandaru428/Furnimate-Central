@@ -433,7 +433,8 @@ export default function PurchaseOrdersPage() {
     };
 
 
-    const filteredPurchaseOrders = purchaseOrders.filter(po => po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) || po.status.toLowerCase().includes(searchTerm.toLowerCase()));
+    const sortedPurchaseOrders = [...purchaseOrders].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const filteredPurchaseOrders = sortedPurchaseOrders.filter(po => po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) || po.status.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "outline"} = { 'Draft': 'secondary', 'Sent': 'default', 'Fulfilled': 'outline', 'Paid': 'default' };
 

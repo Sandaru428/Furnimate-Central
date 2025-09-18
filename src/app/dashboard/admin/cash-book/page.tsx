@@ -34,6 +34,8 @@ export default function CashBookPage() {
     useEffect(() => {
         seedData(useDummyData);
     }, [useDummyData, seedData]);
+    
+    const sortedPayments = [...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 
   return (
@@ -63,8 +65,8 @@ export default function CashBookPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.length > 0 ? (
-                    payments.map((payment) => (
+                {sortedPayments.length > 0 ? (
+                    sortedPayments.map((payment) => (
                     <TableRow key={payment.id}>
                         <TableCell>{payment.date}</TableCell>
                         <TableCell className="font-mono">

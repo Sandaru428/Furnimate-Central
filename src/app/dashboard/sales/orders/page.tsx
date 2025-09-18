@@ -245,6 +245,8 @@ export default function SaleOrdersPage() {
             });
         }
     };
+    
+    const sortedOrders = [...orders].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 
   return (
@@ -298,8 +300,8 @@ export default function SaleOrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.length > 0 ? (
-                    orders.map((order) => (
+                {sortedOrders.length > 0 ? (
+                    sortedOrders.map((order) => (
                     <TableRow key={order.id}>
                         <TableCell className="font-mono">{order.id}</TableCell>
                         <TableCell className="font-mono">{order.quotationId}</TableCell>
