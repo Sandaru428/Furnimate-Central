@@ -17,7 +17,7 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
   } from "@/components/ui/sidebar";
-import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck, Landmark } from "lucide-react";
+import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck, Landmark, UserCog } from "lucide-react";
 import { DashboardHeader } from '@/components/dashboard-header';
 
 export default function DashboardLayout({
@@ -56,6 +56,12 @@ export default function DashboardLayout({
                                 <SidebarMenuButton href="/dashboard/admin/company-profile">
                                     <Settings />
                                     Company Profile
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                             <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/admin/users">
+                                    <UserCog />
+                                    Users
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                             <SidebarMenuItem>
