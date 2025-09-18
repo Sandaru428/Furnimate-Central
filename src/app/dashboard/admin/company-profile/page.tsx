@@ -20,7 +20,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { currencies } from '@/lib/currencies';
 import { useAtom } from 'jotai';
 import { currencyAtom, companyProfileAtom } from '@/lib/store';
-import { DashboardHeader } from '@/components/dashboard-header';
 
 const formSchema = z.object({
   companyName: z.string().min(1, 'Company name is required'),
@@ -66,8 +65,8 @@ export default function CompanyProfilePage() {
 
   return (
     <>
-      <DashboardHeader title="Company Profile" />
       <main className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Company Profile</h1>
         <Card>
           <CardHeader>
             <CardTitle>Company Profile</CardTitle>

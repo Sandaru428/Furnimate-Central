@@ -18,6 +18,7 @@ import {
     SidebarGroupLabel,
   } from "@/components/ui/sidebar";
 import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck, Landmark } from "lucide-react";
+import { DashboardHeader } from '@/components/dashboard-header';
 
 export default function DashboardLayout({
     children,
@@ -122,6 +123,7 @@ export default function DashboardLayout({
                 </SidebarContent>
             </Sidebar>
             <SidebarInset>
+                <DashboardHeader />
                 {children}
             </SidebarInset>
         </SidebarProvider>

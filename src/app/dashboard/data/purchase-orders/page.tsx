@@ -68,7 +68,6 @@ import type { MasterDataItem } from '../master-data/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
-import { DashboardHeader } from '@/components/dashboard-header';
 
 
 const lineItemSchema = z.object({
@@ -477,85 +476,83 @@ toBankName: '',
 
   return (
     <>
-      <DashboardHeader title="Purchase Orders" />
       <main className="p-4">
+        <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">Purchase Orders</h1>
+            <div className="flex items-center gap-2">
+                <Input placeholder="Search POs..." className="w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setEditingPO(null); createForm.reset(); createRemove(); } setIsCreateDialogOpen(isOpen); }}>
+                    <DialogTrigger asChild>
+                        <Button onClick={() => openCreateOrEditDialog(null)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Create New PO
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+                        <DialogHeader>
+                            <DialogTitle>{editingPO ? `Edit Purchase Order ${editingPO.id}` : 'Create New Purchase Order'}</DialogTitle>
+                        </DialogHeader>
+                        <Form {...createForm}>
+                            <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                                <ScrollArea className="flex-1 pr-6">
+                                    <div className="space-y-4 py-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField
+                                        control={createForm.control}
+                                        name="supplierName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Supplier</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a supplier" />
+                                                </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                {suppliers.map(supplier => (
+                                                    <SelectItem key={supplier.id} value={supplier.name}>
+                                                    {supplier.name}
+                                                    </SelectItem>
+                                                ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                        />
+                                    </div>
+                                        <div>
+                                            <FormLabel>Line Items</FormLabel>
+                                            <div className="space-y-2 mt-2">
+                                                {createFields.map((field, index) => { const itemDetails = masterData.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
+                                            </div>
+                                            {createFields.length === 0 && ( <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p> )}
+                                            <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
+                                        </div>
+                                        <AddItemForm masterData={masterData} onAddItem={createAppend} />
+                                    </div>
+                                </ScrollArea>
+                                <DialogFooter className="pt-4">
+                                    <div className="flex justify-end gap-2 w-full">
+                                        <DialogClose asChild>
+                                            <Button variant="outline" type="button">Cancel</Button>
+                                        </DialogClose>
+                                        <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
+                                    </div>
+                                </DialogFooter>
+                            </form>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </div>
           <Card>
           <CardHeader>
-              <div className="flex justify-between items-center">
-                  <div>
-                      <CardTitle>Purchase Orders</CardTitle>
-                      <CardDescription>
-                      Create and manage purchase orders for raw materials.
-                      </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                      <Input placeholder="Search POs..." className="w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                      <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setEditingPO(null); createForm.reset(); createRemove(); } setIsCreateDialogOpen(isOpen); }}>
-                          <DialogTrigger asChild>
-                              <Button onClick={() => openCreateOrEditDialog(null)}>
-                                  <PlusCircle className="mr-2 h-4 w-4" />
-                                  Create New PO
-                              </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-                              <DialogHeader>
-                                  <DialogTitle>{editingPO ? `Edit Purchase Order ${editingPO.id}` : 'Create New Purchase Order'}</DialogTitle>
-                              </DialogHeader>
-                              <Form {...createForm}>
-                                  <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)} className="flex flex-col flex-1 overflow-hidden">
-                                      <ScrollArea className="flex-1 pr-6">
-                                          <div className="space-y-4 py-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                              <FormField
-                                              control={createForm.control}
-                                              name="supplierName"
-                                              render={({ field }) => (
-                                                  <FormItem>
-                                                  <FormLabel>Supplier</FormLabel>
-                                                  <Select onValueChange={field.onChange} value={field.value}>
-                                                      <FormControl>
-                                                      <SelectTrigger>
-                                                          <SelectValue placeholder="Select a supplier" />
-                                                      </SelectTrigger>
-                                                      </FormControl>
-                                                      <SelectContent>
-                                                      {suppliers.map(supplier => (
-                                                          <SelectItem key={supplier.id} value={supplier.name}>
-                                                          {supplier.name}
-                                                          </SelectItem>
-                                                      ))}
-                                                      </SelectContent>
-                                                  </Select>
-                                                  <FormMessage />
-                                                  </FormItem>
-                                              )}
-                                              />
-                                            </div>
-                                              <div>
-                                                  <FormLabel>Line Items</FormLabel>
-                                                  <div className="space-y-2 mt-2">
-                                                      {createFields.map((field, index) => { const itemDetails = masterData.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
-                                                  </div>
-                                                  {createFields.length === 0 && ( <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p> )}
-                                                  <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
-                                              </div>
-                                              <AddItemForm masterData={masterData} onAddItem={createAppend} />
-                                          </div>
-                                      </ScrollArea>
-                                      <DialogFooter className="pt-4">
-                                          <div className="flex justify-end gap-2 w-full">
-                                              <DialogClose asChild>
-                                                  <Button variant="outline" type="button">Cancel</Button>
-                                              </DialogClose>
-                                              <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
-                                          </div>
-                                      </DialogFooter>
-                                  </form>
-                              </Form>
-                          </DialogContent>
-                      </Dialog>
-                  </div>
-              </div>
+                <CardTitle>Purchase Orders</CardTitle>
+                <CardDescription>
+                Create and manage purchase orders for raw materials.
+                </CardDescription>
           </CardHeader>
           <CardContent>
               <Table>

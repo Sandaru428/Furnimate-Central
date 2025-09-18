@@ -49,7 +49,6 @@ import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { DashboardHeader } from '@/components/dashboard-header';
 
 const templateSchema = z.object({
   id: z.string().optional(),
@@ -130,84 +129,82 @@ export default function NotificationTemplatesPage() {
 
   return (
     <>
-      <DashboardHeader title="Notification Templates" />
       <main className="p-4">
+        <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">Notification Templates</h1>
+            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingTemplate(null); setIsDialogOpen(isOpen); }}>
+                <DialogTrigger asChild>
+                    <Button onClick={() => openDialog(null)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Create New Template
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>{editingTemplate ? 'Edit Template' : 'Create New Template'}</DialogTitle>
+                    </DialogHeader>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                            <ScrollArea className="flex-1 pr-6">
+                                <div className="space-y-4 py-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Template Name</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="e.g. Order Confirmation" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="subject"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Subject</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="e.g. Your Order #{order_id} has shipped!" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="body"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Body</FormLabel>
+                                                <FormControl>
+                                                    <Textarea className="min-h-[200px]" placeholder="Hi {customer_name}, your order is on its way!" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </ScrollArea>
+                            <DialogFooter className="pt-4">
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancel</Button>
+                                </DialogClose>
+                                <Button type="submit">{editingTemplate ? 'Save Changes' : 'Create Template'}</Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+        </div>
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Notification Templates</CardTitle>
-                    <CardDescription>
-                    Manage email and SMS templates for your application.
-                    </CardDescription>
-                </div>
-                <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingTemplate(null); setIsDialogOpen(isOpen); }}>
-                    <DialogTrigger asChild>
-                        <Button onClick={() => openDialog(null)}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Create New Template
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
-                        <DialogHeader>
-                            <DialogTitle>{editingTemplate ? 'Edit Template' : 'Create New Template'}</DialogTitle>
-                        </DialogHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-                                <ScrollArea className="flex-1 pr-6">
-                                    <div className="space-y-4 py-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="name"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Template Name</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="e.g. Order Confirmation" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="subject"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Subject</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="e.g. Your Order #{order_id} has shipped!" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="body"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Body</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea className="min-h-[200px]" placeholder="Hi {customer_name}, your order is on its way!" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                </ScrollArea>
-                                <DialogFooter className="pt-4">
-                                    <DialogClose asChild>
-                                        <Button variant="outline">Cancel</Button>
-                                    </DialogClose>
-                                    <Button type="submit">{editingTemplate ? 'Save Changes' : 'Create Template'}</Button>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
-            </div>
+            <CardTitle>Notification Templates</CardTitle>
+            <CardDescription>
+            Manage email and SMS templates for your application.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>

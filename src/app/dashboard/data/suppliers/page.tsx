@@ -52,7 +52,6 @@ import { collection, addDoc, getDocs, doc, updateDoc, query, where } from 'fireb
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAtom } from 'jotai';
 import { companyProfileAtom } from '@/lib/store';
-import { DashboardHeader } from '@/components/dashboard-header';
 
 const supplierSchema = z.object({
     id: z.string().optional(),
@@ -193,62 +192,60 @@ export default function SuppliersPage() {
 
   return (
     <>
-      <DashboardHeader title="Suppliers" />
       <main className="p-4">
+        <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">Suppliers</h1>
+            <div className="flex items-center gap-2">
+                <Input
+                    placeholder="Search suppliers..."
+                    className="w-64"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingSupplier(null); setIsDialogOpen(isOpen); }}>
+                    <DialogTrigger asChild>
+                        <Button onClick={() => openDialog(null)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add New Supplier
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
+                        <DialogHeader>
+                            <DialogTitle>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</DialogTitle>
+                        </DialogHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                                <ScrollArea className="flex-1 pr-6">
+                                    <div className="space-y-4 py-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Supplier Name</FormLabel><FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="contactPerson" render={({ field }) => <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="whatsappNumber" render={({ field }) => <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="contactNumber" render={({ field }) => <FormItem><FormLabel>Contact Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="bankName" render={({ field }) => <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="accountNumber" render={({ field }) => <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                        </div>
+                                    </div>
+                                </ScrollArea>
+                                <DialogFooter className="pt-4">
+                                    <DialogClose asChild>
+                                        <Button variant="outline">Cancel</Button>
+                                    </DialogClose>
+                                    <Button type="submit">{editingSupplier ? 'Save Changes' : 'Add Supplier'}</Button>
+                                </DialogFooter>
+                            </form>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </div>
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Supplier List</CardTitle>
-                    <CardDescription>
-                    Manage your supplier information.
-                    </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="Search suppliers..."
-                      className="w-64"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingSupplier(null); setIsDialogOpen(isOpen); }}>
-                        <DialogTrigger asChild>
-                            <Button onClick={() => openDialog(null)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add New Supplier
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
-                            <DialogHeader>
-                                <DialogTitle>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</DialogTitle>
-                            </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-                                    <ScrollArea className="flex-1 pr-6">
-                                        <div className="space-y-4 py-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Supplier Name</FormLabel><FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl><FormMessage /></FormItem>}/>
-                                                <FormField control={form.control} name="contactPerson" render={({ field }) => <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl><FormMessage /></FormItem>}/>
-                                                <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl><FormMessage /></FormItem>}/>
-                                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>}/>
-                                                <FormField control={form.control} name="contactNumber" render={({ field }) => <FormItem><FormLabel>Contact Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>}/>
-                                                <FormField control={form.control} name="bankName" render={({ field }) => <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>}/>
-                                                <FormField control={form.control} name="accountNumber" render={({ field }) => <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>}/>
-                                            </div>
-                                        </div>
-                                    </ScrollArea>
-                                    <DialogFooter className="pt-4">
-                                        <DialogClose asChild>
-                                            <Button variant="outline">Cancel</Button>
-                                        </DialogClose>
-                                        <Button type="submit">{editingSupplier ? 'Save Changes' : 'Add Supplier'}</Button>
-                                    </DialogFooter>
-                                </form>
-                            </Form>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
+            <CardTitle>Supplier List</CardTitle>
+            <CardDescription>
+            Manage your supplier information.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>

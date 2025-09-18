@@ -2,7 +2,6 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { DashboardHeader } from '@/components/dashboard-header';
 import {
   Card,
   CardContent,
@@ -108,8 +107,8 @@ export default function CashBookPage() {
 
   return (
     <>
-      <DashboardHeader title="Cash Book" />
       <main className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Cash Book</h1>
         <Card>
           <CardHeader>
              <div className="flex justify-between items-center">

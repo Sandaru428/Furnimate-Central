@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { DashboardHeader } from '@/components/dashboard-header';
 import {
   Card,
   CardContent,
@@ -176,8 +175,8 @@ export default function DashboardPage() {
 
   return (
     <>
-      <DashboardHeader title="Dashboard" />
       <main className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
         <Tabs defaultValue="dashboard" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>

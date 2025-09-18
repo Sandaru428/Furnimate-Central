@@ -58,7 +58,6 @@ import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, updateDoc, addDoc, query, where } from 'firebase/firestore';
-import { DashboardHeader } from '@/components/dashboard-header';
 
 
 const paymentSchema = z.object({
@@ -267,18 +266,14 @@ export default function SaleOrdersPage() {
 
   return (
     <>
-        <DashboardHeader title="Sale Orders" />
         <main className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Sale Orders</h1>
             <Card>
             <CardHeader>
-                <div className="flex justify-between items-center">
-                    <div>
-                        <CardTitle>Confirmed Sale Orders</CardTitle>
-                        <CardDescription>
-                            These are quotations that have been converted into sale orders.
-                        </CardDescription>
-                    </div>
-                </div>
+                <CardTitle>Confirmed Sale Orders</CardTitle>
+                <CardDescription>
+                    These are quotations that have been converted into sale orders.
+                </CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>

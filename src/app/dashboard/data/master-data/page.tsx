@@ -58,7 +58,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DashboardHeader } from '@/components/dashboard-header';
 
 const itemSchema = z.object({
     id: z.string().optional(),
@@ -198,118 +197,116 @@ export default function MasterDataPage() {
 
   return (
     <>
-      <DashboardHeader title="Master Data" />
       <main className="p-4">
+        <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">Master Data</h1>
+            <div className="flex items-center gap-2">
+                <Input
+                    placeholder="Search items..."
+                    className="w-64"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                    <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingItem(null); setIsDialogOpen(isOpen); }}>
+                    <DialogTrigger asChild>
+                        <Button onClick={() => openDialog(null)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add New Item
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
+                        <DialogHeader>
+                            <DialogTitle>{editingItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
+                        </DialogHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                                <ScrollArea className="flex-1 pr-6">
+                                    <div className="space-y-4 py-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                            <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                            <FormField control={form.control} name="type" render={({ field }) => <FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Raw Material">Raw Material</SelectItem><SelectItem value="Finished Good">Finished Good</SelectItem></SelectContent></Select><FormMessage /></FormItem>} />
+                                            <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                            <FormField control={form.control} name="minimumLevel" render={({ field }) => <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                            <FormField control={form.control} name="maximumLevel" render={({ field }) => <FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 200" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                        </div>
+
+                                        {itemType && (
+                                            <FormField
+                                                control={form.control}
+                                                name="linkedItems"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>{itemType === 'Raw Material' ? 'Link to Finished Good(s)' : 'Link to Raw Material(s)'}</FormLabel>
+                                                        <Controller
+                                                            control={form.control}
+                                                            name="linkedItems"
+                                                            render={({ field }) => {
+                                                                const options = masterData.filter(i => i.type === (itemType === 'Raw Material' ? 'Finished Good' : 'Raw Material'));
+                                                                return (
+                                                                    <Popover>
+                                                                        <PopoverTrigger asChild>
+                                                                            <FormControl>
+                                                                                <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}>
+                                                                                    {field.value?.length ? `${field.value.length} selected` : "Select items..."}
+                                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                                </Button>
+                                                                            </FormControl>
+                                                                        </PopoverTrigger>
+                                                                        <PopoverContent className="w-[300px] p-0">
+                                                                            <ScrollArea className="max-h-60">
+                                                                                <div className="p-2 space-y-1">
+                                                                                    {options.map((option) => (
+                                                                                        <div key={option.id} className="flex items-center gap-2">
+                                                                                            <Checkbox
+                                                                                                id={option.itemCode}
+                                                                                                checked={field.value?.includes(option.itemCode)}
+                                                                                                onCheckedChange={(checked) => {
+                                                                                                    const current = field.value || [];
+                                                                                                    if (checked) {
+                                                                                                        field.onChange([...current, option.itemCode]);
+                                                                                                    } else {
+                                                                                                        field.onChange(current.filter(code => code !== option.itemCode));
+                                                                                                    }
+                                                                                                }}
+                                                                                            />
+                                                                                            <label htmlFor={option.itemCode} className="text-sm font-medium">{option.name} ({option.itemCode})</label>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </ScrollArea>
+                                                                        </PopoverContent>
+                                                                    </Popover>
+                                                                )
+                                                            }}
+                                                        />
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                                <DialogFooter className="pt-4">
+                                    <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                                    <Button type="submit">{editingItem ? 'Save Changes' : 'Add Item'}</Button>
+                                </DialogFooter>
+                            </form>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </div>
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Master Item List</CardTitle>
-                    <CardDescription>
-                    A consolidated list of all raw materials and finished goods.
-                    </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="Search items..."
-                      className="w-64"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                     <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingItem(null); setIsDialogOpen(isOpen); }}>
-                        <DialogTrigger asChild>
-                            <Button onClick={() => openDialog(null)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add New Item
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
-                            <DialogHeader>
-                                <DialogTitle>{editingItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
-                            </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-                                    <ScrollArea className="flex-1 pr-6">
-                                        <div className="space-y-4 py-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                <FormField control={form.control} name="type" render={({ field }) => <FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Raw Material">Raw Material</SelectItem><SelectItem value="Finished Good">Finished Good</SelectItem></SelectContent></Select><FormMessage /></FormItem>} />
-                                                <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                <FormField control={form.control} name="minimumLevel" render={({ field }) => <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                <FormField control={form.control} name="maximumLevel" render={({ field }) => <FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 200" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                            </div>
-
-                                            {itemType && (
-                                                <FormField
-                                                    control={form.control}
-                                                    name="linkedItems"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>{itemType === 'Raw Material' ? 'Link to Finished Good(s)' : 'Link to Raw Material(s)'}</FormLabel>
-                                                            <Controller
-                                                                control={form.control}
-                                                                name="linkedItems"
-                                                                render={({ field }) => {
-                                                                    const options = masterData.filter(i => i.type === (itemType === 'Raw Material' ? 'Finished Good' : 'Raw Material'));
-                                                                    return (
-                                                                        <Popover>
-                                                                            <PopoverTrigger asChild>
-                                                                                <FormControl>
-                                                                                    <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}>
-                                                                                        {field.value?.length ? `${field.value.length} selected` : "Select items..."}
-                                                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                                    </Button>
-                                                                                </FormControl>
-                                                                            </PopoverTrigger>
-                                                                            <PopoverContent className="w-[300px] p-0">
-                                                                                <ScrollArea className="max-h-60">
-                                                                                    <div className="p-2 space-y-1">
-                                                                                        {options.map((option) => (
-                                                                                            <div key={option.id} className="flex items-center gap-2">
-                                                                                                <Checkbox
-                                                                                                    id={option.itemCode}
-                                                                                                    checked={field.value?.includes(option.itemCode)}
-                                                                                                    onCheckedChange={(checked) => {
-                                                                                                        const current = field.value || [];
-                                                                                                        if (checked) {
-                                                                                                            field.onChange([...current, option.itemCode]);
-                                                                                                        } else {
-                                                                                                            field.onChange(current.filter(code => code !== option.itemCode));
-                                                                                                        }
-                                                                                                    }}
-                                                                                                />
-                                                                                                <label htmlFor={option.itemCode} className="text-sm font-medium">{option.name} ({option.itemCode})</label>
-                                                                                            </div>
-                                                                                        ))}
-                                                                                    </div>
-                                                                                </ScrollArea>
-                                                                            </PopoverContent>
-                                                                        </Popover>
-                                                                    )
-                                                                }}
-                                                            />
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            )}
-                                        </div>
-                                    </ScrollArea>
-                                    <DialogFooter className="pt-4">
-                                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                                        <Button type="submit">{editingItem ? 'Save Changes' : 'Add Item'}</Button>
-                                    </DialogFooter>
-                                </form>
-                            </Form>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
+            <CardTitle>Master Item List</CardTitle>
+            <CardDescription>
+            A consolidated list of all raw materials and finished goods.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>

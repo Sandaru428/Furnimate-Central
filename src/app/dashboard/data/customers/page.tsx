@@ -54,7 +54,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAtom } from 'jotai';
 import { companyProfileAtom } from '@/lib/store';
-import { DashboardHeader } from '@/components/dashboard-header';
 
 const customerSchema = z.object({
   id: z.string().optional(),
@@ -195,59 +194,57 @@ export default function CustomersPage() {
 
   return (
     <>
-      <DashboardHeader title="Customers" />
       <main className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">Customers</h1>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Search customers..."
+              className="w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+              <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingCustomer(null); setIsDialogOpen(isOpen); }}>
+              <DialogTrigger asChild>
+                <Button onClick={() => openDialog(null)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add New Customer
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                    <ScrollArea className="flex-1 pr-6">
+                        <div className="space-y-4 py-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Customer Name</FormLabel><FormControl><Input placeholder="e.g. Modern Designs LLC" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. sarah@example.com" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="phone" render={({ field }) => <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="dateOfBirth" render={({ field }) => <FormItem><FormLabel>Date of birth</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>} />
+                            </div>
+                            <FormField control={form.control} name="address" render={({ field }) => <FormItem><FormLabel>Address</FormLabel><FormControl><Textarea placeholder="123 Main St, Anytown, USA" {...field} /></FormControl><FormMessage /></FormItem>} />
+                        </div>
+                    </ScrollArea>
+                    <DialogFooter className="pt-4">
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit">{editingCustomer ? 'Save Changes' : 'Add Customer'}</Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Customer List</CardTitle>
-                <CardDescription>Manage your customer information.</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Search customers..."
-                  className="w-64"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                 <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingCustomer(null); setIsDialogOpen(isOpen); }}>
-                  <DialogTrigger asChild>
-                    <Button onClick={() => openDialog(null)}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add New Customer
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
-                    <DialogHeader>
-                      <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
-                    </DialogHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-                        <ScrollArea className="flex-1 pr-6">
-                            <div className="space-y-4 py-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Customer Name</FormLabel><FormControl><Input placeholder="e.g. Modern Designs LLC" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                    <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. sarah@example.com" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                    <FormField control={form.control} name="phone" render={({ field }) => <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                    <FormField control={form.control} name="whatsappNumber" render={({ field }) => <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                    <FormField control={form.control} name="dateOfBirth" render={({ field }) => <FormItem><FormLabel>Date of birth</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>} />
-                                </div>
-                                <FormField control={form.control} name="address" render={({ field }) => <FormItem><FormLabel>Address</FormLabel><FormControl><Textarea placeholder="123 Main St, Anytown, USA" {...field} /></FormControl><FormMessage /></FormItem>} />
-                            </div>
-                        </ScrollArea>
-                        <DialogFooter className="pt-4">
-                            <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button type="submit">{editingCustomer ? 'Save Changes' : 'Add Customer'}</Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
+            <CardTitle>Customer List</CardTitle>
+            <CardDescription>Manage your customer information.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
