@@ -19,31 +19,58 @@ import {
 } from '@/components/ui/table';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAtom } from 'jotai';
-import { paymentsAtom, currencyAtom } from '@/lib/store';
+import { paymentsAtom, currencyAtom, saleOrdersAtom, purchaseOrdersAtom } from '@/lib/store';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import type { Payment } from '@/lib/store';
 
-
 export default function CashBookPage() {
     const [payments, setPayments] = useAtom(paymentsAtom);
+    const [saleOrders, setSaleOrders] = useAtom(saleOrdersAtom);
+    const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
     const [currency] = useAtom(currencyAtom);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchPayments = async () => {
+        const fetchAllData = async () => {
             setLoading(true);
-            const querySnapshot = await getDocs(collection(db, "payments"));
-            const paymentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+            const [paymentsSnapshot, soSnapshot, poSnapshot] = await Promise.all([
+                getDocs(collection(db, "payments")),
+                getDocs(collection(db, "saleOrders")),
+                getDocs(collection(db, "purchaseOrders"))
+            ]);
+            
+            const paymentsData = paymentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
             setPayments(paymentsData);
+            
+            const saleOrdersData = soSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setSaleOrders(saleOrdersData as any);
+
+            const purchaseOrdersData = poSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setPurchaseOrders(purchaseOrdersData as any);
+
             setLoading(false);
         };
-        fetchPayments();
-    }, [setPayments]);
+        fetchAllData();
+    }, [setPayments, setSaleOrders, setPurchaseOrders]);
     
     const sortedPayments = [...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    const getNameForPayment = (payment: Payment) => {
+        if (!payment.orderId) {
+            return payment.description;
+        }
+
+        if (payment.type === 'income') {
+            const saleOrder = saleOrders.find(so => so.id === payment.orderId);
+            return saleOrder?.customer || 'N/A';
+        } else { // expense
+            const purchaseOrder = purchaseOrders.find(po => po.id === payment.orderId);
+            return purchaseOrder?.supplierName || 'N/A';
+        }
+    };
 
 
   return (
@@ -66,6 +93,7 @@ export default function CashBookPage() {
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Reference</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Payment Method</TableHead>
@@ -75,7 +103,7 @@ export default function CashBookPage() {
               <TableBody>
                 {loading ? (
                     <TableRow>
-                        <TableCell colSpan={6} className="text-center">
+                        <TableCell colSpan={7} className="text-center">
                             Loading...
                         </TableCell>
                     </TableRow>
@@ -85,10 +113,11 @@ export default function CashBookPage() {
                         <TableCell>{payment.date}</TableCell>
                         <TableCell className="font-mono">
                             {payment.orderId 
-                                ? `${payment.type === 'income' ? 'Sale Order: ' : 'Purchase Order: '}${payment.orderId}`
-                                : payment.description
+                                ? payment.orderId
+                                : 'Ad-hoc'
                             }
                         </TableCell>
+                        <TableCell className="font-medium">{getNameForPayment(payment)}</TableCell>
                         <TableCell>
                             <Badge variant={payment.type === 'income' ? 'default' : 'destructive'} className={cn(payment.type === 'income' ? 'bg-green-600' : 'bg-red-600', 'text-white')}>
                                 {payment.type}
@@ -105,7 +134,7 @@ export default function CashBookPage() {
                     ))
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={6} className="text-center">
+                        <TableCell colSpan={7} className="text-center">
                             No transactions found.
                         </TableCell>
                     </TableRow>
