@@ -122,7 +122,7 @@ export default function SuppliersPage() {
             // Update
             const docRef = doc(db, 'suppliers', editingSupplier.id);
             await updateDoc(docRef, dataToSave);
-            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...s, ...values } : s));
+            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...s, ...values, id: s.id } : s));
             toast({
               title: 'Supplier Updated',
               description: `${values.name} has been successfully updated.`,
@@ -151,7 +151,11 @@ export default function SuppliersPage() {
   const openDialog = (supplier: Supplier | null) => {
     if (supplier) {
         setEditingSupplier(supplier);
-        form.reset(supplier);
+        form.reset({
+            ...supplier,
+            bankName: supplier.bankName || '',
+            accountNumber: supplier.accountNumber || '',
+        });
     } else {
         setEditingSupplier(null);
         form.reset({
@@ -213,13 +217,55 @@ export default function SuppliersPage() {
                                     <ScrollArea className="flex-1 pr-6">
                                         <div className="space-y-4 py-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Supplier Name</FormLabel> <FormControl> <Input placeholder="e.g. Timber Co." {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                                                <FormField control={form.control} name="contactPerson" render={({ field }) => ( <FormItem> <FormLabel>Contact Person</FormLabel> <FormControl> <Input placeholder="e.g. John Doe" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email Address</FormLabel> <FormControl> <Input placeholder="e.g. contact@timberco.com" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => ( <FormItem> <FormLabel>WhatsApp Number</FormLabel> <FormControl> <Input placeholder="e.g. +1 555-123-4567" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                                                <FormField control={form.control} name="contactNumber" render={({ field }) => ( <FormItem> <FormLabel>Contact Number</FormLabel> <FormControl> <Input placeholder="e.g. +1 555-123-4567" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                                                <FormField control={form.control} name="bankName" render={({ field }) => ( <FormItem> <FormLabel>Bank Name</FormLabel> <FormControl> <Input placeholder="e.g. National Bank" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                                                <FormField control={form.control} name="accountNumber" render={({ field }) => ( <FormItem> <FormLabel>Account Number</FormLabel> <FormControl> <Input placeholder="e.g. 1234567890" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                                                <FormField control={form.control} name="name" render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>Supplier Name</FormLabel>
+                                                    <FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}/>
+                                                <FormField control={form.control} name="contactPerson" render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>Contact Person</FormLabel>
+                                                    <FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}/>
+                                                <FormField control={form.control} name="email" render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>Email Address</FormLabel>
+                                                    <FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}/>
+                                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>WhatsApp Number</FormLabel>
+                                                    <FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}/>
+                                                <FormField control={form.control} name="contactNumber" render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>Contact Number</FormLabel>
+                                                    <FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}/>
+                                                <FormField control={form.control} name="bankName" render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>Bank Name</FormLabel>
+                                                    <FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}/>
+                                                <FormField control={form.control} name="accountNumber" render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>Account Number</FormLabel>
+                                                    <FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}/>
                                             </div>
                                         </div>
                                     </ScrollArea>
@@ -290,5 +336,3 @@ export default function SuppliersPage() {
     </>
   );
 }
-
-    
