@@ -1,6 +1,7 @@
 
 import { atom } from 'jotai';
 import { initialCustomersData, initialSuppliersData, initialMasterData, initialPurchaseOrdersData, initialQuotationsData, initialSaleOrdersData, initialPaymentsData } from './dummy-data';
+import type { UserRole, MainTab } from './roles';
 
 // Data types
 export type Payment = {
@@ -28,6 +29,14 @@ export type CompanyProfile = {
   currency: string;
 };
 
+export type AuthProfile = {
+    id: string;
+    name: string;
+    email: string;
+    role: UserRole;
+    accessOptions: MainTab[];
+};
+
 // Global state atoms
 export const currencyAtom = atom<Currency>({ code: 'LKR', name: 'Sri Lankan Rupee' });
 
@@ -38,6 +47,9 @@ export const companyProfileAtom = atom<CompanyProfile>({
   logo: undefined,
   currency: 'LKR',
 });
+
+export const authProfileAtom = atom<AuthProfile | null>(null);
+
 
 // Data atoms - These will be populated from Firestore
 export const customersAtom = atom<any[]>([]);

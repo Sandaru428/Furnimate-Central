@@ -9,12 +9,16 @@ import {
   type ReactNode,
 } from "react";
 import { onAuthStateChanged, type User, sendPasswordResetEmail, signOut as firebaseSignOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { useToast } from "./use-toast";
 import { useRouter } from "next/navigation";
+import { useAtom } from "jotai";
+import { authProfileAtom, type AuthProfile } from "@/lib/store";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 type AuthContextType = {
   user: User | null;
+  authProfile: AuthProfile | null;
   loading: boolean;
   handleSignIn: (email: string, pass: string) => Promise<boolean>;
   handleSignUp: (email: string, pass: string) => Promise<boolean>;
@@ -26,18 +30,32 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [authProfile, setAuthProfile] = useAtom(authProfileAtom);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      if (user && user.email) {
+        // Fetch user profile from Firestore
+        const q = query(collection(db, "users"), where("email", "==", user.email));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0].data() as AuthProfile;
+            setAuthProfile(userDoc);
+        } else {
+            setAuthProfile(null);
+        }
+      } else {
+        setAuthProfile(null);
+      }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [setAuthProfile]);
 
   const handleSignIn = async (email: string, pass: string) => {
     try {
@@ -102,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleSignOut = async () => {
     try {
       await firebaseSignOut(auth);
+      setAuthProfile(null);
       router.push('/login');
       toast({
         title: "Logged Out",
@@ -117,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, handleSignIn, handleSignUp, handlePasswordReset, handleSignOut }}>
+    <AuthContext.Provider value={{ user, authProfile, loading, handleSignIn, handleSignUp, handlePasswordReset, handleSignOut }}>
       {children}
     </AuthContext.Provider>
   );
