@@ -476,6 +476,7 @@ export default function QuotationsPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Quotation ID</TableHead>
                   <TableHead>Customer</TableHead>
+                  <TableHead className="text-right">Total Qty</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -483,13 +484,16 @@ export default function QuotationsPage() {
               </TableHeader>
               <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={6} className="text-center">Loading...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center">Loading...</TableCell></TableRow>
                   ) : sortedQuotations.length > 0 ? (
                       sortedQuotations.map((quote) => (
                       <TableRow key={quote.id}>
                           <TableCell>{quote.date}</TableCell>
                           <TableCell className="font-mono">{quote.id}</TableCell>
                           <TableCell className="font-medium">{quote.customer}</TableCell>
+                          <TableCell className="text-right">
+                            {quote.lineItems.reduce((acc, item) => acc + item.quantity, 0)}
+                          </TableCell>
                           <TableCell className="text-right">{currency.code} {quote.amount.toFixed(2)}</TableCell>
                           <TableCell>
                           <Badge 
@@ -557,7 +561,7 @@ export default function QuotationsPage() {
                       ))
                   ) : (
                       <TableRow>
-                          <TableCell colSpan={6} className="text-center">
+                          <TableCell colSpan={7} className="text-center">
                           No quotations found.
                           </TableCell>
                       </TableRow>

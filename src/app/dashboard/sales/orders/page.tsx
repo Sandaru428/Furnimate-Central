@@ -54,7 +54,7 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Printer, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom } from '@/lib/store';
+import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, quotationsAtom } from '@/lib/store';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
@@ -96,6 +96,7 @@ type SaleOrder = {
 
 export default function SaleOrdersPage() {
     const [orders, setOrders] = useAtom(saleOrdersAtom);
+    const [quotations, setQuotations] = useAtom(quotationsAtom);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<SaleOrder | null>(null);
     const [payments, setPayments] = useAtom(paymentsAtom);
@@ -118,10 +119,15 @@ export default function SaleOrdersPage() {
             const paymentsSnapshot = await getDocs(collection(db, "payments"));
             const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
             setPayments(paymentsData);
+
+            const quotationsSnapshot = await getDocs(collection(db, "quotations"));
+            const quotationsData = quotationsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            setQuotations(quotationsData as any);
+            
             setLoading(false);
         };
         fetchData();
-    }, [setOrders, setPayments]);
+    }, [setOrders, setPayments, setQuotations]);
 
 
     const form = useForm<PaymentFormValues>({
@@ -274,6 +280,7 @@ export default function SaleOrdersPage() {
                     <TableHead>Sale Order ID</TableHead>
                     <TableHead>Original Quotation</TableHead>
                     <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">Total Qty</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
@@ -282,50 +289,56 @@ export default function SaleOrdersPage() {
                 <TableBody>
                     {loading ? (
                          <TableRow>
-                            <TableCell colSpan={7} className="text-center">
+                            <TableCell colSpan={8} className="text-center">
                                 Loading...
                             </TableCell>
                         </TableRow>
                     ) : sortedOrders.length > 0 ? (
-                        sortedOrders.map((order) => (
-                        <TableRow key={order.id}>
-                            <TableCell>{order.date}</TableCell>
-                            <TableCell className="font-mono">{order.id}</TableCell>
-                            <TableCell className="font-mono">{order.quotationId}</TableCell>
-                            <TableCell className="font-medium">{order.customer}</TableCell>
-                            <TableCell className="text-right">{currency.code} {order.amount.toFixed(2)}</TableCell>
-                            <TableCell>
-                                <Badge variant={order.status === 'Paid' ? 'outline' : 'default'}>{order.status}</Badge>
-                            </TableCell>
-                            <TableCell>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <span className="sr-only">Open menu</span>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => openPaymentDialog(order)} disabled={order.status === 'Paid'}>
-                                        Add Payment
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => handlePrint(order.id)}>
-                                        <Printer className="mr-2 h-4 w-4" />
-                                        <span>Print</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleShare(order)}>
-                                        <Share2 className="mr-2 h-4 w-4" />
-                                        <span>Share</span>
-                                    </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                        ))
+                        sortedOrders.map((order) => {
+                            const originalQuotation = quotations.find(q => q.id === order.quotationId);
+                            const totalQty = originalQuotation?.lineItems.reduce((acc: number, item: any) => acc + item.quantity, 0) || 0;
+
+                            return (
+                                <TableRow key={order.id}>
+                                    <TableCell>{order.date}</TableCell>
+                                    <TableCell className="font-mono">{order.id}</TableCell>
+                                    <TableCell className="font-mono">{order.quotationId}</TableCell>
+                                    <TableCell className="font-medium">{order.customer}</TableCell>
+                                    <TableCell className="text-right">{totalQty}</TableCell>
+                                    <TableCell className="text-right">{currency.code} {order.amount.toFixed(2)}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={order.status === 'Paid' ? 'outline' : 'default'}>{order.status}</Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                <span className="sr-only">Open menu</span>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => openPaymentDialog(order)} disabled={order.status === 'Paid'}>
+                                                Add Payment
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => handlePrint(order.id)}>
+                                                <Printer className="mr-2 h-4 w-4" />
+                                                <span>Print</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleShare(order)}>
+                                                <Share2 className="mr-2 h-4 w-4" />
+                                                <span>Share</span>
+                                            </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        })
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={7} className="text-center">
+                            <TableCell colSpan={8} className="text-center">
                                 No converted sale orders yet.
                             </TableCell>
                         </TableRow>
