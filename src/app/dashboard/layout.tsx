@@ -17,7 +17,7 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
   } from "@/components/ui/sidebar";
-import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck, Landmark, UserCog } from "lucide-react";
+import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck, Landmark, UserCog, UserRound } from "lucide-react";
 import { DashboardHeader } from '@/components/dashboard-header';
 import { MAIN_TABS, MainTab } from '@/lib/roles';
 import { useAuth } from '@/hooks/use-auth';
@@ -39,6 +39,7 @@ const menuConfig = {
         items: {
             'income-expenses': { icon: Landmark, label: 'Income & Expenses', href: '/dashboard/data/income-expenses' },
             'master-data': { icon: Database, label: 'Master Data', href: '/dashboard/data/master-data' },
+            staff: { icon: UserRound, label: 'Staff', href: '/dashboard/data/staff' },
             suppliers: { icon: Building, label: 'Suppliers', href: '/dashboard/data/suppliers' },
             customers: { icon: Users, label: 'Customers', href: '/dashboard/data/customers' },
             'purchase-orders': { icon: ClipboardList, label: 'Purchase Orders', href: '/dashboard/data/purchase-orders' },
@@ -147,3 +148,5 @@ export default function DashboardLayout({
         </SidebarProvider>
     );
 }
+
+    

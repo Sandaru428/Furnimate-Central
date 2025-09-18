@@ -52,7 +52,7 @@ import { collection, addDoc, getDocs, doc, updateDoc, query, where, deleteDoc } 
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAtom } from 'jotai';
-import { companyProfileAtom } from '@/lib/store';
+import { companyProfileAtom, staffAtom, type Staff } from '@/lib/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { USER_ROLES, MAIN_TABS, UserRole, MainTab } from '@/lib/roles';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -61,9 +61,8 @@ import { Label } from '@/components/ui/label';
 
 const userSchema = z.object({
   id: z.string().optional(),
+  staffId: z.string().min(1, "Please select a staff member."),
   name: z.string().min(1, 'User name is required'),
-  dob: z.string().optional(),
-  contactNumber: z.string().optional(),
   email: z.string().email('Invalid email address'),
   role: z.enum(USER_ROLES, { required_error: 'User role is required' }),
   accessOptions: z.array(z.string()).optional(),
@@ -73,6 +72,7 @@ type User = z.infer<typeof userSchema>;
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [staff, setStaff] = useAtom(staffAtom);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,14 +83,24 @@ export default function UsersPage() {
   const form = useForm<User>({
     resolver: zodResolver(userSchema),
     defaultValues: {
+      staffId: '',
       name: '',
-      dob: '',
-      contactNumber: '',
       email: '',
       role: undefined,
       accessOptions: [],
     },
   });
+
+  const selectedStaffId = form.watch('staffId');
+  useEffect(() => {
+    if (selectedStaffId) {
+        const selectedStaffMember = staff.find(s => s.id === selectedStaffId);
+        if (selectedStaffMember) {
+            form.setValue('name', selectedStaffMember.name);
+            form.setValue('email', selectedStaffMember.email || '');
+        }
+    }
+  }, [selectedStaffId, staff, form]);
 
   const accessOptionsValue = form.watch('accessOptions') || [];
     const allAccessOptions = MAIN_TABS.map(tab => tab.id);
@@ -104,47 +114,47 @@ export default function UsersPage() {
     };
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchUsersAndStaff = async () => {
       if (!companyProfile.companyName) {
         setLoading(false);
         return;
       }
       setLoading(true);
-      const q = query(collection(db, "users"), where("companyId", "==", companyProfile.companyName));
-      const querySnapshot = await getDocs(q);
-      const usersData = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return { 
-              id: doc.id, 
-              ...data,
-              dob: data.dob ? (typeof data.dob.toDate === 'function' ? format(data.dob.toDate(), 'yyyy-MM-dd') : data.dob) : '',
-          } as User
-      });
+      const companyId = companyProfile.companyName;
+      const usersQuery = query(collection(db, "users"), where("companyId", "==", companyId));
+      const staffQuery = query(collection(db, "staff"), where("companyId", "==", companyId));
+      
+      const [usersSnapshot, staffSnapshot] = await Promise.all([
+          getDocs(usersQuery),
+          getDocs(staffQuery),
+      ]);
+      
+      const usersData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+      const staffData = staffSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
+
       setUsers(usersData);
+      setStaff(staffData);
       setLoading(false);
     };
-    fetchUsers();
-  }, [companyProfile]);
+    fetchUsersAndStaff();
+  }, [companyProfile, setStaff]);
 
   async function onSubmit(values: User) {
     try {
       const dataToSave: any = {
         companyId: companyProfile.companyName,
+        staffId: values.staffId,
         name: values.name,
-        contactNumber: values.contactNumber,
         email: values.email,
         role: values.role,
         accessOptions: values.accessOptions || [],
       };
-      if (values.dob) {
-        dataToSave.dob = new Date(values.dob);
-      }
 
       if (editingUser && editingUser.id) {
         // Update
         const docRef = doc(db, 'users', editingUser.id);
         await updateDoc(docRef, dataToSave);
-        setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...values, dob: values.dob } : u));
+        setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...values } : u));
         toast({
           title: 'User Updated',
           description: `${values.name} has been successfully updated.`,
@@ -188,16 +198,12 @@ export default function UsersPage() {
   const openDialog = (user: User | null) => {
     if (user) {
         setEditingUser(user);
-        form.reset({
-            ...user,
-            dob: user.dob || '',
-        });
+        form.reset({ ...user });
     } else {
         setEditingUser(null);
         form.reset({
+            staffId: '',
             name: '',
-            dob: '',
-            contactNumber: '',
             email: '',
             role: undefined,
             accessOptions: [],
@@ -212,6 +218,8 @@ export default function UsersPage() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const availableStaff = staff.filter(s => !users.some(u => u.staffId === s.id) || (editingUser && s.id === editingUser.staffId));
 
   return (
     <>
@@ -241,10 +249,23 @@ export default function UsersPage() {
                     <ScrollArea className="flex-1 pr-6">
                         <div className="space-y-4 py-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>User Name</FormLabel><FormControl><Input placeholder="e.g. John Smith" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. john.s@example.com" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                <FormField control={form.control} name="dob" render={({ field }) => <FormItem><FormLabel>Date of Birth</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>} />
-                                <FormField control={form.control} name="contactNumber" render={({ field }) => <FormItem><FormLabel>Contact Number</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField
+                                    control={form.control}
+                                    name="staffId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Select Staff Member</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value} disabled={!!editingUser}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Select a staff member" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    {availableStaff.map(s => <SelectItem key={s.id} value={s.id!}>{s.name} ({s.email})</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. john.s@example.com" {...field} readOnly /></FormControl><FormMessage /></FormItem>} />
                                 <FormField control={form.control} name="role" render={({ field }) => <FormItem><FormLabel>User Role</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl><SelectContent>{USER_ROLES.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>} />
                             </div>
                             <FormField

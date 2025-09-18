@@ -37,6 +37,19 @@ export type AuthProfile = {
     accessOptions: MainTab[];
 };
 
+export type Staff = {
+  id?: string;
+  companyId: string;
+  name: string;
+  dateOfBirth?: string;
+  nic?: string;
+  contactNumber: string;
+  whatsappNumber?: string;
+  email?: string;
+  position: string;
+};
+
+
 // Global state atoms
 export const currencyAtom = atom<Currency>({ code: 'LKR', name: 'Sri Lankan Rupee' });
 
@@ -59,3 +72,6 @@ export const purchaseOrdersAtom = atom<any[]>([]);
 export const quotationsAtom = atom<any[]>([]);
 export const saleOrdersAtom = atom<any[]>([]);
 export const paymentsAtom = atom<Payment[]>([]);
+export const staffAtom = atom<Staff[]>([]);
+
+    

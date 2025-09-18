@@ -10,6 +10,7 @@ export const MAIN_TABS = [
     { id: 'cash-book', label: 'Cash Book' },
     { id: 'income-expenses', label: 'Income & Expenses' },
     { id: 'master-data', label: 'Master Data' },
+    { id: 'staff', label: 'Staff'},
     { id: 'suppliers', label: 'Suppliers' },
     { id: 'customers', label: 'Customers' },
     { id: 'purchase-orders', label: 'Purchase Orders' },
@@ -19,3 +20,5 @@ export const MAIN_TABS = [
 ] as const;
 
 export type MainTab = typeof MAIN_TABS[number]['id'];
+
+    
