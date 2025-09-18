@@ -158,7 +158,7 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof line
         <div className="flex items-end gap-2 p-2 border rounded-lg">
             <div className="flex-1">
                 <Label htmlFor="item-select">Raw Material</Label>
-                 <Select value={selectedItemCode} onValuechange={setSelectedItemCode}>
+                 <Select value={selectedItemCode} onValueChange={setSelectedItemCode}>
                     <SelectTrigger id="item-select">
                         <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
