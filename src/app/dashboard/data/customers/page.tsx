@@ -252,6 +252,9 @@ export default function CustomersPage() {
                                 <PopoverContent className="w-auto p-0" align="start">
                                   <Calendar
                                     mode="single"
+                                    captionLayout="dropdown-buttons"
+                                    fromYear={1900}
+                                    toYear={new Date().getFullYear()}
                                     selected={field.value}
                                     onSelect={field.onChange}
                                     disabled={(date) =>
