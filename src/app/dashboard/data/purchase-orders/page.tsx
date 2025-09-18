@@ -73,7 +73,7 @@ const purchaseOrderSchema = z.object({
     lineItems: z.array(lineItemSchema),
 });
 
-const createPurchaseOrderSchema = z.object({
+const createQuotationSchema = z.object({
     supplierName: z.string().min(1, "Please select a supplier."),
     lineItems: z.array(lineItemSchema.omit({ unitPrice: true, totalValue: true })).min(1, "Please add at least one item."),
 });
@@ -110,7 +110,7 @@ const paymentSchema = z.object({
 
 
 type PurchaseOrder = z.infer<typeof purchaseOrderSchema>;
-type CreatePurchaseOrder = z.infer<typeof createPurchaseOrderSchema>;
+type CreatePurchaseOrder = z.infer<typeof createQuotationSchema>;
 type ReceiveItemsForm = z.infer<typeof receiveItemsSchema>;
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
@@ -201,7 +201,7 @@ export default function PurchaseOrdersPage() {
     const { toast } = useToast();
 
     const createForm = useForm<CreatePurchaseOrder>({
-        resolver: zodResolver(createPurchaseOrderSchema),
+        resolver: zodResolver(createQuotationSchema),
         defaultValues: {
           supplierName: '',
           lineItems: [],
