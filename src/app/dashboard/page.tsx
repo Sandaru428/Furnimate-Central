@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -36,6 +37,7 @@ import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const developmentChecklist = [
   {
@@ -143,6 +145,7 @@ const salesData = [
 
 export default function DashboardPage() {
   const [currency] = useAtom(currencyAtom);
+  const [isConnected, setIsConnected] = useState(false);
 
   return (
     <>
@@ -242,10 +245,16 @@ export default function DashboardPage() {
                             <Server className="h-6 w-6 text-muted-foreground" />
                             <div>
                                 <p className="font-medium">absiraivaws@gmail.com</p>
-                                <Badge variant="destructive">Disconnected</Badge>
+                                {isConnected ? (
+                                    <Badge className="bg-green-600 text-white">Connected</Badge>
+                                ) : (
+                                    <Badge variant="destructive">Disconnected</Badge>
+                                )}
                             </div>
                         </div>
-                        <Button variant="outline">Connect</Button>
+                        <Button variant="outline" onClick={() => setIsConnected(!isConnected)}>
+                          {isConnected ? 'Disconnect' : 'Connect'}
+                        </Button>
                     </div>
                     <p className="text-sm text-muted-foreground mt-2">
                         Simulated server connection status for development purposes.
