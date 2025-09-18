@@ -45,15 +45,12 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle, CalendarIcon } from 'lucide-react';
+import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -63,7 +60,7 @@ const customerSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone number is required'),
   whatsappNumber: z.string().optional(),
-  dateOfBirth: z.date().optional(),
+  dateOfBirth: z.string().optional(),
   address: z.string().optional(),
 });
 
@@ -83,7 +80,7 @@ export default function CustomersPage() {
       email: '',
       phone: '',
       whatsappNumber: '',
-      dateOfBirth: undefined,
+      dateOfBirth: '',
       address: '',
     },
   });
@@ -104,7 +101,8 @@ export default function CustomersPage() {
           return { 
               id: doc.id, 
               ...data,
-              dateOfBirth: data.dateOfBirth ? data.dateOfBirth.toDate() : undefined,
+              // Convert Firestore Timestamp to string if it exists
+              dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
           } as Customer
       });
       setCustomers(customersData);
@@ -115,8 +113,20 @@ export default function CustomersPage() {
 
   async function onSubmit(values: Omit<Customer, 'id'>) {
     try {
-      const docRef = await addDoc(collection(db, 'customers'), values);
-      setCustomers([...customers, { ...values, id: docRef.id }]);
+      const dataToSave = {
+        ...values,
+        dateOfBirth: values.dateOfBirth ? new Date(values.dateOfBirth) : null,
+      };
+
+      const docRef = await addDoc(collection(db, 'customers'), dataToSave);
+      
+      const newCustomer: Customer = { 
+        ...values, 
+        id: docRef.id,
+      };
+
+      setCustomers([...customers, newCustomer]);
+
       toast({
         title: 'Customer Added',
         description: `${values.name} has been successfully added.`,
@@ -231,42 +241,11 @@ export default function CustomersPage() {
                               control={form.control}
                               name="dateOfBirth"
                               render={({ field }) => (
-                                <FormItem className="flex flex-col">
+                                <FormItem>
                                   <FormLabel>Date of birth</FormLabel>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <FormControl>
-                                        <Button
-                                          variant={"outline"}
-                                          className={cn(
-                                            "w-[240px] pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                          )}
-                                        >
-                                          {field.value ? (
-                                            format(field.value, "PPP")
-                                          ) : (
-                                            <span>Pick a date</span>
-                                          )}
-                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                      </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                      <Calendar
-                                        mode="single"
-                                        captionLayout="dropdown-buttons"
-                                        fromYear={1900}
-                                        toYear={new Date().getFullYear()}
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        disabled={(date) =>
-                                          date > new Date() || date < new Date("1900-01-01")
-                                        }
-                                        initialFocus
-                                      />
-                                    </PopoverContent>
-                                  </Popover>
+                                  <FormControl>
+                                    <Input type="date" {...field} />
+                                  </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -327,7 +306,7 @@ export default function CustomersPage() {
                         <TableCell>{customer.phone}</TableCell>
                         <TableCell>{customer.whatsappNumber}</TableCell>
                         <TableCell>
-                          {customer.dateOfBirth ? format(customer.dateOfBirth, 'PP') : '-'}
+                          {customer.dateOfBirth ? format(new Date(customer.dateOfBirth), 'PP') : '-'}
                         </TableCell>
                         <TableCell>{customer.address}</TableCell>
                         <TableCell>
