@@ -55,10 +55,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 const supplierSchema = z.object({
     id: z.string().optional(),
     name: z.string().min(1, "Supplier name is required"),
-    contactPerson: z.string().min(1, "Contact person is required"),
-    email: z.string().email("Invalid email address"),
-    whatsappNumber: z.string().min(1, "WhatsApp number is required"),
-    contactNumber: z.string().min(1, "Contact number is required"),
+    contactPerson: z.string().optional(),
+    email: z.string().email("Invalid email address").optional(),
+    whatsappNumber: z.string().optional(),
+    contactNumber: z.string().optional(),
     bankName: z.string().optional(),
     accountNumber: z.string().optional(),
 });
@@ -110,10 +110,10 @@ export default function SuppliersPage() {
     try {
         const dataToSave = {
             name: values.name,
-            contactPerson: values.contactPerson,
-            email: values.email,
-            whatsappNumber: values.whatsappNumber,
-            contactNumber: values.contactNumber,
+            contactPerson: values.contactPerson || '',
+            email: values.email || '',
+            whatsappNumber: values.whatsappNumber || '',
+            contactNumber: values.contactNumber || '',
             bankName: values.bankName || '',
             accountNumber: values.accountNumber || '',
         };
@@ -152,7 +152,11 @@ export default function SuppliersPage() {
     if (supplier) {
         setEditingSupplier(supplier);
         form.reset({
-            ...supplier,
+            name: supplier.name || '',
+            contactPerson: supplier.contactPerson || '',
+            email: supplier.email || '',
+            whatsappNumber: supplier.whatsappNumber || '',
+            contactNumber: supplier.contactNumber || '',
             bankName: supplier.bankName || '',
             accountNumber: supplier.accountNumber || '',
         });
@@ -175,7 +179,7 @@ export default function SuppliersPage() {
     (supplier) =>
       supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (supplier.contactPerson && supplier.contactPerson.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      supplier.email.toLowerCase().includes(searchTerm.toLowerCase())
+      (supplier.email && supplier.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -217,49 +221,70 @@ export default function SuppliersPage() {
                                     <ScrollArea className="flex-1 pr-6">
                                         <div className="space-y-4 py-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="name" render={({ field }) => (
+                                                <FormField
+                                                  control={form.control}
+                                                  name="name"
+                                                  render={({ field }) => (
                                                   <FormItem>
                                                     <FormLabel>Supplier Name</FormLabel>
                                                     <FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl>
                                                     <FormMessage />
                                                   </FormItem>
                                                 )}/>
-                                                <FormField control={form.control} name="contactPerson" render={({ field }) => (
+                                                <FormField
+                                                  control={form.control}
+                                                  name="contactPerson"
+                                                  render={({ field }) => (
                                                   <FormItem>
                                                     <FormLabel>Contact Person</FormLabel>
                                                     <FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl>
                                                     <FormMessage />
                                                   </FormItem>
                                                 )}/>
-                                                <FormField control={form.control} name="email" render={({ field }) => (
+                                                <FormField
+                                                  control={form.control}
+                                                  name="email"
+                                                  render={({ field }) => (
                                                   <FormItem>
                                                     <FormLabel>Email Address</FormLabel>
                                                     <FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl>
                                                     <FormMessage />
                                                   </FormItem>
                                                 )}/>
-                                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => (
+                                                <FormField
+                                                  control={form.control}
+                                                  name="whatsappNumber"
+                                                  render={({ field }) => (
                                                   <FormItem>
                                                     <FormLabel>WhatsApp Number</FormLabel>
                                                     <FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl>
                                                     <FormMessage />
                                                   </FormItem>
                                                 )}/>
-                                                <FormField control={form.control} name="contactNumber" render={({ field }) => (
+                                                <FormField
+                                                  control={form.control}
+                                                  name="contactNumber"
+                                                  render={({ field }) => (
                                                   <FormItem>
                                                     <FormLabel>Contact Number</FormLabel>
                                                     <FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl>
                                                     <FormMessage />
                                                   </FormItem>
                                                 )}/>
-                                                <FormField control={form.control} name="bankName" render={({ field }) => (
+                                                <FormField
+                                                  control={form.control}
+                                                  name="bankName"
+                                                  render={({ field }) => (
                                                   <FormItem>
                                                     <FormLabel>Bank Name</FormLabel>
                                                     <FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl>
                                                     <FormMessage />
                                                   </FormItem>
                                                 )}/>
-                                                <FormField control={form.control} name="accountNumber" render={({ field }) => (
+                                                <FormField
+                                                  control={form.control}
+                                                  name="accountNumber"
+                                                  render={({ field }) => (
                                                   <FormItem>
                                                     <FormLabel>Account Number</FormLabel>
                                                     <FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl>
