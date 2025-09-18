@@ -38,6 +38,15 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const reportTypes = [
+    { value: 'all', label: 'All Reports' },
+    { value: 'cash-book', label: 'Cash Book' },
+    { value: 'purchase-orders', label: 'Purchase Orders' },
+    { value: 'sale-orders', label: 'Sale Orders' },
+    { value: 'quotations', label: 'Quotations' },
+];
 
 
 export default function ReportingPage() {
@@ -50,6 +59,8 @@ export default function ReportingPage() {
     const [currency] = useAtom(currencyAtom);
 
     const [date, setDate] = useState<DateRange | undefined>();
+    const [reportType, setReportType] = useState('all');
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -129,7 +140,7 @@ export default function ReportingPage() {
         <Card className="no-print">
             <CardHeader>
                 <CardTitle>Date Range Report</CardTitle>
-                <CardDescription>Select a date range to generate a report for all key modules. The filtered data will be displayed below.</CardDescription>
+                <CardDescription>Select a date range and report type. The filtered data will be displayed below.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap items-center gap-4">
                 <Popover>
@@ -168,6 +179,18 @@ export default function ReportingPage() {
                     />
                     </PopoverContent>
                 </Popover>
+                 <Select value={reportType} onValueChange={setReportType}>
+                    <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Select a report" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {reportTypes.map(type => (
+                            <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
                  <Button onClick={handlePrint} disabled={!date?.from || !date?.to}>
                     <Printer className="mr-2 h-4 w-4" />
                     Print Report
@@ -186,6 +209,7 @@ export default function ReportingPage() {
             {date?.from && date?.to ? (
                 <>
                 {/* Cash Book Report */}
+                {(reportType === 'all' || reportType === 'cash-book') && (
                 <Card>
                     <CardHeader><CardTitle>Cash Book</CardTitle></CardHeader>
                     <CardContent>
@@ -205,8 +229,10 @@ export default function ReportingPage() {
                         </Table>
                     </CardContent>
                 </Card>
+                )}
 
                  {/* Purchase Orders Report */}
+                {(reportType === 'all' || reportType === 'purchase-orders') && (
                 <Card>
                     <CardHeader><CardTitle>Purchase Orders</CardTitle></CardHeader>
                     <CardContent>
@@ -226,8 +252,10 @@ export default function ReportingPage() {
                         </Table>
                     </CardContent>
                 </Card>
+                )}
                 
                  {/* Sale Orders Report */}
+                {(reportType === 'all' || reportType === 'sale-orders') && (
                 <Card>
                     <CardHeader><CardTitle>Sale Orders</CardTitle></CardHeader>
                     <CardContent>
@@ -247,8 +275,10 @@ export default function ReportingPage() {
                         </Table>
                     </CardContent>
                 </Card>
+                )}
                 
                  {/* Quotations Report */}
+                {(reportType === 'all' || reportType === 'quotations') && (
                 <Card>
                     <CardHeader><CardTitle>Quotations</CardTitle></CardHeader>
                     <CardContent>
@@ -268,13 +298,12 @@ export default function ReportingPage() {
                         </Table>
                     </CardContent>
                 </Card>
-
-                 {/* Customers & Suppliers are not date-filtered, so they are not shown in the date-range report */}
+                )}
                 </>
             ) : (
                 <Card>
                     <CardContent className="p-8 text-center text-muted-foreground">
-                        Please select a date range above to view the report.
+                        Please select a date range and report type to view the report.
                     </CardContent>
                 </Card>
             )}
