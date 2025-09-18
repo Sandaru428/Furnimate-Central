@@ -142,7 +142,7 @@ export default function SuppliersPage() {
                                 Add New Supplier
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-md">
                             <DialogHeader>
                                 <DialogTitle>Add New Supplier</DialogTitle>
                             </DialogHeader>
@@ -235,3 +235,5 @@ export default function SuppliersPage() {
     </>
   );
 }
+
+    

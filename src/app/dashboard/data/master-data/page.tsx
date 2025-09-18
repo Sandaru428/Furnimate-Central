@@ -153,7 +153,7 @@ export default function MasterDataPage() {
                                 Add New Item
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-md">
                             <DialogHeader>
                                 <DialogTitle>Add New Item</DialogTitle>
                             </DialogHeader>
@@ -301,3 +301,5 @@ export default function MasterDataPage() {
     </>
   );
 }
+
+    
