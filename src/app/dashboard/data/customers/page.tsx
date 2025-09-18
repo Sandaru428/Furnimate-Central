@@ -49,7 +49,7 @@ import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { format, parseISO } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -124,9 +124,9 @@ export default function CustomersPage() {
         dataToSave.dateOfBirth = new Date(values.dateOfBirth);
       }
 
-      if (editingCustomer) {
+      if (editingCustomer && editingCustomer.id) {
         // Update
-        const docRef = doc(db, 'customers', editingCustomer.id!);
+        const docRef = doc(db, 'customers', editingCustomer.id);
         await updateDoc(docRef, dataToSave);
         setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...values, dateOfBirth: values.dateOfBirth } : c));
         toast({

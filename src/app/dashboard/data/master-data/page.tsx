@@ -101,20 +101,26 @@ export default function MasterDataPage() {
 
     async function onSubmit(values: MasterDataItem) {
         try {
+            const dataToSave: Omit<MasterDataItem, 'id'> = {
+                itemCode: values.itemCode,
+                name: values.name,
+                type: values.type,
+                unitPrice: values.unitPrice,
+                stockLevel: values.stockLevel,
+            };
+
             if (editingItem && editingItem.id) {
                 // Update
                 const docRef = doc(db, 'masterData', editingItem.id);
-                const updatedValues: Omit<MasterDataItem, 'id'> = { ...values };
-                delete updatedValues.id;
-                await updateDoc(docRef, updatedValues);
-                setMasterData(masterData.map(item => item.id === editingItem.id ? { ...values, id: editingItem.id } : item));
+                await updateDoc(docRef, dataToSave);
+                setMasterData(masterData.map(item => item.id === editingItem.id ? { ...item, ...values } : item));
                 toast({
                   title: 'Item Updated',
                   description: `${values.name} has been successfully updated.`,
                 });
             } else {
                 // Create
-                const docRef = await addDoc(collection(db, 'masterData'), values);
+                const docRef = await addDoc(collection(db, 'masterData'), dataToSave);
                 setMasterData(prev => [{ ...values, id: docRef.id }, ...prev]);
                 toast({
                   title: 'Item Added',
@@ -340,3 +346,5 @@ export default function MasterDataPage() {
     </>
   );
 }
+
+    

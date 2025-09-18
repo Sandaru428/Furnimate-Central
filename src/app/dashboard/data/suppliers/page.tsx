@@ -91,19 +91,24 @@ export default function SuppliersPage() {
 
   async function onSubmit(values: Supplier) {
     try {
-        if (editingSupplier) {
+        const dataToSave = {
+            name: values.name,
+            contact: values.contact,
+        };
+
+        if (editingSupplier && editingSupplier.id) {
             // Update
-            const docRef = doc(db, 'suppliers', editingSupplier.id!);
-            await updateDoc(docRef, values);
-            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? values : s));
+            const docRef = doc(db, 'suppliers', editingSupplier.id);
+            await updateDoc(docRef, dataToSave);
+            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...s, ...values } : s));
             toast({
               title: 'Supplier Updated',
               description: `${values.name} has been successfully updated.`,
             });
         } else {
             // Create
-            const docRef = await addDoc(collection(db, 'suppliers'), values);
-            setSuppliers([...suppliers, { ...values, id: docRef.id }]);
+            const docRef = await addDoc(collection(db, 'suppliers'), dataToSave);
+            setSuppliers(prev => [...prev, { ...values, id: docRef.id }]);
             toast({
               title: 'Supplier Added',
               description: `${values.name} has been successfully added.`,
@@ -116,7 +121,7 @@ export default function SuppliersPage() {
         toast({
             variant: 'destructive',
             title: 'Error',
-            description: 'Failed to add supplier.',
+            description: 'Failed to save supplier.',
         });
     }
   }

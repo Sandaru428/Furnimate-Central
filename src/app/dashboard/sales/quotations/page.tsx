@@ -213,7 +213,9 @@ export default function QuotationsPage() {
                     amount: totalAmount,
                     status: 'Draft',
                 };
-                await setDoc(doc(db, "quotations", editingQuotation.id), updatedQuotation);
+                
+                const { id, ...dataToSave } = updatedQuotation;
+                await setDoc(doc(db, "quotations", editingQuotation.id), dataToSave);
                 setQuotations(quotations.map(q => q.id === editingQuotation.id ? updatedQuotation : q));
                 toast({ title: 'Quotation Updated', description: `Quotation ${editingQuotation.id} has been updated.` });
              } else {
@@ -230,8 +232,9 @@ export default function QuotationsPage() {
                     lineItems: values.lineItems,
                     amount: totalAmount,
                 };
-    
-                await setDoc(doc(db, "quotations", newQuotationId), newQuotation);
+                
+                const { id, ...dataToSave } = newQuotation;
+                await setDoc(doc(db, "quotations", newQuotationId), dataToSave);
                 setQuotations([newQuotation, ...quotations]);
                 toast({ title: 'Quotation Created', description: `Quotation ${newQuotation.id} has been saved as a draft.` });
              }
@@ -567,3 +570,5 @@ export default function QuotationsPage() {
     </>
   );
 }
+
+    

@@ -86,7 +86,7 @@ const purchaseOrderSchema = z.object({
     lineItems: z.array(lineItemSchema),
 });
 
-const createQuotationSchema = z.object({
+const createPurchaseOrderSchema = z.object({
     supplierName: z.string().min(1, "Please select a supplier."),
     lineItems: z.array(lineItemSchema.omit({ unitPrice: true, totalValue: true })).min(1, "Please add at least one item."),
 });
@@ -123,7 +123,7 @@ const paymentSchema = z.object({
 
 
 type PurchaseOrder = z.infer<typeof purchaseOrderSchema>;
-type CreatePurchaseOrder = z.infer<typeof createQuotationSchema>;
+type CreatePurchaseOrder = z.infer<typeof createPurchaseOrderSchema>;
 type ReceiveItemsForm = z.infer<typeof receiveItemsSchema>;
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
@@ -222,7 +222,7 @@ export default function PurchaseOrdersPage() {
     };
 
     const createForm = useForm<CreatePurchaseOrder>({
-        resolver: zodResolver(createQuotationSchema),
+        resolver: zodResolver(createPurchaseOrderSchema),
         defaultValues: {
           supplierName: '',
           lineItems: [],
@@ -271,9 +271,11 @@ export default function PurchaseOrdersPage() {
         if (editingPO) {
             // Update logic
             const updatedLineItems = values.lineItems.map(item => ({...item, unitPrice: undefined, totalValue: undefined }));
-            const updatedPO = { ...editingPO, ...values, lineItems: updatedLineItems, status: 'Draft', totalAmount: 0 };
+            const updatedPO: PurchaseOrder = { ...editingPO, ...values, lineItems: updatedLineItems, status: 'Draft', totalAmount: 0 };
             
-            await setDoc(doc(db, "purchaseOrders", editingPO.id), updatedPO);
+            const poRef = doc(db, "purchaseOrders", editingPO.id);
+            const { id, ...dataToSave } = updatedPO;
+            await setDoc(poRef, dataToSave);
             setPurchaseOrders(prevPOs => prevPOs.map(po => po.id === editingPO.id ? updatedPO : po ));
             toast({ title: 'Purchase Order Updated', description: `Purchase Order ${editingPO.id} has been updated.` });
         } else {
@@ -292,7 +294,8 @@ export default function PurchaseOrdersPage() {
                 totalAmount: 0,
             };
             
-            await setDoc(doc(db, "purchaseOrders", newPOId), newPO);
+            const { id, ...dataToSave } = newPO;
+            await setDoc(doc(db, "purchaseOrders", newPOId), dataToSave);
             setPurchaseOrders([newPO, ...purchaseOrders]);
             toast({ title: 'Purchase Order Created', description: `Purchase Order ${newPO.id} has been saved as a draft.` });
         }
