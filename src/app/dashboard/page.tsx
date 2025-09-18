@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -19,6 +19,7 @@ import {
   TrendingUp,
   BookOpenCheck,
   Server,
+  Archive,
 } from 'lucide-react';
 import {
   Bar,
@@ -31,13 +32,13 @@ import {
 } from 'recharts';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAtom } from 'jotai';
-import { currencyAtom } from '@/lib/store';
+import { currencyAtom, paymentsAtom, saleOrdersAtom, masterDataAtom } from '@/lib/store';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
 
 const developmentChecklist = [
   {
@@ -102,50 +103,75 @@ const developmentChecklist = [
   },
 ];
 
-const kpiData = [
-  {
-    title: 'Total Revenue',
-    amount: 45231.89,
-    valuePrefix: '',
-    change: '+20.1% from last month',
-    icon: <DollarSign className="text-muted-foreground" />,
-  },
-  {
-    title: 'New Orders',
-    amount: 2350,
-    valuePrefix: '+',
-    change: '+180.1% from last month',
-    icon: <ShoppingCart className="text-muted-foreground" />,
-  },
-  {
-    title: 'Pending Shipments',
-    amount: 125,
-    valuePrefix: '',
-    change: '+19% from last month',
-    icon: <Package className="text-muted-foreground" />,
-  },
-  {
-    title: 'Production Yield',
-    amount: 98.5,
-    valuePrefix: '',
-    valueSuffix: '%',
-    change: '+2.5% from last month',
-    icon: <TrendingUp className="text-muted-foreground" />,
-  },
-];
-
-const salesData = [
-    { month: 'Jan', sales: 4000 },
-    { month: 'Feb', sales: 3000 },
-    { month: 'Mar', sales: 5000 },
-    { month: 'Apr', sales: 4500 },
-    { month: 'May', sales: 6000 },
-    { month: 'Jun', sales: 5500 },
-  ];
-
 export default function DashboardPage() {
   const [currency] = useAtom(currencyAtom);
+  const [payments] = useAtom(paymentsAtom);
+  const [saleOrders] = useAtom(saleOrdersAtom);
+  const [masterData] = useAtom(masterDataAtom);
   const [isConnected, setIsConnected] = useState(false);
+
+  const kpiData = useMemo(() => {
+    const totalRevenue = payments
+        .filter(p => p.type === 'income')
+        .reduce((acc, p) => acc + p.amount, 0);
+
+    const newOrders = saleOrders.length;
+    
+    const pendingShipments = saleOrders.filter(o => o.status === 'Processing').length;
+    
+    const itemsToRestock = masterData.filter(item => item.stockLevel === 0).length;
+
+    return [
+      {
+        title: 'Total Revenue',
+        amount: totalRevenue,
+        valuePrefix: '',
+        change: 'All income recorded',
+        icon: <DollarSign className="text-muted-foreground" />,
+      },
+      {
+        title: 'New Orders',
+        amount: newOrders,
+        valuePrefix: '',
+        change: 'Total sale orders created',
+        icon: <ShoppingCart className="text-muted-foreground" />,
+      },
+      {
+        title: 'Pending Shipments',
+        amount: pendingShipments,
+        valuePrefix: '',
+        change: `Orders in 'Processing' state`,
+        icon: <Package className="text-muted-foreground" />,
+      },
+      {
+        title: 'Items to Re-stock',
+        amount: itemsToRestock,
+        valuePrefix: '',
+        valueSuffix: '',
+        change: 'Items with zero stock level',
+        icon: <Archive className="text-muted-foreground" />,
+      },
+    ];
+  }, [payments, saleOrders, masterData]);
+
+ const salesData = useMemo(() => {
+    const monthlySales: { [key: string]: number } = {};
+
+    saleOrders.forEach(order => {
+        const month = format(parseISO(order.date), 'MMM yyyy');
+        if (!monthlySales[month]) {
+            monthlySales[month] = 0;
+        }
+        monthlySales[month] += order.amount;
+    });
+
+    return Object.entries(monthlySales)
+        .map(([month, sales]) => ({
+            month: month.split(' ')[0], // just get month name
+            sales: sales,
+        }))
+        .slice(-6); // Get last 6 months
+ }, [saleOrders]);
 
   return (
     <>
@@ -172,7 +198,7 @@ export default function DashboardPage() {
                   <CardContent>
                     <div className="text-2xl font-bold">
                         {kpi.title === 'Total Revenue' 
-                            ? `${kpi.valuePrefix || ''}${currency.code} ${kpi.amount.toLocaleString()}`
+                            ? `${kpi.valuePrefix || ''}${currency.code} ${kpi.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : `${kpi.valuePrefix || ''}${kpi.amount.toLocaleString()}${kpi.valueSuffix || ''}`
                         }
                     </div>
@@ -192,8 +218,8 @@ export default function DashboardPage() {
                         <BarChart data={salesData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip />
+                        <YAxis tickFormatter={(value) => `${currency.code} ${value.toLocaleString()}`} />
+                        <Tooltip formatter={(value: number) => `${currency.code} ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                         <Bar dataKey="sales" fill="hsl(var(--primary))" />
                         </BarChart>
                     </ResponsiveContainer>
