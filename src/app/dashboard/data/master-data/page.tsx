@@ -53,7 +53,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAtom } from 'jotai';
 import { currencyAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 
@@ -101,11 +101,13 @@ export default function MasterDataPage() {
 
     async function onSubmit(values: MasterDataItem) {
         try {
-            if (editingItem) {
+            if (editingItem && editingItem.id) {
                 // Update
-                const docRef = doc(db, 'masterData', editingItem.id!);
-                await updateDoc(docRef, values);
-                setMasterData(masterData.map(item => item.id === editingItem.id ? values : item));
+                const docRef = doc(db, 'masterData', editingItem.id);
+                const updatedValues: Omit<MasterDataItem, 'id'> = { ...values };
+                delete updatedValues.id;
+                await updateDoc(docRef, updatedValues);
+                setMasterData(masterData.map(item => item.id === editingItem.id ? { ...values, id: editingItem.id } : item));
                 toast({
                   title: 'Item Updated',
                   description: `${values.name} has been successfully updated.`,
@@ -113,7 +115,7 @@ export default function MasterDataPage() {
             } else {
                 // Create
                 const docRef = await addDoc(collection(db, 'masterData'), values);
-                setMasterData([...masterData, { ...values, id: docRef.id }]);
+                setMasterData(prev => [{ ...values, id: docRef.id }, ...prev]);
                 toast({
                   title: 'Item Added',
                   description: `${values.name} has been successfully added.`,
@@ -123,6 +125,7 @@ export default function MasterDataPage() {
             setEditingItem(null);
             setIsDialogOpen(false);
         } catch (error) {
+            console.error("Failed to save item: ", error);
             toast({
                 variant: 'destructive',
                 title: 'Error',
@@ -337,5 +340,3 @@ export default function MasterDataPage() {
     </>
   );
 }
-
-    
