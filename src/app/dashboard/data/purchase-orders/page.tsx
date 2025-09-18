@@ -54,8 +54,6 @@ import { initialMasterData, MasterDataItem } from '@/app/dashboard/data/master-d
 import { initialSuppliers } from '../suppliers/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { useAtom } from 'jotai';
-import { paymentsAtom, Payment } from '@/lib/store';
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item selection is required."),
@@ -69,7 +67,7 @@ const purchaseOrderSchema = z.object({
     supplierName: z.string(),
     date: z.string(),
     totalAmount: z.coerce.number(),
-    status: z.enum(['Draft', 'Sent', 'Fulfilled', 'Paid']),
+    status: z.enum(['Draft', 'Sent', 'Fulfilled']),
     lineItems: z.array(lineItemSchema),
 });
 
@@ -87,32 +85,9 @@ const receiveItemsSchema = z.object({
   }))
 });
 
-const paymentSchema = z.object({
-    amount: z.coerce.number().positive("Amount must be a positive number."),
-    method: z.enum(['Cash', 'Card', 'Online', 'QR', 'Cheque']),
-    cardLast4: z.string().optional(),
-    fromBankName: z.string().optional(),
-    fromAccountNumber: z.string().optional(),
-    toBankName: z.string().optional(),
-    toAccountNumber: z.string().optional(),
-    chequeBank: z.string().optional(),
-    chequeDate: z.string().optional(),
-    chequeNumber: z.string().optional(),
-}).refine(data => {
-    if (data.method === 'Card') return !!data.cardLast4 && data.cardLast4.length === 4;
-    if (data.method === 'Online') return !!data.fromBankName && !!data.fromAccountNumber && !!data.toBankName && !!data.toAccountNumber;
-    if (data.method === 'Cheque') return !!data.chequeBank && !!data.chequeDate && !!data.chequeNumber;
-    return true;
-}, {
-    message: "Please fill in all required details for the selected payment method.",
-    path: ['method'], 
-});
-
-
 type PurchaseOrder = z.infer<typeof purchaseOrderSchema>;
 type CreatePurchaseOrder = z.infer<typeof createQuotationSchema>;
 type ReceiveItemsForm = z.infer<typeof receiveItemsSchema>;
-type PaymentFormValues = z.infer<typeof paymentSchema>;
 
 const initialPurchaseOrders: PurchaseOrder[] = [
     {
@@ -191,10 +166,8 @@ const AddItemForm = ({ onAddItem }: { onAddItem: (item: Omit<z.infer<typeof line
 export default function PurchaseOrdersPage() {
     const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
     const [masterData, setMasterData] = useState<MasterDataItem[]>(initialMasterData);
-    const [payments, setPayments] = useAtom(paymentsAtom);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
-    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
     const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -214,15 +187,6 @@ export default function PurchaseOrdersPage() {
             lineItems: []
         }
     });
-
-    const paymentForm = useForm<PaymentFormValues>({
-        resolver: zodResolver(paymentSchema),
-        defaultValues: { amount: '' as any, method: undefined, cardLast4: '', fromBankName: '', fromAccountNumber: '', toBankName: '', toAccountNumber: '', chequeBank: '', chequeDate: '', chequeNumber: '' }
-    });
-
-    const paymentMethod = paymentForm.watch('method');
-    const amountPaid = selectedPO ? payments.filter(p => p.orderId === selectedPO.id && p.type === 'expense').reduce((acc, p) => acc + p.amount, 0) : 0;
-    const remainingAmount = selectedPO ? selectedPO.totalAmount - amountPaid : 0;
 
     const { fields: createFields, append: createAppend, remove: createRemove, replace: createReplace } = useFieldArray({
         control: createForm.control,
@@ -287,32 +251,6 @@ export default function PurchaseOrdersPage() {
         setSelectedPO(null);
     }
 
-    function onPaymentSubmit(values: PaymentFormValues) {
-        if (!selectedPO) return;
-        const currentAmountPaid = payments.filter(p => p.orderId === selectedPO.id && p.type === 'expense').reduce((acc, p) => acc + p.amount, 0);
-        if (values.amount > selectedPO.totalAmount - currentAmountPaid) {
-            toast({ variant: 'destructive', title: 'Invalid Amount', description: `Payment exceeds remaining balance. Max payable: $${(selectedPO.totalAmount - currentAmountPaid).toFixed(2)}` });
-            return;
-        }
-        let details = '';
-        switch(values.method) {
-            case 'Card': details = `Card ending in ${values.cardLast4}`; break;
-            case 'Online': details = `From ${values.fromBankName} (${values.fromAccountNumber}) to ${values.toBankName} (${values.toAccountNumber})`; break;
-            case 'Cheque': details = `${values.chequeBank} Cheque #${values.chequeNumber}, dated ${values.chequeDate}`; break;
-            default: details = 'N/A';
-        }
-        const newPayment: Payment = { id: Date.now().toString(), orderId: selectedPO.id, date: format(new Date(), 'yyyy-MM-dd'), amount: values.amount, method: values.method, details: details, type: 'expense' };
-        setPayments(prev => [...prev, newPayment]);
-        const totalPaid = currentAmountPaid + newPayment.amount;
-        if (totalPaid >= selectedPO.totalAmount) {
-            setPurchaseOrders(prev => prev.map(o => o.id === selectedPO.id ? { ...o, status: 'Paid' } : o));
-            toast({ title: 'Payment Complete', description: `Final payment for PO ${selectedPO.id} has been recorded.` });
-        } else {
-            toast({ title: 'Installment Recorded', description: `Payment of $${values.amount.toFixed(2)} for PO ${selectedPO.id} recorded.` });
-        }
-        setIsPaymentDialogOpen(false);
-    }
-    
     const handleStatusChange = (poId: string, status: 'Sent') => {
         setPurchaseOrders(prev => prev.map(po => po.id === poId ? {...po, status} : po));
         toast({ title: 'Status Updated', description: `PO ${poId} marked as ${status}.` });
@@ -329,20 +267,12 @@ export default function PurchaseOrdersPage() {
         setIsReceiveDialogOpen(true);
     };
 
-    const openPaymentDialog = (po: PurchaseOrder) => {
-        setSelectedPO(po);
-        const currentAmountPaid = payments.filter(p => p.orderId === po.id && p.type === 'expense').reduce((acc, p) => acc + p.amount, 0);
-        const currentRemainingAmount = po.totalAmount - currentAmountPaid;
-        paymentForm.reset({ amount: currentRemainingAmount > 0 ? currentRemainingAmount : '' as any, method: undefined, cardLast4: '', fromBankName: '', fromAccountNumber: '', toBankName: '', toAccountNumber: '', chequeBank: '', chequeDate: '', chequeNumber: '' });
-        setIsPaymentDialogOpen(true);
-    };
-
     const openCreateOrEditDialog = (po: PurchaseOrder | null) => {
         if (po) {
             setEditingPO(po);
             const simplifiedLineItems = po.lineItems.map(({ itemId, quantity }) => ({ itemId, quantity }));
             createForm.reset({ supplierName: po.supplierName, lineItems: simplifiedLineItems });
-            createReplace(simplifiedLineItems);
+            replace(simplifiedLineItems);
         } else {
             setEditingPO(null);
             createForm.reset({ supplierName: '', lineItems: [] });
@@ -353,7 +283,7 @@ export default function PurchaseOrdersPage() {
 
     const filteredPurchaseOrders = purchaseOrders.filter(po => po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) || po.status.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "outline"} = { 'Draft': 'secondary', 'Sent': 'default', 'Fulfilled': 'outline', 'Paid': 'default' };
+    const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "outline"} = { 'Draft': 'secondary', 'Sent': 'default', 'Fulfilled': 'outline' };
 
   return (
     <>
@@ -454,7 +384,7 @@ export default function PurchaseOrdersPage() {
                     <TableCell>{po.date}</TableCell>
                     <TableCell className="text-right">${po.totalAmount.toFixed(2)}</TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant[po.status]} className={po.status === 'Paid' ? 'bg-green-600 text-white' : ''}>
+                      <Badge variant={statusVariant[po.status]}>
                         {po.status}
                       </Badge>
                     </TableCell>
@@ -467,7 +397,6 @@ export default function PurchaseOrdersPage() {
                             <DropdownMenuItem onClick={() => openCreateOrEditDialog(po)} disabled={po.status !== 'Draft'}> View/Edit </DropdownMenuItem>
                             {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}> Mark as Sent </DropdownMenuItem> )}
                             {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
-                            {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
                             <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -509,51 +438,6 @@ export default function PurchaseOrdersPage() {
                             </TableBody>
                         </Table>
                         <DialogFooter> <DialogClose asChild> <Button variant="outline" type="button">Cancel</Button> </DialogClose> <Button type="submit">Confirm &amp; Receive Stock</Button> </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
-
-      {/* Payment Dialog */}
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-            <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Record Payment for PO {selectedPO?.id}</DialogTitle>
-                    <CardDescription>
-                        Total: ${selectedPO?.totalAmount.toFixed(2)} | Paid: ${amountPaid.toFixed(2)} | Remaining: ${remainingAmount.toFixed(2)}
-                    </CardDescription>
-                </DialogHeader>
-                 <Form {...paymentForm}>
-                    <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)} className="space-y-4 py-4">
-                       <FormField control={paymentForm.control} name="amount" render={({ field }) => ( <FormItem> <FormLabel>Amount</FormLabel> <FormControl> <Input type="number" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-                        <FormField
-                            control={paymentForm.control}
-                            name="method"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Payment Method</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select a payment method" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (
-                                                <SelectItem key={method} value={method}>
-                                                    {method}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        {paymentMethod === 'Card' && ( <FormField control={paymentForm.control} name="cardLast4" render={({ field }) => ( <FormItem> <FormLabel>Last 4 Digits of Card</FormLabel> <FormControl> <Input placeholder="1234" maxLength={4} {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> )}
-                        {paymentMethod === 'Online' && ( <div className="grid grid-cols-2 gap-4"> <div className="space-y-2 col-span-2 sm:col-span-1"> <h4 className="font-medium text-sm">From</h4> <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} /> </div> <div className="space-y-2 col-span-2 sm:col-span-1"> <h4 className="font-medium text-sm">To</h4> <FormField control={paymentForm.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} /> </div> </div> )}
-                        {paymentMethod === 'Cheque' && ( <div className="space-y-4"> <FormField control={paymentForm.control} name="chequeBank" render={({ field }) => ( <FormItem> <FormLabel>Bank Name</FormLabel> <FormControl> <Input placeholder="e.g. National Bank" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> <FormField control={paymentForm.control} name="chequeNumber" render={({ field }) => ( <FormItem> <FormLabel>Cheque Number</FormLabel> <FormControl> <Input placeholder="e.g. 987654" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> <FormField control={paymentForm.control} name="chequeDate" render={({ field }) => ( <FormItem> <FormLabel>Cheque Date</FormLabel> <FormControl> <Input type="date" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> </div> )}
-                        <DialogFooter> <DialogClose asChild> <Button variant="outline">Cancel</Button> </DialogClose> <Button type="submit">Record Payment</Button> </DialogFooter>
                     </form>
                 </Form>
             </DialogContent>
