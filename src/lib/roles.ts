@@ -1,4 +1,5 @@
 
+import { UserRole } from "./store";
 export const USER_ROLES = ["Super Admin", "Admin", "Level-1", "Level-2", "Level-3"] as const;
 export type UserRole = typeof USER_ROLES[number];
 
@@ -21,4 +22,11 @@ export const MAIN_TABS = [
 
 export type MainTab = typeof MAIN_TABS[number]['id'];
 
+export type AuthProfile = {
+    id: string;
+    name: string;
+    email: string;
+    role: UserRole;
+    accessOptions: MainTab[];
+};
     

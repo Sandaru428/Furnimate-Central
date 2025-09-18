@@ -19,7 +19,7 @@ import {
   } from "@/components/ui/sidebar";
 import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck, Landmark, UserCog, UserRound } from "lucide-react";
 import { DashboardHeader } from '@/components/dashboard-header';
-import { MAIN_TABS, MainTab } from '@/lib/roles';
+import { MAIN_TABS, MainTab, AuthProfile } from '@/lib/roles';
 import { useAuth } from '@/hooks/use-auth';
 
 const menuConfig = {
@@ -54,8 +54,8 @@ const menuConfig = {
     }
 };
 
-const hasAccess = (tabId: MainTab, authProfile: any) => {
-    if (!authProfile) return false;
+const hasAccess = (tabId: MainTab, authProfile: AuthProfile | null | undefined, loading: boolean) => {
+    if (loading || !authProfile) return false;
     if (authProfile.role === 'Super Admin') return true;
     return authProfile.accessOptions?.includes(tabId);
 };
@@ -67,7 +67,7 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const [companyProfile] = useAtom(companyProfileAtom);
-    const { authProfile } = useAuth();
+    const { authProfile, loading } = useAuth();
 
     return (
         <SidebarProvider>
@@ -80,7 +80,7 @@ export default function DashboardLayout({
                 </SidebarHeader>
                 <SidebarContent>
                     <SidebarMenu>
-                         {hasAccess('dashboard', authProfile) && (
+                         {hasAccess('dashboard', authProfile, loading) && (
                             <SidebarMenuItem>
                                 <SidebarMenuButton href={menuConfig.dashboard.href}>
                                     <menuConfig.dashboard.icon />
@@ -88,7 +88,7 @@ export default function DashboardLayout({
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                          )}
-                         {hasAccess('reporting', authProfile) && (
+                         {hasAccess('reporting', authProfile, loading) && (
                             <SidebarMenuItem>
                                 <SidebarMenuButton href={menuConfig.reporting.href}>
                                     <menuConfig.reporting.icon />
@@ -101,7 +101,7 @@ export default function DashboardLayout({
                         <SidebarGroup>
                             <SidebarGroupLabel>{menuConfig.admin.label}</SidebarGroupLabel>
                             {Object.entries(menuConfig.admin.items).map(([key, item]) => 
-                                hasAccess(key as MainTab, authProfile) && (
+                                hasAccess(key as MainTab, authProfile, loading) && (
                                 <SidebarMenuItem key={key}>
                                     <SidebarMenuButton href={item.href}>
                                         <item.icon />
@@ -115,7 +115,7 @@ export default function DashboardLayout({
                         <SidebarGroup>
                             <SidebarGroupLabel>{menuConfig.data.label}</SidebarGroupLabel>
                             {Object.entries(menuConfig.data.items).map(([key, item]) => 
-                                hasAccess(key as MainTab, authProfile) && (
+                                hasAccess(key as MainTab, authProfile, loading) && (
                                 <SidebarMenuItem key={key}>
                                     <SidebarMenuButton href={item.href}>
                                         <item.icon />
@@ -129,7 +129,7 @@ export default function DashboardLayout({
                         <SidebarGroup>
                             <SidebarGroupLabel>{menuConfig.sales.label}</SidebarGroupLabel>
                             {Object.entries(menuConfig.sales.items).map(([key, item]) => 
-                                hasAccess(key as MainTab, authProfile) && (
+                                hasAccess(key as MainTab, authProfile, loading) && (
                                 <SidebarMenuItem key={key}>
                                     <SidebarMenuButton href={item.href}>
                                         <item.icon />
@@ -148,5 +148,3 @@ export default function DashboardLayout({
         </SidebarProvider>
     );
 }
-
-    
