@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -173,7 +174,7 @@ export default function IncomeExpensesPage() {
                         </DialogHeader>
                         <Form {...form}>
                           <form onSubmit={form.handleSubmit(onSubmit)}>
-                             <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                             <ScrollArea className="max-h-[calc(100vh-20rem)]">
                                 <div className="space-y-6 p-4">
                                     <FormField
                                         control={form.control}
@@ -313,7 +314,7 @@ export default function IncomeExpensesPage() {
                                     )}
                                 </div>
                              </ScrollArea>
-                            <DialogFooter className="mt-4">
+                            <DialogFooter className="pt-4">
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancel</Button>
                                 </DialogClose>
@@ -366,3 +367,5 @@ export default function IncomeExpensesPage() {
     </>
   );
 }
+
+    
