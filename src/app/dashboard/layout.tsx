@@ -100,7 +100,7 @@ export default function DashboardLayout({
                         <SidebarMenuItem>
                             <SidebarMenuButton href="/dashboard/sales/orders">
                                 <ShoppingCart />
-                                Orders
+                                Sale Orders
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarGroup>

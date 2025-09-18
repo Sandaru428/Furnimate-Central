@@ -324,8 +324,8 @@ export default function QuotationsPage() {
         ));
 
         toast({
-            title: 'Quotation Converted to Order',
-            description: `Stock checked and available. Order created from ${quotationId}.`,
+            title: 'Quotation Converted to Sale Order',
+            description: `Stock checked and available. Sale Order created from ${quotationId}.`,
         });
 
         // Navigate to orders page
@@ -440,8 +440,7 @@ export default function QuotationsPage() {
                                         </div>
                                         <div className="flex gap-2">
                                             <DialogClose asChild>
-                                                <Button variant="outline" type="button">Cancel</Button>
-                                            </DialogClose>
+                                                <Button variant="outline" type="button">Cancel</Button></DialogClose>
                                              <Button type="submit">{editingQuotation ? 'Save Changes' : 'Create Quotation'}</Button>
                                         </div>
                                     </div>
@@ -510,7 +509,7 @@ export default function QuotationsPage() {
                                 )}
                                 {quote.status === 'Approved' && (
                                     <DropdownMenuItem onClick={() => handleConvertToOrder(quote.id)}>
-                                        Convert to Order
+                                        Convert to Sale Order
                                     </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />

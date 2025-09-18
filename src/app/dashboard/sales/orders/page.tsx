@@ -77,7 +77,7 @@ const paymentSchema = z.object({
 
 
 type PaymentFormValues = z.infer<typeof paymentSchema>;
-type Order = {
+type SaleOrder = {
     id: string;
     customer: string;
     date: string;
@@ -87,7 +87,7 @@ type Order = {
 };
 
 
-const initialOrders: Order[] = [
+const initialSaleOrders: SaleOrder[] = [
     {
         id: 'ORD-001',
         customer: 'Emily Davis',
@@ -99,10 +99,10 @@ const initialOrders: Order[] = [
 ];
 
 
-export default function OrdersPage() {
-    const [orders, setOrders] = useState<Order[]>(initialOrders);
+export default function SaleOrdersPage() {
+    const [orders, setOrders] = useState<SaleOrder[]>(initialSaleOrders);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [selectedOrder, setSelectedOrder] = useState<SaleOrder | null>(null);
     const [payments, setPayments] = useAtom(paymentsAtom);
     const { toast } = useToast();
     const [currency] = useAtom(currencyAtom);
@@ -140,7 +140,7 @@ export default function OrdersPage() {
         }
     }, [orders]);
 
-    const openPaymentDialog = (order: Order) => {
+    const openPaymentDialog = (order: SaleOrder) => {
         setSelectedOrder(order);
         const currentAmountPaid = payments.filter(p => p.orderId === order.id).reduce((acc, p) => acc + p.amount, 0);
         const currentRemainingAmount = order.amount - currentAmountPaid;
@@ -206,12 +206,12 @@ export default function OrdersPage() {
             setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'Paid' } : o));
              toast({
                 title: 'Payment Complete',
-                description: `Final payment for order ${selectedOrder.id} has been recorded.`
+                description: `Final payment for sale order ${selectedOrder.id} has been recorded.`
             });
         } else {
              toast({
                 title: 'Installment Recorded',
-                description: `Payment of ${currency.code} ${values.amount.toFixed(2)} for order ${selectedOrder.id} recorded.`
+                description: `Payment of ${currency.code} ${values.amount.toFixed(2)} for sale order ${selectedOrder.id} recorded.`
             });
         }
 
@@ -223,21 +223,21 @@ export default function OrdersPage() {
     <>
       <header className="flex items-center p-4 border-b">
           <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Orders</h1>
+          <h1 className="text-xl font-semibold ml-4">Sale Orders</h1>
       </header>
       <main className="p-4">
         <Card>
           <CardHeader>
-            <CardTitle>Confirmed Orders</CardTitle>
+            <CardTitle>Confirmed Sale Orders</CardTitle>
             <CardDescription>
-                These are quotations that have been converted into orders.
+                These are quotations that have been converted into sale orders.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order ID</TableHead>
+                  <TableHead>Sale Order ID</TableHead>
                   <TableHead>Original Quotation</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Date</TableHead>
@@ -278,7 +278,7 @@ export default function OrdersPage() {
                 ) : (
                     <TableRow>
                         <TableCell colSpan={7} className="text-center">
-                            No converted orders yet.
+                            No converted sale orders yet.
                         </TableCell>
                     </TableRow>
                 )}
