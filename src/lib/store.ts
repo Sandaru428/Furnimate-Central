@@ -31,14 +31,14 @@ export type CompanyProfile = {
 export const useDummyDataAtom = atom(true);
 
 // Global state atoms
-export const currencyAtom = atom<Currency>({ code: 'USD', name: 'United States Dollar' });
+export const currencyAtom = atom<Currency>({ code: 'LKR', name: 'Sri Lankan Rupee' });
 
 export const companyProfileAtom = atom<CompanyProfile>({
   companyName: 'Siraiva ltd',
   email: 'absiraiva@gmail.com',
   phone: '+94773606494',
   logo: undefined,
-  currency: 'USD',
+  currency: 'LKR',
 });
 
 // Data atoms
