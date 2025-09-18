@@ -49,7 +49,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle, Trash2, Share2, Printer } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/componentsui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';

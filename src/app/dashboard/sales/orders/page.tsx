@@ -464,8 +464,7 @@ export default function SaleOrdersPage() {
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancel</Button>
                                 </DialogClose>
-                                <Button type="submit">Record Payment</Button>
-                            </DialogFooter>
+                                <Button type="submit">Record Payment</Button>                            </DialogFooter>
                         </form>
                     </Form>
                 </DialogContent>
