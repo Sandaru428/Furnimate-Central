@@ -17,11 +17,10 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { currencies } from '@/lib/currencies';
 import { useAtom } from 'jotai';
-import { currencyAtom } from '@/lib/store';
+import { currencyAtom, companyProfileAtom } from '@/lib/store';
 
 const formSchema = z.object({
   companyName: z.string().min(1, 'Company name is required'),
@@ -31,47 +30,39 @@ const formSchema = z.object({
   currency: z.string().min(1, 'Currency is required'),
 });
 
-type CompanyProfile = z.infer<typeof formSchema>;
+type CompanyProfileForm = z.infer<typeof formSchema>;
 
 export default function CompanyProfilePage() {
   const { toast } = useToast();
   const [selectedCurrency, setCurrency] = useAtom(currencyAtom);
+  const [companyProfile, setCompanyProfile] = useAtom(companyProfileAtom);
 
-  const [profile, setProfile] = useState<CompanyProfile>({
-    companyName: 'Siraiva ltd',
-    email: 'absiraiva@gmail.com',
-    phone: '+94773606494',
-    logo: undefined,
-    currency: selectedCurrency.code,
-  });
-
-  const form = useForm<CompanyProfile>({
+  const form = useForm<CompanyProfileForm>({
     resolver: zodResolver(formSchema),
-    values: profile, // Use values to make the form reflect the state
+    defaultValues: {
+      ...companyProfile,
+      currency: selectedCurrency.code,
+    },
   });
 
-  function onSubmit(values: CompanyProfile) {
+  function onSubmit(values: CompanyProfileForm) {
+    const newLogo = values.logo && values.logo.length > 0 ? values.logo[0].name : companyProfile.logo;
     const newProfileData = {
         ...values,
-        logo: values.logo && values.logo.length > 0 ? values.logo[0].name : profile.logo
+        logo: newLogo,
     };
-    setProfile(newProfileData);
+    setCompanyProfile(newProfileData);
+    
     const newCurrency = currencies.find(c => c.code === values.currency);
     if (newCurrency) {
         setCurrency(newCurrency);
     }
+    
     toast({
       title: 'Profile Updated',
       description: 'Your company profile has been saved.',
     });
   }
-
-  useEffect(() => {
-    form.setValue('companyName', profile.companyName);
-    form.setValue('email', profile.email);
-    form.setValue('phone', profile.phone);
-    form.setValue('currency', profile.currency);
-  }, [profile, form]);
 
   return (
     <>
@@ -166,9 +157,9 @@ export default function CompanyProfilePage() {
                         />
                       </FormControl>
                       <FormMessage />
-                       {typeof profile.logo === 'string' && profile.logo && (
+                       {typeof companyProfile.logo === 'string' && companyProfile.logo && (
                         <div className="text-sm text-muted-foreground mt-2">
-                            Current file: {profile.logo}
+                            Current file: {companyProfile.logo}
                         </div>
                        )}
                     </FormItem>

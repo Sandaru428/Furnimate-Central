@@ -19,3 +19,20 @@ export type Currency = {
 }
 
 export const currencyAtom = atom<Currency>({ code: 'USD', name: 'United States Dollar' });
+
+
+export type CompanyProfile = {
+  companyName: string;
+  email: string;
+  phone: string;
+  logo?: string | File;
+  currency: string;
+};
+
+export const companyProfileAtom = atom<CompanyProfile>({
+  companyName: 'Siraiva ltd',
+  email: 'absiraiva@gmail.com',
+  phone: '+94773606494',
+  logo: undefined,
+  currency: 'USD',
+});
