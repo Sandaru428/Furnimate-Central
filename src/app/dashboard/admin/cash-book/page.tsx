@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import type { Payment } from '@/lib/store';
+import { Input } from '@/components/ui/input';
 
 export default function CashBookPage() {
     const [payments, setPayments] = useAtom(paymentsAtom);
@@ -32,6 +33,7 @@ export default function CashBookPage() {
     const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
     const [currency] = useAtom(currencyAtom);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         const fetchAllData = async () => {
@@ -56,8 +58,6 @@ export default function CashBookPage() {
         fetchAllData();
     }, [setPayments, setSaleOrders, setPurchaseOrders]);
     
-    const sortedPayments = [...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
     const getNameForPayment = (payment: Payment) => {
         if (!payment.orderId) {
             return payment.description;
@@ -71,6 +71,27 @@ export default function CashBookPage() {
             return purchaseOrder?.supplierName || 'N/A';
         }
     };
+    
+    const filteredPayments = useMemo(() => {
+        const sortedPayments = [...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        if (!searchTerm) {
+            return sortedPayments;
+        }
+
+        return sortedPayments.filter(payment => {
+            const name = getNameForPayment(payment)?.toLowerCase();
+            const reference = payment.orderId?.toLowerCase() || 'ad-hoc';
+            const details = payment.details?.toLowerCase();
+            const lowercasedSearchTerm = searchTerm.toLowerCase();
+
+            return (
+                name.includes(lowercasedSearchTerm) ||
+                reference.includes(lowercasedSearchTerm) ||
+                details.includes(lowercasedSearchTerm)
+            );
+        });
+    }, [payments, saleOrders, purchaseOrders, searchTerm]);
 
 
   return (
@@ -82,10 +103,20 @@ export default function CashBookPage() {
       <main className="p-4">
         <Card>
           <CardHeader>
-            <CardTitle>Cash Book</CardTitle>
-            <CardDescription>
-                A record of all financial transactions, including order-related payments and other income/expenses.
-            </CardDescription>
+             <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>Cash Book</CardTitle>
+                    <CardDescription>
+                        A record of all financial transactions, including order-related payments and other income/expenses.
+                    </CardDescription>
+                </div>
+                 <Input
+                    placeholder="Search transactions..."
+                    className="w-64"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -107,8 +138,8 @@ export default function CashBookPage() {
                             Loading...
                         </TableCell>
                     </TableRow>
-                ) : sortedPayments.length > 0 ? (
-                    sortedPayments.map((payment) => (
+                ) : filteredPayments.length > 0 ? (
+                    filteredPayments.map((payment) => (
                     <TableRow key={payment.id}>
                         <TableCell>{payment.date}</TableCell>
                         <TableCell className="font-mono">
