@@ -1,4 +1,8 @@
 
+'use client';
+
+import { useAtom } from 'jotai';
+import { companyProfileAtom } from '@/lib/store';
 import { Logo } from "@/components/icons/logo";
 import {
     Sidebar,
@@ -19,13 +23,15 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
+    const [companyProfile] = useAtom(companyProfileAtom);
+
     return (
         <SidebarProvider>
             <Sidebar>
                 <SidebarHeader>
                     <div className="flex items-center gap-4 text-lg font-medium p-2">
                         <Logo />
-                        <span className="font.headline text-2xl">Furnimate Central</span>
+                        <span className="font.headline text-2xl">{companyProfile.companyName}</span>
                     </div>
                 </SidebarHeader>
                 <SidebarMenu>
