@@ -181,7 +181,7 @@ const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], 
 export default function PurchaseOrdersPage() {
     const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
     const [masterData, setMasterData] = useAtom(masterDataAtom);
-    const [suppliers] = useAtom(suppliersAtom);
+    const [suppliers, setSuppliers] = useAtom(suppliersAtom);
     const [payments, setPayments] = useAtom(paymentsAtom);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
@@ -207,15 +207,15 @@ export default function PurchaseOrdersPage() {
 
             const suppliersSnapshot = await getDocs(collection(db, "suppliers"));
             const suppliersData = suppliersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            // We are not setting suppliers to atom store here because it is already being fetched in its own page.
+            setSuppliers(suppliersData as any);
             
             const paymentsSnapshot = await getDocs(collection(db, "payments"));
             const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
             setPayments(paymentsData);
-setLoading(false);
+            setLoading(false);
         };
         fetchData();
-    }, [setPurchaseOrders, setMasterData, setPayments]);
+    }, [setPurchaseOrders, setMasterData, setSuppliers, setPayments]);
     
     const handlePrint = (poId: string) => {
         router.push(`/dashboard/data/purchase-orders/${poId}/print`);
@@ -772,7 +772,7 @@ setLoading(false);
                                           </div>
                                       )}
                                   </div>
-                              </ScrollArea>
+                          </ScrollArea>
                           <DialogFooter className="pt-4">
                               <DialogClose asChild>
                                   <Button variant="outline">Cancel</Button>
@@ -786,3 +786,5 @@ setLoading(false);
       </>
   );
 }
+
+    
