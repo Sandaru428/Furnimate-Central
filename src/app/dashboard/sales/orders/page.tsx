@@ -290,10 +290,10 @@ export default function SaleOrdersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Date</TableHead>
                   <TableHead>Sale Order ID</TableHead>
                   <TableHead>Original Quotation</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Date</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -303,10 +303,10 @@ export default function SaleOrdersPage() {
                 {sortedOrders.length > 0 ? (
                     sortedOrders.map((order) => (
                     <TableRow key={order.id}>
+                        <TableCell>{order.date}</TableCell>
                         <TableCell className="font-mono">{order.id}</TableCell>
                         <TableCell className="font-mono">{order.quotationId}</TableCell>
                         <TableCell className="font-medium">{order.customer}</TableCell>
-                        <TableCell>{order.date}</TableCell>
                         <TableCell className="text-right">{currency.code} {order.amount.toFixed(2)}</TableCell>
                         <TableCell>
                             <Badge variant={order.status === 'Paid' ? 'outline' : 'default'}>{order.status}</Badge>
@@ -543,5 +543,3 @@ const PrintableSO = React.forwardRef<HTMLDivElement, { order: SaleOrder | null, 
     );
   });
 PrintableSO.displayName = "PrintableSO";
-
-    

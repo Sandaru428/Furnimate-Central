@@ -538,9 +538,9 @@ export default function PurchaseOrdersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Date</TableHead>
                   <TableHead>PO ID</TableHead>
                   <TableHead>Supplier</TableHead>
-                  <TableHead>Date</TableHead>
                   <TableHead className="text-right">Total Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -550,9 +550,9 @@ export default function PurchaseOrdersPage() {
                 {filteredPurchaseOrders.length > 0 ? (
                     filteredPurchaseOrders.map((po) => (
                     <TableRow key={po.id}>
+                        <TableCell>{po.date}</TableCell>
                         <TableCell className="font-mono">{po.id}</TableCell>
                         <TableCell className="font-medium">{po.supplierName}</TableCell>
-                        <TableCell>{po.date}</TableCell>
                         <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
                         <TableCell>
                         <Badge 
@@ -820,5 +820,3 @@ const PrintablePO = React.forwardRef<HTMLDivElement, { po: PurchaseOrder | null;
     );
 });
 PrintablePO.displayName = "PrintablePO";
-
-    

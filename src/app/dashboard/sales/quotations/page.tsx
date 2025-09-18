@@ -487,9 +487,9 @@ export default function QuotationsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Date</TableHead>
                   <TableHead>Quotation ID</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Date</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -499,9 +499,9 @@ export default function QuotationsPage() {
                 {sortedQuotations.length > 0 ? (
                     sortedQuotations.map((quote) => (
                     <TableRow key={quote.id}>
+                        <TableCell>{quote.date}</TableCell>
                         <TableCell className="font-mono">{quote.id}</TableCell>
                         <TableCell className="font-medium">{quote.customer}</TableCell>
-                        <TableCell>{quote.date}</TableCell>
                         <TableCell className="text-right">{currency.code} {quote.amount.toFixed(2)}</TableCell>
                         <TableCell>
                         <Badge 
@@ -629,5 +629,3 @@ const PrintableQuotation = React.forwardRef<HTMLDivElement, { quotation: Quotati
     );
   });
 PrintableQuotation.displayName = "PrintableQuotation";
-
-    

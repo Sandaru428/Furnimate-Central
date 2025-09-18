@@ -198,13 +198,13 @@ export default function ReportingPage() {
                     <CardHeader><CardTitle>Purchase Orders</CardTitle></CardHeader>
                     <CardContent>
                         <Table>
-                            <TableHeader><TableRow><TableHead>PO ID</TableHead><TableHead>Supplier</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>PO ID</TableHead><TableHead>Supplier</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                             <TableBody>
                             {filteredData.purchaseOrders.length > 0 ? filteredData.purchaseOrders.map(po => (
                                 <TableRow key={po.id}>
+                                <TableCell>{po.date}</TableCell>
                                 <TableCell className="font-mono">{po.id}</TableCell>
                                 <TableCell>{po.supplierName}</TableCell>
-                                <TableCell>{po.date}</TableCell>
                                 <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
                                 <TableCell><Badge>{po.status}</Badge></TableCell>
                                 </TableRow>
@@ -219,13 +219,13 @@ export default function ReportingPage() {
                     <CardHeader><CardTitle>Sale Orders</CardTitle></CardHeader>
                     <CardContent>
                         <Table>
-                            <TableHeader><TableRow><TableHead>SO ID</TableHead><TableHead>Customer</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>SO ID</TableHead><TableHead>Customer</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                             <TableBody>
                             {filteredData.saleOrders.length > 0 ? filteredData.saleOrders.map(so => (
                                 <TableRow key={so.id}>
+                                <TableCell>{so.date}</TableCell>
                                 <TableCell className="font-mono">{so.id}</TableCell>
                                 <TableCell>{so.customer}</TableCell>
-                                <TableCell>{so.date}</TableCell>
                                 <TableCell className="text-right">{currency.code} {so.amount.toFixed(2)}</TableCell>
                                 <TableCell><Badge>{so.status}</Badge></TableCell>
                                 </TableRow>
@@ -240,13 +240,13 @@ export default function ReportingPage() {
                     <CardHeader><CardTitle>Quotations</CardTitle></CardHeader>
                     <CardContent>
                         <Table>
-                            <TableHeader><TableRow><TableHead>Quotation ID</TableHead><TableHead>Customer</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Quotation ID</TableHead><TableHead>Customer</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                             <TableBody>
                             {filteredData.quotations.length > 0 ? filteredData.quotations.map(q => (
                                 <TableRow key={q.id}>
+                                <TableCell>{q.date}</TableCell>
                                 <TableCell className="font-mono">{q.id}</TableCell>
                                 <TableCell>{q.customer}</TableCell>
-                                <TableCell>{q.date}</TableCell>
                                 <TableCell className="text-right">{currency.code} {q.amount.toFixed(2)}</TableCell>
                                 <TableCell><Badge>{q.status}</Badge></TableCell>
                                 </TableRow>
