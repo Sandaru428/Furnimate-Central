@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -65,6 +65,8 @@ import {
     dataSeederAtom
 } from '@/lib/store';
 import type { MasterDataItem } from '../master-data/page';
+import { useReactToPrint } from 'react-to-print';
+
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item selection is required."),
@@ -194,6 +196,20 @@ export default function PurchaseOrdersPage() {
     useEffect(() => {
         seedData(useDummyData);
     }, [useDummyData, seedData]);
+    
+    const printRef = useRef(null);
+    const handlePrint = useReactToPrint({
+        content: () => printRef.current,
+        documentTitle: `Purchase Order ${selectedPO?.id}`,
+    });
+
+    const prepareAndPrint = (po: PurchaseOrder) => {
+        setSelectedPO(po);
+        // This timeout ensures the state is set before printing begins
+        setTimeout(() => {
+            handlePrint();
+        }, 100);
+    };
 
     const createForm = useForm<CreatePurchaseOrder>({
         resolver: zodResolver(createQuotationSchema),
@@ -402,26 +418,21 @@ export default function PurchaseOrdersPage() {
         setIsPaymentDialogOpen(true);
     };
 
-    const handlePrint = (po: PurchaseOrder) => {
-        // In a real app, you would generate a printable view of the specific PO
-        console.log("Printing PO:", po.id)
-        window.print();
-    };
-
     const handleShare = async (po: PurchaseOrder) => {
+        const url = window.location.href;
         const shareData = {
             title: `Purchase Order ${po.id}`,
             text: `Check out this purchase order to ${po.supplierName} for ${currency.code} ${po.totalAmount.toFixed(2)}.`,
-            url: window.location.href, // In a real app, this would be a direct link to the PO
+            url: url,
         };
         try {
             if (navigator.share) {
                 await navigator.share(shareData);
             } else {
+                await navigator.clipboard.writeText(`${shareData.text} \n${shareData.url}`);
                 toast({
-                    variant: 'destructive',
-                    title: 'Not Supported',
-                    description: 'Web Share API is not supported in your browser.',
+                    title: 'Link Copied!',
+                    description: 'Purchase order link copied to clipboard.',
                 });
             }
         } catch (error) {
@@ -429,7 +440,7 @@ export default function PurchaseOrdersPage() {
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: 'Could not share the content.',
+                description: 'Could not share or copy the content.',
             });
         }
     };
@@ -442,6 +453,9 @@ export default function PurchaseOrdersPage() {
 
   return (
     <>
+      <div className="hidden">
+        <PrintablePO ref={printRef} po={selectedPO} masterData={masterData} currency={currency} />
+      </div>
       <header className="flex items-center p-4 border-b">
           <SidebarTrigger />
           <h1 className="text-xl font-semibold ml-4">Purchase Orders</h1>
@@ -559,7 +573,7 @@ export default function PurchaseOrdersPage() {
                                 {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
                                 {po.status === 'Paid' && ( <DropdownMenuItem disabled>Payment Complete</DropdownMenuItem> )}
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handlePrint(po)}>
+                                <DropdownMenuItem onClick={() => prepareAndPrint(po)}>
                                     <Printer className="mr-2 h-4 w-4" />
                                     <span>Print</span>
                                 </DropdownMenuItem>
@@ -754,3 +768,56 @@ export default function PurchaseOrdersPage() {
     </>
   );
 }
+
+// Component for printing - hidden from view
+const PrintablePO = React.forwardRef<HTMLDivElement, { po: PurchaseOrder | null; masterData: MasterDataItem[], currency: any }>(({ po, masterData, currency }, ref) => {
+    if (!po) return null;
+  
+    return (
+      <div ref={ref} className="p-8">
+        <h1 className="text-2xl font-bold mb-4">Purchase Order: {po.id}</h1>
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div>
+            <p><strong>Supplier:</strong> {po.supplierName}</p>
+            <p><strong>Date:</strong> {po.date}</p>
+          </div>
+          <div className="text-right">
+            <p><strong>Status:</strong> {po.status}</p>
+          </div>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Item Code</TableHead>
+              <TableHead>Item Name</TableHead>
+              <TableHead className="text-right">Quantity</TableHead>
+              {po.status !== 'Draft' && <TableHead className="text-right">Unit Price</TableHead>}
+              {po.status !== 'Draft' && <TableHead className="text-right">Total Value</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {po.lineItems.map(item => {
+              const itemDetails = masterData.find(md => md.itemCode === item.itemId);
+              return (
+                <TableRow key={item.itemId}>
+                  <TableCell>{item.itemId}</TableCell>
+                  <TableCell>{itemDetails?.name || 'N/A'}</TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                  {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {item.unitPrice?.toFixed(2) || '0.00'}</TableCell>}
+                  {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {item.totalValue?.toFixed(2) || '0.00'}</TableCell>}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {po.status !== 'Draft' && (
+            <div className="text-right mt-4 text-xl font-bold">
+                Total: {currency.code} {po.totalAmount.toFixed(2)}
+            </div>
+        )}
+      </div>
+    );
+});
+PrintablePO.displayName = "PrintablePO";
+
+    

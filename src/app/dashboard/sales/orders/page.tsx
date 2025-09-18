@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -52,8 +52,10 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Printer, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
+import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, useDummyDataAtom, dataSeederAtom, masterDataAtom, quotationsAtom } from '@/lib/store';
 import { format } from 'date-fns';
+import { useReactToPrint } from 'react-to-print';
+
 
 const paymentSchema = z.object({
     amount: z.coerce.number().positive("Amount must be a positive number."),
@@ -90,6 +92,8 @@ type SaleOrder = {
 
 export default function SaleOrdersPage() {
     const [orders, setOrders] = useAtom(saleOrdersAtom);
+    const [quotations] = useAtom(quotationsAtom);
+    const [masterData] = useAtom(masterDataAtom);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<SaleOrder | null>(null);
     const [payments, setPayments] = useAtom(paymentsAtom);
@@ -98,6 +102,19 @@ export default function SaleOrdersPage() {
 
     const [useDummyData] = useAtom(useDummyDataAtom);
     const [, seedData] = useAtom(dataSeederAtom);
+    
+    const printRef = useRef(null);
+    const handlePrint = useReactToPrint({
+        content: () => printRef.current,
+        documentTitle: `Sale Order ${selectedOrder?.id}`,
+    });
+
+    const prepareAndPrint = (order: SaleOrder) => {
+        setSelectedOrder(order);
+        setTimeout(() => {
+            handlePrint();
+        }, 100);
+    };
 
     useEffect(() => {
         seedData(useDummyData);
@@ -217,26 +234,21 @@ export default function SaleOrdersPage() {
         setIsPaymentDialogOpen(false);
     }
 
-    const handlePrint = (order: SaleOrder) => {
-        // In a real app, you would generate a printable view of the specific order
-        console.log("Printing Sale Order:", order.id)
-        window.print();
-    };
-
     const handleShare = async (order: SaleOrder) => {
+        const url = window.location.href;
         const shareData = {
             title: `Sale Order ${order.id}`,
             text: `Check out this sale order for ${order.customer} for a total of ${currency.code} ${order.amount.toFixed(2)}.`,
-            url: window.location.href, // In a real app, this would be a direct link to the order
+            url: url,
         };
         try {
             if (navigator.share) {
                 await navigator.share(shareData);
             } else {
+                await navigator.clipboard.writeText(`${shareData.text} \n${shareData.url}`);
                 toast({
-                    variant: 'destructive',
-                    title: 'Not Supported',
-                    description: 'Web Share API is not supported in your browser.',
+                    title: 'Link Copied!',
+                    description: 'Sale order link copied to clipboard.',
                 });
             }
         } catch (error) {
@@ -244,7 +256,7 @@ export default function SaleOrdersPage() {
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: 'Could not share the content.',
+                description: 'Could not share or copy the content.',
             });
         }
     };
@@ -254,6 +266,9 @@ export default function SaleOrdersPage() {
 
   return (
     <>
+      <div className="hidden">
+        <PrintableSO ref={printRef} order={selectedOrder} quotations={quotations} masterData={masterData} currency={currency} />
+      </div>
       <header className="flex items-center p-4 border-b">
           <SidebarTrigger />
           <h1 className="text-xl font-semibold ml-4">Sale Orders</h1>
@@ -308,7 +323,7 @@ export default function SaleOrdersPage() {
                                     Add Payment
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handlePrint(order)}>
+                                <DropdownMenuItem onClick={() => prepareAndPrint(order)}>
                                     <Printer className="mr-2 h-4 w-4" />
                                     <span>Print</span>
                                 </DropdownMenuItem>
@@ -470,3 +485,62 @@ export default function SaleOrdersPage() {
     </>
   );
 }
+
+// Component for printing - hidden from view
+const PrintableSO = React.forwardRef<HTMLDivElement, { order: SaleOrder | null, quotations: any[], masterData: any[], currency: any }>(({ order, quotations, masterData, currency }, ref) => {
+    if (!order) return null;
+  
+    const originalQuotation = quotations.find(q => q.id === order.quotationId);
+  
+    return (
+      <div ref={ref} className="p-8">
+        <h1 className="text-2xl font-bold mb-4">Sale Order: {order.id}</h1>
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div>
+            <p><strong>Customer:</strong> {order.customer}</p>
+            <p><strong>Date:</strong> {order.date}</p>
+            <p><strong>Original Quotation:</strong> {order.quotationId}</p>
+          </div>
+          <div className="text-right">
+            <p><strong>Status:</strong> {order.status}</p>
+          </div>
+        </div>
+        
+        {originalQuotation && (
+          <>
+            <h2 className="text-lg font-semibold mb-2">Line Items</h2>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead className="text-right">Unit Price</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {originalQuotation.lineItems.map((item: any) => {
+                  const itemDetails = masterData.find(md => md.itemCode === item.itemId);
+                  return (
+                    <TableRow key={item.itemId}>
+                      <TableCell>{itemDetails?.name || item.itemId}</TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </>
+        )}
+  
+        <div className="text-right mt-4 text-xl font-bold">
+            Total Amount: {currency.code} {order.amount.toFixed(2)}
+        </div>
+      </div>
+    );
+  });
+PrintableSO.displayName = "PrintableSO";
+
+    

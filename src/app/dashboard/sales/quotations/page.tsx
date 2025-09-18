@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -57,6 +57,7 @@ import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
 import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
 import type { MasterDataItem } from '../../data/master-data/page';
+import { useReactToPrint } from 'react-to-print';
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required."),
@@ -150,12 +151,27 @@ export default function QuotationsPage() {
     const [customers] = useAtom(customersAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
+    const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
 
     const [useDummyData] = useAtom(useDummyDataAtom);
     const [, seedData] = useAtom(dataSeederAtom);
+
+    const printRef = useRef(null);
+    const handlePrint = useReactToPrint({
+        content: () => printRef.current,
+        documentTitle: `Quotation ${selectedQuotation?.id}`,
+    });
+
+    const prepareAndPrint = (quote: Quotation) => {
+        setSelectedQuotation(quote);
+        // This timeout ensures the state is set before printing begins
+        setTimeout(() => {
+            handlePrint();
+        }, 100);
+    };
 
     useEffect(() => {
         seedData(useDummyData);
@@ -313,26 +329,21 @@ export default function QuotationsPage() {
         router.push('/dashboard/sales/orders');
     };
 
-    const handlePrint = (quote: Quotation) => {
-        // In a real app, you would generate a printable view of the specific quotation
-        console.log("Printing quotation:", quote.id)
-        window.print();
-    };
-
     const handleShare = async (quote: Quotation) => {
+        const url = window.location.href;
         const shareData = {
             title: `Quotation ${quote.id}`,
             text: `Check out this quotation for ${quote.customer} for a total of ${currency.code} ${quote.amount.toFixed(2)}.`,
-            url: window.location.href, // In a real app, this would be a direct link to the quote
+            url: url,
         };
         try {
             if (navigator.share) {
                 await navigator.share(shareData);
             } else {
+                await navigator.clipboard.writeText(`${shareData.text} \n${shareData.url}`);
                 toast({
-                    variant: 'destructive',
-                    title: 'Not Supported',
-                    description: 'Web Share API is not supported in your browser.',
+                    title: 'Link Copied!',
+                    description: 'Quotation link copied to clipboard.',
                 });
             }
         } catch (error) {
@@ -340,7 +351,7 @@ export default function QuotationsPage() {
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: 'Could not share the content.',
+                description: 'Could not share or copy the content.',
             });
         }
     };
@@ -350,6 +361,9 @@ export default function QuotationsPage() {
 
   return (
     <>
+      <div className="hidden">
+        <PrintableQuotation ref={printRef} quotation={selectedQuotation} masterData={masterData} currency={currency} />
+      </div>
       <header className="flex items-center p-4 border-b">
           <SidebarTrigger />
           <h1 className="text-xl font-semibold ml-4">Quotations</h1>
@@ -531,7 +545,7 @@ export default function QuotationsPage() {
                                         </DropdownMenuItem>
                                     )}
                                     <DropdownMenuSeparator />
-                                     <DropdownMenuItem onClick={() => handlePrint(quote)}>
+                                     <DropdownMenuItem onClick={() => prepareAndPrint(quote)}>
                                         <Printer className="mr-2 h-4 w-4" />
                                         <span>Print</span>
                                     </DropdownMenuItem>
@@ -567,3 +581,52 @@ export default function QuotationsPage() {
     </>
   );
 }
+
+// Component for printing - hidden from view
+const PrintableQuotation = React.forwardRef<HTMLDivElement, { quotation: Quotation | null; masterData: MasterDataItem[], currency: any }>(({ quotation, masterData, currency }, ref) => {
+    if (!quotation) return null;
+  
+    return (
+      <div ref={ref} className="p-8">
+        <h1 className="text-2xl font-bold mb-4">Quotation: {quotation.id}</h1>
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div>
+            <p><strong>Customer:</strong> {quotation.customer}</p>
+            <p><strong>Date:</strong> {quotation.date}</p>
+          </div>
+          <div className="text-right">
+            <p><strong>Status:</strong> {quotation.status}</p>
+          </div>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Item</TableHead>
+              <TableHead className="text-right">Quantity</TableHead>
+              <TableHead className="text-right">Unit Price</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {quotation.lineItems.map(item => {
+              const itemDetails = masterData.find(md => md.itemCode === item.itemId);
+              return (
+                <TableRow key={item.itemId}>
+                  <TableCell>{itemDetails?.name || item.itemId}</TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                  <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        <div className="text-right mt-4 text-xl font-bold">
+            Total: {currency.code} {quotation.amount.toFixed(2)}
+        </div>
+      </div>
+    );
+  });
+PrintableQuotation.displayName = "PrintableQuotation";
+
+    
