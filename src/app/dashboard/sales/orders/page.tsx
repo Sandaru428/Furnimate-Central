@@ -48,7 +48,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Printer, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
 import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
@@ -216,6 +216,36 @@ export default function SaleOrdersPage() {
         setIsPaymentDialogOpen(false);
     }
 
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const handleShare = async () => {
+        const shareData = {
+            title: 'Sale Orders',
+            text: 'Here is the list of sale orders.',
+            url: window.location.href,
+        };
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Not Supported',
+                    description: 'Web Share API is not supported in your browser.',
+                });
+            }
+        } catch (error) {
+            console.error('Error sharing:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not share the content.',
+            });
+        }
+    };
+
 
   return (
     <>
@@ -226,10 +256,33 @@ export default function SaleOrdersPage() {
       <main className="p-4">
         <Card>
           <CardHeader>
-            <CardTitle>Confirmed Sale Orders</CardTitle>
-            <CardDescription>
-                These are quotations that have been converted into sale orders.
-            </CardDescription>
+            <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>Confirmed Sale Orders</CardTitle>
+                    <CardDescription>
+                        These are quotations that have been converted into sale orders.
+                    </CardDescription>
+                </div>
+                 <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={handlePrint}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                <span>Print</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleShare}>
+                                <Share2 className="mr-2 h-4 w-4" />
+                                <span>Share</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>

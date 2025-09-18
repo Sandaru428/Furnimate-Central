@@ -46,7 +46,7 @@ import {
     FormMessage,
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Share2, Printer } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -56,7 +56,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
 import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, useDummyDataAtom, dataSeederAtom } from '@/lib/store';
-import type { MasterDataItem } from '../data/master-data/page';
+import type { MasterDataItem } from '../../data/master-data/page';
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required."),
@@ -313,6 +313,36 @@ export default function QuotationsPage() {
         router.push('/dashboard/sales/orders');
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const handleShare = async () => {
+        const shareData = {
+            title: 'Quotations',
+            text: 'Here is the list of quotations.',
+            url: window.location.href,
+        };
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Not Supported',
+                    description: 'Web Share API is not supported in your browser.',
+                });
+            }
+        } catch (error) {
+            console.error('Error sharing:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not share the content.',
+            });
+        }
+    };
+
 
   return (
     <>
@@ -330,106 +360,125 @@ export default function QuotationsPage() {
                     Create and manage sales quotations for your customers.
                     </CardDescription>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
-                    if (!isOpen) {
-                        form.reset();
-                        remove();
-                        setEditingQuotation(null);
-                    }
-                    setIsDialogOpen(isOpen);
-                }}>
-                    <DialogTrigger asChild>
-                        <Button onClick={() => openCreateOrEditDialog(null)}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Create New Quotation
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-2xl">
-                        <DialogHeader>
-                             <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.id}` : 'Create New Quotation'}</DialogTitle>
-                        </DialogHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                                <FormField
-                                    control={form.control}
-                                    name="customer"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Customer</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select a customer" />
-                                            </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {customers.map(customer => (
-                                                    <SelectItem key={customer.id} value={customer.name}>
-                                                        {customer.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                 <div>
-                                    <FormLabel>Line Items</FormLabel>
-                                    <div className="space-y-2 mt-2">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Item</TableHead>
-                                                    <TableHead className="w-20">Qty</TableHead>
-                                                    <TableHead className="w-28 text-right">Unit Price</TableHead>
-                                                    <TableHead className="w-28 text-right">Total</TableHead>
-                                                    <TableHead className="w-10"></TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {fields.map((field, index) => {
-                                                    const itemDetails = masterData.find(i => i.itemCode === field.itemId);
-                                                    return (
-                                                    <TableRow key={field.id}>
-                                                        <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
-                                                        <TableCell>{field.quantity}</TableCell>
-                                                        <TableCell className="text-right">{currency.code} {field.unitPrice.toFixed(2)}</TableCell>
-                                                        <TableCell className="text-right">{currency.code} {field.totalValue.toFixed(2)}</TableCell>
-                                                        <TableCell>
-                                                            <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
-                                                                <Trash2 className="h-4 w-4 text-destructive"/>
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )})}
-                                            </TableBody>
-                                        </Table>
-                                         {fields.length === 0 && (
-                                            <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
+                <div className='flex items-center gap-2'>
+                    <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
+                        if (!isOpen) {
+                            form.reset();
+                            remove();
+                            setEditingQuotation(null);
+                        }
+                        setIsDialogOpen(isOpen);
+                    }}>
+                        <DialogTrigger asChild>
+                            <Button onClick={() => openCreateOrEditDialog(null)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Create New Quotation
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-2xl">
+                            <DialogHeader>
+                                <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.id}` : 'Create New Quotation'}</DialogTitle>
+                            </DialogHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="customer"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Customer</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a customer" />
+                                                </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {customers.map(customer => (
+                                                        <SelectItem key={customer.id} value={customer.name}>
+                                                            {customer.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                            </FormItem>
                                         )}
-                                        <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
+                                    />
+                                    <div>
+                                        <FormLabel>Line Items</FormLabel>
+                                        <div className="space-y-2 mt-2">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Item</TableHead>
+                                                        <TableHead className="w-20">Qty</TableHead>
+                                                        <TableHead className="w-28 text-right">Unit Price</TableHead>
+                                                        <TableHead className="w-28 text-right">Total</TableHead>
+                                                        <TableHead className="w-10"></TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {fields.map((field, index) => {
+                                                        const itemDetails = masterData.find(i => i.itemCode === field.itemId);
+                                                        return (
+                                                        <TableRow key={field.id}>
+                                                            <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
+                                                            <TableCell>{field.quantity}</TableCell>
+                                                            <TableCell className="text-right">{currency.code} {field.unitPrice.toFixed(2)}</TableCell>
+                                                            <TableCell className="text-right">{currency.code} {field.totalValue.toFixed(2)}</TableCell>
+                                                            <TableCell>
+                                                                <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
+                                                                    <Trash2 className="h-4 w-4 text-destructive"/>
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )})}
+                                                </TableBody>
+                                            </Table>
+                                            {fields.length === 0 && (
+                                                <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
+                                            )}
+                                            <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
+                                        </div>
                                     </div>
-                                </div>
-                                
-                                <AddItemForm masterData={masterData} onAddItem={append} />
+                                    
+                                    <AddItemForm masterData={masterData} onAddItem={append} />
 
-                                <DialogFooter>
-                                    <div className='w-full flex justify-between items-center'>
-                                        <div className="text-lg font-semibold">
-                                            Total: {currency.code} {totalAmount.toFixed(2)}
+                                    <DialogFooter>
+                                        <div className='w-full flex justify-between items-center'>
+                                            <div className="text-lg font-semibold">
+                                                Total: {currency.code} {totalAmount.toFixed(2)}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <DialogClose asChild>
+                                                    <Button variant="outline" type="button">Cancel</Button></DialogClose>
+                                                <Button type="submit">{editingQuotation ? 'Save Changes' : 'Create Quotation'}</Button>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <DialogClose asChild>
-                                                <Button variant="outline" type="button">Cancel</Button></DialogClose>
-                                             <Button type="submit">{editingQuotation ? 'Save Changes' : 'Create Quotation'}</Button>
-                                        </div>
-                                    </div>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
+                                    </DialogFooter>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={handlePrint}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                <span>Print</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleShare}>
+                                <Share2 className="mr-2 h-4 w-4" />
+                                <span>Share</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
           </CardHeader>
           <CardContent>

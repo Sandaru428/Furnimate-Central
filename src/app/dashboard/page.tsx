@@ -16,6 +16,7 @@ import {
   Package,
   ShoppingCart,
   TrendingUp,
+  BookOpenCheck,
 } from 'lucide-react';
 import {
   Bar,
@@ -31,6 +32,8 @@ import { useAtom } from 'jotai';
 import { currencyAtom, useDummyDataAtom } from '@/lib/store';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const developmentChecklist = [
   {
@@ -174,7 +177,7 @@ export default function DashboardPage() {
                 </Card>
               ))}
             </div>
-            <div className="mt-4 grid gap-4">
+            <div className="mt-4 grid gap-4 grid-cols-1">
                 <Card>
                     <CardHeader>
                         <CardTitle>Sales Overview</CardTitle>
@@ -190,6 +193,21 @@ export default function DashboardPage() {
                         <Bar dataKey="sales" fill="hsl(var(--primary))" />
                         </BarChart>
                     </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Reporting</CardTitle>
+                        <CardDescription>Generate and view reports based on a selected date range.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex flex-col items-center justify-center text-center p-8 space-y-4">
+                            <BookOpenCheck className="h-16 w-16 text-muted-foreground" />
+                            <p>Select a date range to generate reports for sales, purchases, and more.</p>
+                            <Button asChild>
+                                <Link href="/dashboard/reporting">Go to Reporting</Link>
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

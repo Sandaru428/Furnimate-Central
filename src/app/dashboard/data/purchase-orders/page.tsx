@@ -26,6 +26,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
   } from "@/components/ui/dropdown-menu"
 import {
     Dialog,
@@ -45,7 +46,7 @@ import {
     FormMessage,
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Share2, Printer } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -401,6 +402,37 @@ export default function PurchaseOrdersPage() {
         setIsPaymentDialogOpen(true);
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const handleShare = async () => {
+        const shareData = {
+            title: 'Purchase Orders',
+            text: 'Here is the list of purchase orders.',
+            url: window.location.href,
+        };
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Not Supported',
+                    description: 'Web Share API is not supported in your browser.',
+                });
+            }
+        } catch (error) {
+            console.error('Error sharing:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not share the content.',
+            });
+        }
+    };
+
+
     const filteredPurchaseOrders = purchaseOrders.filter(po => po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) || po.status.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "outline"} = { 'Draft': 'secondary', 'Sent': 'default', 'Fulfilled': 'outline', 'Paid': 'default' };
@@ -481,6 +513,23 @@ export default function PurchaseOrdersPage() {
                             </Form>
                         </DialogContent>
                     </Dialog>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={handlePrint}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                <span>Print</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleShare}>
+                                <Share2 className="mr-2 h-4 w-4" />
+                                <span>Share</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
           </CardHeader>
@@ -522,6 +571,8 @@ export default function PurchaseOrdersPage() {
                                 {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}> Mark as Sent </DropdownMenuItem> )}
                                 {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
                                 {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
+                                {po.status === 'Paid' && ( <DropdownMenuItem disabled>Payment Complete</DropdownMenuItem> )}
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>

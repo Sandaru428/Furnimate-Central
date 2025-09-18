@@ -16,7 +16,7 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
   } from "@/components/ui/sidebar";
-import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser } from "lucide-react";
+import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck } from "lucide-react";
 
 export default function DashboardLayout({
     children,
@@ -39,6 +39,12 @@ export default function DashboardLayout({
                         <SidebarMenuButton href="/dashboard">
                             <Home />
                             Dashboard
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton href="/dashboard/reporting">
+                            <BookOpenCheck />
+                            Reporting
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarGroup>
