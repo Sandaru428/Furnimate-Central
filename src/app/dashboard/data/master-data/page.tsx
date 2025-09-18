@@ -54,6 +54,7 @@ import { useAtom } from 'jotai';
 import { currencyAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const itemSchema = z.object({
@@ -158,81 +159,85 @@ export default function MasterDataPage() {
                                 <DialogTitle>Add New Item</DialogTitle>
                             </DialogHeader>
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                                    <FormField
-                                    control={form.control}
-                                    name="itemCode"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Item Code</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., WD-002" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                    <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Name</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., Walnut Wood Plank" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                    <FormField
-                                      control={form.control}
-                                      name="type"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Type</FormLabel>
-                                          <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue placeholder="Select item type" />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <SelectItem value="Raw Material">Raw Material</SelectItem>
-                                              <SelectItem value="Finished Good">Finished Good</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-                                    <FormField
-                                    control={form.control}
-                                    name="unitPrice"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Unit Price</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" placeholder="e.g. 10.50" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                    <FormField
-                                    control={form.control}
-                                    name="stockLevel"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Stock Level</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" placeholder="e.g. 100" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                    <DialogFooter>
+                                <form onSubmit={form.handleSubmit(onSubmit)}>
+                                    <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                                        <div className="space-y-4 p-4">
+                                            <FormField
+                                            control={form.control}
+                                            name="itemCode"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Item Code</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="e.g., WD-002" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                            />
+                                            <FormField
+                                            control={form.control}
+                                            name="name"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Name</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="e.g., Walnut Wood Plank" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                            />
+                                            <FormField
+                                            control={form.control}
+                                            name="type"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Type</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select item type" />
+                                                    </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                    <SelectItem value="Raw Material">Raw Material</SelectItem>
+                                                    <SelectItem value="Finished Good">Finished Good</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                            />
+                                            <FormField
+                                            control={form.control}
+                                            name="unitPrice"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Unit Price</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" placeholder="e.g. 10.50" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                            />
+                                            <FormField
+                                            control={form.control}
+                                            name="stockLevel"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Stock Level</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" placeholder="e.g. 100" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                            />
+                                        </div>
+                                    </ScrollArea>
+                                    <DialogFooter className="pt-4">
                                         <DialogClose asChild>
                                             <Button variant="outline">Cancel</Button>
                                         </DialogClose>

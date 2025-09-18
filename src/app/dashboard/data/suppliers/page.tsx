@@ -50,6 +50,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const supplierSchema = z.object({
     id: z.string().optional(),
@@ -147,34 +148,38 @@ export default function SuppliersPage() {
                                 <DialogTitle>Add New Supplier</DialogTitle>
                             </DialogHeader>
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                                    <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Supplier Name</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g. Timber Co." {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                    <FormField
-                                    control={form.control}
-                                    name="contact"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Contact Info</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g. John Doe, 555-123-4567" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                    <DialogFooter>
+                                <form onSubmit={form.handleSubmit(onSubmit)}>
+                                    <ScrollArea className="max-h-[calc(100vh-12rem)]">
+                                        <div className="space-y-4 py-4 px-1">
+                                            <FormField
+                                            control={form.control}
+                                            name="name"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Supplier Name</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="e.g. Timber Co." {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                            />
+                                            <FormField
+                                            control={form.control}
+                                            name="contact"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Contact Info</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="e.g. John Doe, 555-123-4567" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                            />
+                                        </div>
+                                    </ScrollArea>
+                                    <DialogFooter className="pt-4">
                                         <DialogClose asChild>
                                             <Button variant="outline">Cancel</Button>
                                         </DialogClose>
