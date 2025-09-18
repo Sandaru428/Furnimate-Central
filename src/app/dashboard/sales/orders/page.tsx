@@ -25,6 +25,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
   } from "@/components/ui/dropdown-menu";
 import {
     Dialog,
@@ -216,15 +217,17 @@ export default function SaleOrdersPage() {
         setIsPaymentDialogOpen(false);
     }
 
-    const handlePrint = () => {
+    const handlePrint = (order: SaleOrder) => {
+        // In a real app, you would generate a printable view of the specific order
+        console.log("Printing Sale Order:", order.id)
         window.print();
     };
 
-    const handleShare = async () => {
+    const handleShare = async (order: SaleOrder) => {
         const shareData = {
-            title: 'Sale Orders',
-            text: 'Here is the list of sale orders.',
-            url: window.location.href,
+            title: `Sale Order ${order.id}`,
+            text: `Check out this sale order for ${order.customer} for a total of ${currency.code} ${order.amount.toFixed(2)}.`,
+            url: window.location.href, // In a real app, this would be a direct link to the order
         };
         try {
             if (navigator.share) {
@@ -265,25 +268,6 @@ export default function SaleOrdersPage() {
                         These are quotations that have been converted into sale orders.
                     </CardDescription>
                 </div>
-                 <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={handlePrint}>
-                                <Printer className="mr-2 h-4 w-4" />
-                                <span>Print</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleShare}>
-                                <Share2 className="mr-2 h-4 w-4" />
-                                <span>Share</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -322,6 +306,15 @@ export default function SaleOrdersPage() {
                                 <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => openPaymentDialog(order)} disabled={order.status === 'Paid'}>
                                     Add Payment
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handlePrint(order)}>
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    <span>Print</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleShare(order)}>
+                                    <Share2 className="mr-2 h-4 w-4" />
+                                    <span>Share</span>
                                 </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>

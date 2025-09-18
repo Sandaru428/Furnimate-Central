@@ -402,15 +402,17 @@ export default function PurchaseOrdersPage() {
         setIsPaymentDialogOpen(true);
     };
 
-    const handlePrint = () => {
+    const handlePrint = (po: PurchaseOrder) => {
+        // In a real app, you would generate a printable view of the specific PO
+        console.log("Printing PO:", po.id)
         window.print();
     };
 
-    const handleShare = async () => {
+    const handleShare = async (po: PurchaseOrder) => {
         const shareData = {
-            title: 'Purchase Orders',
-            text: 'Here is the list of purchase orders.',
-            url: window.location.href,
+            title: `Purchase Order ${po.id}`,
+            text: `Check out this purchase order to ${po.supplierName} for ${currency.code} ${po.totalAmount.toFixed(2)}.`,
+            url: window.location.href, // In a real app, this would be a direct link to the PO
         };
         try {
             if (navigator.share) {
@@ -514,23 +516,6 @@ export default function PurchaseOrdersPage() {
                             </Form>
                         </DialogContent>
                     </Dialog>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={handlePrint}>
-                                <Printer className="mr-2 h-4 w-4" />
-                                <span>Print</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleShare}>
-                                <Share2 className="mr-2 h-4 w-4" />
-                                <span>Share</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 </div>
             </div>
           </CardHeader>
@@ -573,6 +558,15 @@ export default function PurchaseOrdersPage() {
                                 {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
                                 {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
                                 {po.status === 'Paid' && ( <DropdownMenuItem disabled>Payment Complete</DropdownMenuItem> )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handlePrint(po)}>
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    <span>Print</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleShare(po)}>
+                                    <Share2 className="mr-2 h-4 w-4" />
+                                    <span>Share</span>
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
                                 </DropdownMenuContent>

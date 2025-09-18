@@ -313,15 +313,17 @@ export default function QuotationsPage() {
         router.push('/dashboard/sales/orders');
     };
 
-    const handlePrint = () => {
+    const handlePrint = (quote: Quotation) => {
+        // In a real app, you would generate a printable view of the specific quotation
+        console.log("Printing quotation:", quote.id)
         window.print();
     };
 
-    const handleShare = async () => {
+    const handleShare = async (quote: Quotation) => {
         const shareData = {
-            title: 'Quotations',
-            text: 'Here is the list of quotations.',
-            url: window.location.href,
+            title: `Quotation ${quote.id}`,
+            text: `Check out this quotation for ${quote.customer} for a total of ${currency.code} ${quote.amount.toFixed(2)}.`,
+            url: window.location.href, // In a real app, this would be a direct link to the quote
         };
         try {
             if (navigator.share) {
@@ -463,23 +465,6 @@ export default function QuotationsPage() {
                             </Form>
                         </DialogContent>
                     </Dialog>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={handlePrint}>
-                                <Printer className="mr-2 h-4 w-4" />
-                                <span>Print</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleShare}>
-                                <Share2 className="mr-2 h-4 w-4" />
-                                <span>Share</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 </div>
             </div>
           </CardHeader>
@@ -546,6 +531,15 @@ export default function QuotationsPage() {
                                         </DropdownMenuItem>
                                     )}
                                     <DropdownMenuSeparator />
+                                     <DropdownMenuItem onClick={() => handlePrint(quote)}>
+                                        <Printer className="mr-2 h-4 w-4" />
+                                        <span>Print</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleShare(quote)}>
+                                        <Share2 className="mr-2 h-4 w-4" />
+                                        <span>Share</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem 
                                         className="text-destructive" 
                                         onClick={() => handleDelete(quote.id)}
@@ -573,5 +567,3 @@ export default function QuotationsPage() {
     </>
   );
 }
-
-    
