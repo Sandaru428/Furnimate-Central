@@ -634,7 +634,7 @@ export default function PurchaseOrdersPage() {
                                                   <TableRow key={field.id}>
                                                       <TableCell className="font-medium">{itemDetails?.name}</TableCell>
                                                       <TableCell>{quantity}</TableCell>
-                                                      <TableCell> <FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => ( <FormItem> <FormControl> <Input type="number" placeholder="e.g. 10.50" {...field} /> </FormControl> <FormMessage /> </FormItem> )} /> </TableCell>
+                                                      <TableCell><FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => (<FormItem><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>)} /></TableCell>
                                                       <TableCell className="text-right font-mono">{currency.code} {totalValue.toFixed(2)}</TableCell>
                                                   </TableRow>
                                               );
@@ -786,5 +786,3 @@ export default function PurchaseOrdersPage() {
       </>
   );
 }
-
-    
