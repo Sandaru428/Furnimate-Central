@@ -55,7 +55,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 const supplierSchema = z.object({
     id: z.string().optional(),
     name: z.string().min(1, "Supplier name is required"),
-    contact: z.string().min(1, "Contact info is required"),
+    contactPerson: z.string().min(1, "Contact person is required"),
+    email: z.string().email("Invalid email address"),
+    whatsappNumber: z.string().min(1, "WhatsApp number is required"),
+    contactNumber: z.string().min(1, "Contact number is required"),
 });
 
 type Supplier = z.infer<typeof supplierSchema>;
@@ -69,6 +72,25 @@ export default function SuppliersPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
 
+  const form = useForm<Supplier>({
+    resolver: zodResolver(supplierSchema),
+    defaultValues: {
+      name: '',
+      contactPerson: '',
+      email: '',
+      whatsappNumber: '',
+      contactNumber: '',
+    },
+  });
+
+  const whatsappValue = form.watch('whatsappNumber');
+  useEffect(() => {
+    if (whatsappValue && !form.getValues('contactNumber')) {
+      form.setValue('contactNumber', whatsappValue);
+    }
+  }, [whatsappValue, form]);
+
+
   useEffect(() => {
     const fetchSuppliers = async () => {
         setLoading(true);
@@ -80,20 +102,14 @@ export default function SuppliersPage() {
     fetchSuppliers();
   }, []);
 
-
-  const form = useForm<Supplier>({
-    resolver: zodResolver(supplierSchema),
-    defaultValues: {
-      name: '',
-      contact: '',
-    },
-  });
-
   async function onSubmit(values: Supplier) {
     try {
         const dataToSave = {
             name: values.name,
-            contact: values.contact,
+            contactPerson: values.contactPerson,
+            email: values.email,
+            whatsappNumber: values.whatsappNumber,
+            contactNumber: values.contactNumber,
         };
 
         if (editingSupplier && editingSupplier.id) {
@@ -108,7 +124,7 @@ export default function SuppliersPage() {
         } else {
             // Create
             const docRef = await addDoc(collection(db, 'suppliers'), dataToSave);
-            setSuppliers(prev => [...prev, { ...values, id: docRef.id }]);
+            setSuppliers(prev => [{ ...values, id: docRef.id }, ...prev]);
             toast({
               title: 'Supplier Added',
               description: `${values.name} has been successfully added.`,
@@ -132,7 +148,13 @@ export default function SuppliersPage() {
         form.reset(supplier);
     } else {
         setEditingSupplier(null);
-        form.reset({ name: '', contact: '' });
+        form.reset({
+            name: '',
+            contactPerson: '',
+            email: '',
+            whatsappNumber: '',
+            contactNumber: '',
+        });
     }
     setIsDialogOpen(true);
   };
@@ -140,7 +162,8 @@ export default function SuppliersPage() {
   const filteredSuppliers = suppliers.filter(
     (supplier) =>
       supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supplier.contact.toLowerCase().includes(searchTerm.toLowerCase())
+      supplier.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -173,7 +196,7 @@ export default function SuppliersPage() {
                                 Add New Supplier
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
+                        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
                             <DialogHeader>
                                 <DialogTitle>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</DialogTitle>
                             </DialogHeader>
@@ -182,8 +205,11 @@ export default function SuppliersPage() {
                                     <ScrollArea className="flex-1 pr-6">
                                         <div className="space-y-4 py-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Supplier Name</FormLabel><FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                <FormField control={form.control} name="contact" render={({ field }) => (<FormItem><FormLabel>Contact Info</FormLabel><FormControl><Input placeholder="e.g. John Doe, 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Supplier Name</FormLabel><FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="contactPerson" render={({ field }) => ( <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => ( <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="contactNumber" render={({ field }) => ( <FormItem><FormLabel>Contact Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                                             </div>
                                         </div>
                                     </ScrollArea>
@@ -205,18 +231,22 @@ export default function SuppliersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Supplier Name</TableHead>
-                  <TableHead>Contact</TableHead>
+                  <TableHead>Contact Person</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Contact No.</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                    <TableRow><TableCell colSpan={3} className="text-center">Loading...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center">Loading...</TableCell></TableRow>
                 ) : filteredSuppliers.length > 0 ? (
                     filteredSuppliers.map((supplier) => (
                     <TableRow key={supplier.id}>
                         <TableCell className="font-medium">{supplier.name}</TableCell>
-                        <TableCell>{supplier.contact}</TableCell>
+                        <TableCell>{supplier.contactPerson}</TableCell>
+                        <TableCell>{supplier.email}</TableCell>
+                        <TableCell>{supplier.contactNumber}</TableCell>
                         <TableCell>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -235,7 +265,7 @@ export default function SuppliersPage() {
                     ))
                 ) : (
                      <TableRow>
-                        <TableCell colSpan={3} className="text-center">
+                        <TableCell colSpan={5} className="text-center">
                             No suppliers found.
                         </TableCell>
                     </TableRow>
