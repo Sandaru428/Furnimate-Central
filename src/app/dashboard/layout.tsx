@@ -7,6 +7,7 @@ import { Logo } from "@/components/icons/logo";
 import {
     Sidebar,
     SidebarHeader,
+    SidebarContent,
     SidebarMenu,
     SidebarMenuItem,
     SidebarMenuButton,
@@ -34,89 +35,91 @@ export default function DashboardLayout({
                         <span className="font.headline text-2xl">{companyProfile.companyName}</span>
                     </div>
                 </SidebarHeader>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton href="/dashboard">
-                            <Home />
-                            Dashboard
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton href="/dashboard/reporting">
-                            <BookOpenCheck />
-                            Reporting
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarGroup>
-                        <SidebarGroupLabel>Admin</SidebarGroupLabel>
+                <SidebarContent>
+                    <SidebarMenu>
                         <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/admin/company-profile">
-                                <Settings />
-                                Company Profile
+                            <SidebarMenuButton href="/dashboard">
+                                <Home />
+                                Dashboard
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                         <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/admin/notification-templates">
-                                <FileText />
-                                Notification Templates
+                            <SidebarMenuButton href="/dashboard/reporting">
+                                <BookOpenCheck />
+                                Reporting
                             </SidebarMenuButton>
                         </SidebarMenuItem>
-                         <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/admin/cash-book">
-                                <BookUser />
-                                Cash Book
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarGroup>
-                    <SidebarGroup>
-                        <SidebarGroupLabel>Data Management</SidebarGroupLabel>
-                         <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/data/income-expenses">
-                                <Landmark />
-                                Income & Expenses
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/data/master-data">
-                                <Database />
-                                Master Data
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/data/suppliers">
-                                <Building />
-                                Suppliers
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/data/customers">
-                                <Users />
-                                Customers
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                         <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/data/purchase-orders">
-                                <ClipboardList />
-                                Purchase Orders
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarGroup>
-                     <SidebarGroup>
-                        <SidebarGroupLabel>Sales</SidebarGroupLabel>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/sales/quotations">
-                                <FileQuestion />
-                                Quotations
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton href="/dashboard/sales/orders">
-                                <ShoppingCart />
-                                Sale Orders
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarGroup>
-                </SidebarMenu>
+                        <SidebarGroup>
+                            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/admin/company-profile">
+                                    <Settings />
+                                    Company Profile
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/admin/notification-templates">
+                                    <FileText />
+                                    Notification Templates
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/admin/cash-book">
+                                    <BookUser />
+                                    Cash Book
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarGroup>
+                        <SidebarGroup>
+                            <SidebarGroupLabel>Data Management</SidebarGroupLabel>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/data/income-expenses">
+                                    <Landmark />
+                                    Income & Expenses
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/data/master-data">
+                                    <Database />
+                                    Master Data
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/data/suppliers">
+                                    <Building />
+                                    Suppliers
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/data/customers">
+                                    <Users />
+                                    Customers
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/data/purchase-orders">
+                                    <ClipboardList />
+                                    Purchase Orders
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarGroup>
+                        <SidebarGroup>
+                            <SidebarGroupLabel>Sales</SidebarGroupLabel>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/sales/quotations">
+                                    <FileQuestion />
+                                    Quotations
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href="/dashboard/sales/orders">
+                                    <ShoppingCart />
+                                    Sale Orders
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarGroup>
+                    </SidebarMenu>
+                </SidebarContent>
             </Sidebar>
             <SidebarInset>
                 {children}
