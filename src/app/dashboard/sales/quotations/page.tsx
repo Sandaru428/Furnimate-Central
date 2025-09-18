@@ -382,7 +382,7 @@ export default function QuotationsPage() {
           }
         `}
       </style>
-      <div id="print-area">
+      <div id="print-area" className="no-print">
         {quotationToPrint && <PrintableQuotation quotation={quotationToPrint} masterData={masterData} currency={currency} companyProfile={companyProfile} />}
       </div>
       <div className="no-print">
@@ -668,5 +668,3 @@ const PrintableQuotation = ({ quotation, masterData, currency, companyProfile }:
         </div>
     );
 };
-
-    

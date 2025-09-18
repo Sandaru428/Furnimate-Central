@@ -290,7 +290,7 @@ export default function SaleOrdersPage() {
             }
             `}
         </style>
-        <div id="print-area">
+        <div id="print-area" className="no-print">
             {orderToPrint && <PrintableSO order={orderToPrint} quotations={quotations} masterData={masterData} currency={currency} companyProfile={companyProfile} />}
         </div>
         <div className="no-print">
@@ -583,5 +583,3 @@ const PrintableSO = ({ order, quotations, masterData, currency, companyProfile }
         </div>
     );
 };
-
-    

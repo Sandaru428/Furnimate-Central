@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -477,7 +477,7 @@ export default function PurchaseOrdersPage() {
           }
         `}
       </style>
-      <div id="print-area">
+      <div id="print-area" className='no-print'>
         {poToPrint && <PrintablePO po={poToPrint} masterData={masterData} currency={currency} companyProfile={companyProfile}/>}
       </div>
       <div className='no-print'>
@@ -743,7 +743,7 @@ export default function PurchaseOrdersPage() {
                                                 <div className="space-y-4">
                                                     <h4 className="font-medium text-sm">To</h4>
                                                     <FormField control={paymentForm.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                    <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormMessage>)} />
                                                 </div>
                                             </div>
                                         )}
@@ -872,5 +872,3 @@ const PrintablePO = ({ po, masterData, currency, companyProfile }: { po: Purchas
         </div>
     );
 };
-
-    
