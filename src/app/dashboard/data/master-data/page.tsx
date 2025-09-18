@@ -58,6 +58,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const itemSchema = z.object({
     id: z.string().optional(),
@@ -358,5 +359,3 @@ export default function MasterDataPage() {
     </>
   );
 }
-
-    
