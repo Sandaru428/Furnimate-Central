@@ -35,7 +35,7 @@ import {
     DialogTrigger,
     DialogFooter,
     DialogClose,
-} from '@/components/ui/dialog';
+  } from '@/components/ui/dialog';
 import {
     Form,
     FormControl,
@@ -90,7 +90,24 @@ const receiveItemsSchema = z.object({
 const paymentSchema = z.object({
     amount: z.coerce.number().positive("Amount must be a positive number."),
     method: z.enum(['Cash', 'Card', 'Online', 'QR', 'Cheque']),
+    cardLast4: z.string().optional(),
+    fromBankName: z.string().optional(),
+    fromAccountNumber: z.string().optional(),
+    toBankName: z.string().optional(),
+    toAccountNumber: z.string().optional(),
+    chequeBank: z.string().optional(),
+    chequeDate: z.string().optional(),
+    chequeNumber: z.string().optional(),
+}).refine(data => {
+    if (data.method === 'Card') return !!data.cardLast4 && data.cardLast4.length === 4;
+    if (data.method === 'Online') return !!data.fromBankName && !!data.fromAccountNumber && !!data.toBankName && !!data.toAccountNumber;
+    if (data.method === 'Cheque') return !!data.chequeBank && !!data.chequeDate && !!data.chequeNumber;
+    return true;
+}, {
+    message: "Please fill in all required details for the selected payment method.",
+    path: ['method'], 
 });
+
 
 type PurchaseOrder = z.infer<typeof purchaseOrderSchema>;
 type CreatePurchaseOrder = z.infer<typeof createQuotationSchema>;
@@ -203,6 +220,14 @@ export default function PurchaseOrdersPage() {
         defaultValues: {
             amount: '' as any,
             method: undefined,
+            cardLast4: '',
+            fromBankName: '',
+            fromAccountNumber: '',
+            toBankName: '',
+            toAccountNumber: '',
+            chequeBank: '',
+            chequeDate: '',
+            chequeNumber: '',
         }
     });
 
@@ -215,7 +240,8 @@ export default function PurchaseOrdersPage() {
         control: receiveForm.control,
         name: "lineItems",
     });
-
+    
+    const paymentMethod = paymentForm.watch('method');
     const amountPaid = selectedPO ? payments.filter(p => p.orderId === selectedPO.id).reduce((acc, p) => acc + p.amount, 0) : 0;
     const remainingAmount = selectedPO ? selectedPO.totalAmount - amountPaid : 0;
 
@@ -287,13 +313,29 @@ export default function PurchaseOrdersPage() {
             return;
         }
 
+        let details = '';
+        switch(values.method) {
+            case 'Card':
+                details = `Card ending in ${values.cardLast4}`;
+                break;
+            case 'Online':
+                details = `From ${values.fromBankName} (${values.fromAccountNumber}) to ${values.toBankName} (${values.toAccountNumber})`;
+                break;
+             case 'Cheque':
+                details = `${values.chequeBank} Cheque #${values.chequeNumber}, dated ${values.chequeDate}`;
+                break;
+            default:
+                details = 'N/A';
+        }
+
+
         const newPayment: Payment = {
             id: Date.now().toString(),
             orderId: selectedPO.id,
             date: format(new Date(), 'yyyy-MM-dd'),
             amount: values.amount,
             method: values.method,
-            details: `Payment for PO ${selectedPO.id}`,
+            details: details,
             type: 'expense',
         };
 
@@ -352,7 +394,15 @@ export default function PurchaseOrdersPage() {
         const currentRemainingAmount = po.totalAmount - currentAmountPaid;
         paymentForm.reset({ 
             amount: currentRemainingAmount > 0 ? currentRemainingAmount : '' as any, 
-            method: undefined, 
+            method: undefined,
+            cardLast4: '',
+            fromBankName: '',
+            fromAccountNumber: '',
+            toBankName: '',
+            toAccountNumber: '',
+            chequeBank: '',
+            chequeDate: '',
+            chequeNumber: '',
         });
         setIsPaymentDialogOpen(true);
     };
@@ -477,7 +527,7 @@ export default function PurchaseOrdersPage() {
                             {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}> Mark as Sent </DropdownMenuItem> )}
                             {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
                             {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
+                             <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -571,6 +621,78 @@ export default function PurchaseOrdersPage() {
                                 </FormItem>
                             )}
                         />
+                        {paymentMethod === 'Card' && (
+                            <FormField
+                                control={paymentForm.control}
+                                name="cardLast4"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Last 4 Digits of Card</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="1234" maxLength={4} {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
+                        {paymentMethod === 'Online' && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 col-span-2 sm:col-span-1">
+                                    <h4 className="font-medium text-sm">From</h4>
+                                    <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </div>
+                                <div className="space-y-2 col-span-2 sm:col-span-1">
+                                     <h4 className="font-medium text-sm">To</h4>
+                                     <FormField control={paymentForm.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </div>
+                            </div>
+                        )}
+                        {paymentMethod === 'Cheque' && (
+                             <div className="space-y-4">
+                                <FormField
+                                     control={paymentForm.control}
+                                     name="chequeBank"
+                                     render={({ field }) => (
+                                         <FormItem>
+                                             <FormLabel>Bank Name</FormLabel>
+                                             <FormControl>
+                                                 <Input placeholder="e.g. National Bank" {...field} />
+                                             </FormControl>
+                                             <FormMessage />
+                                         </FormItem>
+                                     )}
+                                 />
+                                  <FormField
+                                     control={paymentForm.control}
+                                     name="chequeNumber"
+                                     render={({ field }) => (
+                                         <FormItem>
+                                             <FormLabel>Cheque Number</FormLabel>
+                                             <FormControl>
+                                                 <Input placeholder="e.g. 987654" {...field} />
+                                             </FormControl>
+                                             <FormMessage />
+                                         </FormItem>
+                                     )}
+                                 />
+                                  <FormField
+                                     control={paymentForm.control}
+                                     name="chequeDate"
+                                     render={({ field }) => (
+                                         <FormItem>
+                                             <FormLabel>Cheque Date</FormLabel>
+                                             <FormControl>
+                                                 <Input type="date" {...field} />
+                                             </FormControl>
+                                             <FormMessage />
+                                         </FormItem>
+                                     )}
+                                 />
+                             </div>
+                        )}
                         <DialogFooter>
                             <DialogClose asChild>
                                 <Button variant="outline">Cancel</Button>
