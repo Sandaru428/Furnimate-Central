@@ -252,13 +252,13 @@ export default function IncomeExpensesPage() {
                                 />
                             )}
                             {paymentMethod === 'Online' && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2 col-span-2 sm:col-span-1">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
                                         <h4 className="font-medium text-sm">From</h4>
                                         <FormField control={form.control} name="fromBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="fromAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
-                                    <div className="space-y-2 col-span-2 sm:col-span-1">
+                                    <div className="space-y-2">
                                         <h4 className="font-medium text-sm">To</h4>
                                         <FormField control={form.control} name="toBankName" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="toAccountNumber" render={({ field }) => ( <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
