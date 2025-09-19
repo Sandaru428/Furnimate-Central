@@ -69,7 +69,7 @@ const userSchema = z.object({
 });
 
 const roleSchema = z.object({
-    id: z.string(),
+    id: z.string().optional(),
     name: z.string().min(1, "Role name is required"),
     accessOptions: z.array(z.string()),
 });
@@ -156,17 +156,17 @@ export default function UsersPage() {
       let rolesData = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserRoleDef));
       if (rolesData.length === 0) {
         // Seed roles if none exist
-        const defaultRoles: Omit<UserRoleDef, 'id'>[] = [
-          { name: 'Super Admin', accessOptions: allAccessOptions, companyId },
-          { name: 'Admin', accessOptions: [], companyId },
-          { name: 'Level-1', accessOptions: [], companyId },
-          { name: 'Level-2', accessOptions: [], companyId },
-          { name: 'Level-3', accessOptions: [], companyId },
+        const defaultRoles: Omit<UserRoleDef, 'id' | 'companyId'>[] = [
+          { name: 'Super Admin', accessOptions: allAccessOptions },
+          { name: 'Admin', accessOptions: [] },
+          { name: 'Level-1', accessOptions: [] },
+          { name: 'Level-2', accessOptions: [] },
+          { name: 'Level-3', accessOptions: [] },
         ];
         const newRoles = [];
         for (const role of defaultRoles) {
-            const docRef = await addDoc(collection(db, 'userRoles'), role);
-            newRoles.push({ ...role, id: docRef.id });
+            const docRef = await addDoc(collection(db, 'userRoles'), { ...role, companyId });
+            newRoles.push({ ...role, companyId, id: docRef.id });
         }
         rolesData = newRoles;
       }
@@ -214,17 +214,33 @@ export default function UsersPage() {
   }
 
   async function onRoleSubmit(values: RoleFormValues) {
-    if (!editingRole) return;
     try {
-        const docRef = doc(db, 'userRoles', editingRole.id);
-        await updateDoc(docRef, { accessOptions: values.accessOptions });
-        setUserRoles(prev => prev.map(r => r.id === editingRole.id ? { ...r, accessOptions: values.accessOptions } : r));
-        toast({ title: 'Role Updated', description: `${editingRole.name} permissions have been updated.` });
+        const dataToSave = {
+            companyId: companyProfile.companyName,
+            name: values.name,
+            accessOptions: values.accessOptions,
+        };
+
+        if (editingRole) { // Update existing role
+            const docRef = doc(db, 'userRoles', editingRole.id);
+            await updateDoc(docRef, { name: values.name, accessOptions: values.accessOptions });
+            setUserRoles(prev => prev.map(r => r.id === editingRole.id ? { ...r, ...values } : r));
+            toast({ title: 'Role Updated', description: `The "${values.name}" role has been updated.` });
+        } else { // Create new role
+            const docRef = await addDoc(collection(db, 'userRoles'), dataToSave);
+            setUserRoles(prev => [...prev, { ...dataToSave, id: docRef.id }]);
+            toast({ title: 'Role Created', description: `The "${values.name}" role has been added.` });
+        }
+        
         setIsRoleDialogOpen(false);
+        setEditingRole(null);
+        roleForm.reset();
+
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update role.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to save role.' });
     }
-  }
+}
+
 
   const handleDeleteUser = async (userId: string) => {
     try {
@@ -247,9 +263,14 @@ export default function UsersPage() {
     setIsUserDialogOpen(true);
   };
 
-  const openRoleDialog = (role: UserRoleDef) => {
-    setEditingRole(role);
-    roleForm.reset({ id: role.id, name: role.name, accessOptions: role.accessOptions });
+  const openRoleDialog = (role: UserRoleDef | null) => {
+    if (role) {
+        setEditingRole(role);
+        roleForm.reset({ id: role.id, name: role.name, accessOptions: role.accessOptions });
+    } else {
+        setEditingRole(null);
+        roleForm.reset({ id: '', name: '', accessOptions: [] });
+    }
     setIsRoleDialogOpen(true);
   };
 
@@ -277,7 +298,7 @@ export default function UsersPage() {
                 </TabsList>
                 <div className="flex items-center gap-2">
                     <Input
-                    placeholder="Search users..."
+                    placeholder="Search..."
                     className="w-64"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -315,7 +336,7 @@ export default function UsersPage() {
                                     </div>
                                     <FormItem>
                                         <FormLabel>Effective Access (Read-only)</FormLabel>
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border p-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 rounded-lg border p-4">
                                             {MAIN_TABS.map((item) => (
                                                 <div key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
                                                     <Checkbox
@@ -388,9 +409,15 @@ export default function UsersPage() {
 
             <TabsContent value="roles">
                  <Card>
-                    <CardHeader>
-                        <CardTitle>User Roles</CardTitle>
-                        <CardDescription>Define roles and their permissions for the application.</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle>User Roles</CardTitle>
+                            <CardDescription>Define roles and their permissions for the application.</CardDescription>
+                        </div>
+                        <Button onClick={() => openRoleDialog(null)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Create New Role
+                        </Button>
                     </CardHeader>
                     <CardContent>
                         <Table>
@@ -431,60 +458,75 @@ export default function UsersPage() {
         </Tabs>
       </main>
 
-      {/* Edit Role Dialog */}
+      {/* Edit/Create Role Dialog */}
       <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
             <DialogHeader>
-                <DialogTitle>Edit Role: {editingRole?.name}</DialogTitle>
-                <CardDescription>Modify the access permissions for this role.</CardDescription>
+                <DialogTitle>{editingRole ? `Edit Role: ${editingRole.name}` : 'Create New Role'}</DialogTitle>
+                <CardDescription>{editingRole ? 'Modify the access permissions for this role.' : 'Define a new role and its permissions.'}</CardDescription>
             </DialogHeader>
             <Form {...roleForm}>
                 <form onSubmit={roleForm.handleSubmit(onRoleSubmit)} className="flex flex-col flex-1 overflow-hidden">
                     <ScrollArea className="flex-1 pr-6">
-                       <FormField
-                            control={roleForm.control}
-                            name="accessOptions"
-                            render={() => (
-                                <FormItem>
-                                    <div className="flex items-center justify-between">
-                                        <FormLabel>Permissions</FormLabel>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="select-all"
-                                                checked={roleAccessOptionsValue.length === allAccessOptions.length}
-                                                onCheckedChange={handleSelectAllRoleAccess}
-                                            />
-                                            <Label htmlFor="select-all" className="text-sm font-medium">Select All</Label>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border p-4">
-                                        {MAIN_TABS.map((item) => (
-                                            <FormField
-                                            key={item.id}
-                                            control={roleForm.control}
-                                            name="accessOptions"
-                                            render={({ field }) => (
-                                                <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
-                                                    <FormControl>
-                                                    <Checkbox
-                                                        checked={field.value?.includes(item.id)}
-                                                        onCheckedChange={(checked) => {
-                                                        return checked
-                                                            ? field.onChange([...(field.value || []), item.id])
-                                                            : field.onChange(field.value?.filter((value) => value !== item.id))
-                                                        }}
-                                                    />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal">{item.label}</FormLabel>
-                                                </FormItem>
-                                            )}
-                                            />
-                                        ))}
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
+                       <div className="space-y-4 py-4">
+                            {!editingRole && (
+                                <FormField
+                                    control={roleForm.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Role Name</FormLabel>
+                                            <FormControl><Input placeholder="e.g. Sales Manager" {...field} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                             )}
-                        />
+                            <FormField
+                                control={roleForm.control}
+                                name="accessOptions"
+                                render={() => (
+                                    <FormItem>
+                                        <div className="flex items-center justify-between">
+                                            <FormLabel>Permissions</FormLabel>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="select-all"
+                                                    checked={roleAccessOptionsValue.length === allAccessOptions.length}
+                                                    onCheckedChange={handleSelectAllRoleAccess}
+                                                />
+                                                <Label htmlFor="select-all" className="text-sm font-medium">Select All</Label>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 rounded-lg border p-4">
+                                            {MAIN_TABS.map((item) => (
+                                                <FormField
+                                                key={item.id}
+                                                control={roleForm.control}
+                                                name="accessOptions"
+                                                render={({ field }) => (
+                                                    <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                                        <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value?.includes(item.id)}
+                                                            onCheckedChange={(checked) => {
+                                                            return checked
+                                                                ? field.onChange([...(field.value || []), item.id])
+                                                                : field.onChange(field.value?.filter((value) => value !== item.id))
+                                                            }}
+                                                        />
+                                                        </FormControl>
+                                                        <FormLabel className="font-normal">{item.label}</FormLabel>
+                                                    </FormItem>
+                                                )}
+                                                />
+                                            ))}
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                       </div>
                     </ScrollArea>
                     <DialogFooter className="pt-4">
                         <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
@@ -497,3 +539,5 @@ export default function UsersPage() {
     </>
   );
 }
+
+    
