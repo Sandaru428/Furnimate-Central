@@ -1,5 +1,4 @@
 
-import { UserRole } from "./store";
 export const USER_ROLES = ["Super Admin", "Admin", "Level-1", "Level-2", "Level-3"] as const;
 export type UserRole = typeof USER_ROLES[number];
 

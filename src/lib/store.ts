@@ -49,6 +49,13 @@ export type Staff = {
   position: string;
 };
 
+export type UserRoleDef = {
+    id: string;
+    companyId: string;
+    name: string;
+    accessOptions: MainTab[];
+}
+
 
 // Global state atoms
 export const currencyAtom = atom<Currency>({ code: 'LKR', name: 'Sri Lankan Rupee' });
@@ -73,5 +80,6 @@ export const quotationsAtom = atom<any[]>([]);
 export const saleOrdersAtom = atom<any[]>([]);
 export const paymentsAtom = atom<Payment[]>([]);
 export const staffAtom = atom<Staff[]>([]);
+export const userRolesAtom = atom<UserRoleDef[]>([]);
 
     

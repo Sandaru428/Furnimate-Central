@@ -37,18 +37,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
       if (user && user.email) {
         // Fetch user profile from Firestore
         const q = query(collection(db, "users"), where("email", "==", user.email));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
             const userDoc = querySnapshot.docs[0].data() as AuthProfile;
+
+            const rolesQuery = query(collection(db, "userRoles"), where("companyId", "==", userDoc.companyId), where("name", "==", userDoc.role));
+            const roleSnapshot = await getDocs(rolesQuery);
+
+            if (!roleSnapshot.empty) {
+                const roleDoc = roleSnapshot.docs[0].data();
+                userDoc.accessOptions = roleDoc.accessOptions;
+            }
+            
+            setUser(user);
             setAuthProfile(userDoc);
         } else {
+            setUser(user); // Still set firebase user
             setAuthProfile(null);
         }
       } else {
+        setUser(null);
         setAuthProfile(null);
       }
       setLoading(false);
