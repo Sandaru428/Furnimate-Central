@@ -315,9 +315,9 @@ export default function UsersPage() {
                                     </div>
                                     <FormItem>
                                         <FormLabel>Effective Access (Read-only)</FormLabel>
-                                        <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-lg border p-4">
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border p-4">
                                             {MAIN_TABS.map((item) => (
-                                                <div key={item.id} className="flex flex-row items-start space-x-3 space-y-0 w-48">
+                                                <div key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
                                                     <Checkbox
                                                         checked={effectiveAccessOptions.includes(item.id)}
                                                         disabled
@@ -457,14 +457,14 @@ export default function UsersPage() {
                                             <Label htmlFor="select-all" className="text-sm font-medium">Select All</Label>
                                         </div>
                                     </div>
-                                    <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-lg border p-4">
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border p-4">
                                         {MAIN_TABS.map((item) => (
                                             <FormField
                                             key={item.id}
                                             control={roleForm.control}
                                             name="accessOptions"
                                             render={({ field }) => (
-                                                <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0 w-48">
+                                                <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
                                                     <FormControl>
                                                     <Checkbox
                                                         checked={field.value?.includes(item.id)}
