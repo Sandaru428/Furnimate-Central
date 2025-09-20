@@ -61,6 +61,12 @@ const menuConfig = {
 const hasAccess = (tabId: MainTab, authProfile: AuthProfile | null | undefined, loading: boolean) => {
     if (loading || !authProfile) return false;
     if (authProfile.role === 'Super Admin') return true;
+
+    // If a user has dashboard access, they should also have company profile access.
+    if (tabId === 'company-profile' && authProfile.accessOptions?.includes('dashboard')) {
+        return true;
+    }
+
     return authProfile.accessOptions?.includes(tabId);
 };
 

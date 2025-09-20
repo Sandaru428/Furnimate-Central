@@ -79,6 +79,10 @@ const roleSchema = z.object({
 type User = z.infer<typeof userSchema>;
 type RoleFormValues = z.infer<typeof roleSchema>;
 
+// Filter out 'company-profile' as it's not a selectable permission
+const selectableMainTabs = MAIN_TABS.filter(tab => tab.id !== 'company-profile');
+
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [staff, setStaff] = useAtom(staffAtom);
@@ -124,7 +128,7 @@ export default function UsersPage() {
   }, [selectedStaffId, staff, userForm]);
 
   const roleAccessOptionsValue = roleForm.watch('accessOptions') || [];
-  const allAccessOptions = MAIN_TABS.map(tab => tab.id);
+  const allAccessOptions = selectableMainTabs.map(tab => tab.id);
 
   const handleSelectAllRoleAccess = (checked: boolean | 'indeterminate') => {
       if (checked === true) {
@@ -508,7 +512,7 @@ export default function UsersPage() {
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 rounded-lg border p-4">
-                                            {MAIN_TABS.map((item) => (
+                                            {selectableMainTabs.map((item) => (
                                                 <FormField
                                                 key={item.id}
                                                 control={roleForm.control}
