@@ -107,9 +107,8 @@ export default function CompanyProfilePage() {
                         <FormItem>
                           <FormLabel>Company Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Your Company Inc." {...field} readOnly />
+                            <Input placeholder="Your Company Inc." {...field} />
                           </FormControl>
-                           <p className="text-xs text-muted-foreground">Company name is used as an identifier and cannot be changed.</p>
                           <FormMessage />
                         </FormItem>
                       )}
