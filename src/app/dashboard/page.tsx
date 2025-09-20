@@ -160,10 +160,12 @@ export default function DashboardPage() {
   const birthdayList = useMemo(() => {
     const today = new Date();
     const isBirthday = (dob: string | undefined) => {
-        if (!dob) return false;
+        if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) return false;
         try {
-            const birthDate = parseISO(dob);
-            return birthDate.getDate() === today.getDate() && birthDate.getMonth() === today.getMonth();
+            const [year, month, day] = dob.split('-').map(Number);
+            // new Date(Date.UTC(...)) is crucial to avoid timezone issues
+            const birthDate = new Date(Date.UTC(year, month - 1, day));
+            return birthDate.getUTCDate() === today.getUTCDate() && birthDate.getUTCMonth() === today.getUTCMonth();
         } catch {
             return false;
         }
