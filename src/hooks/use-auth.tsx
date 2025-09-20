@@ -21,7 +21,7 @@ type AuthContextType = {
   authProfile: AuthProfile | null;
   loading: boolean;
   handleSignIn: (email: string, pass: string) => Promise<boolean>;
-  handlePasswordReset: () => Promise<void>;
+  handlePasswordReset: (email: string) => Promise<void>;
   handleSignOut: () => Promise<void>;
 };
 
@@ -85,20 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handlePasswordReset = async () => {
-    if (!user?.email) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No email address found for your account.",
-      });
-      return;
-    }
+  const handlePasswordReset = async (email: string) => {
     try {
-      await sendPasswordResetEmail(auth, user.email);
+      await sendPasswordResetEmail(auth, email);
       toast({
         title: "Password Reset Email Sent",
-        description: `An email has been sent to ${user.email} with instructions to reset your password.`,
+        description: `If an account exists for ${email}, a password reset link has been sent.`,
       });
     } catch (error: any) {
       toast({
