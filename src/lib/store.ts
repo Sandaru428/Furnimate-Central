@@ -29,6 +29,7 @@ export type CompanyProfile = {
   logo?: string | File;
   currency: string;
   autoLogoutMinutes?: number;
+  quotationValidityDays?: number;
 };
 
 export type AuthProfile = {
@@ -71,6 +72,7 @@ export const companyProfileAtom = atom<CompanyProfile>({
   logo: undefined,
   currency: 'LKR',
   autoLogoutMinutes: 0,
+  quotationValidityDays: 30,
 });
 
 export const authProfileAtom = atom<AuthProfile | null>(null);

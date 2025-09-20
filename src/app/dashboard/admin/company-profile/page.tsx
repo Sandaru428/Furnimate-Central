@@ -32,6 +32,7 @@ const formSchema = z.object({
   logo: z.any().optional(),
   currency: z.string().min(1, 'Currency is required'),
   autoLogoutMinutes: z.coerce.number().min(0, "Auto-logout must be 0 or a positive number.").optional(),
+  quotationValidityDays: z.coerce.number().min(1, "Validity period must be at least 1 day.").optional(),
 });
 
 type CompanyProfileForm = z.infer<typeof formSchema>;
@@ -184,6 +185,20 @@ export default function CompanyProfilePage() {
                                 Current file: {companyProfile.logo}
                             </div>
                            )}
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="quotationValidityDays"
+                      render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Quotation Validity (days)</FormLabel>
+                            <FormControl>
+                                <Input type="number" placeholder="30" {...field} />
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground">Set the default validity period for new quotations.</p>
+                            <FormMessage />
                         </FormItem>
                       )}
                     />

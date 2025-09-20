@@ -113,7 +113,7 @@ export default function QuotationPrintPage() {
                 </div>
 
                 <footer className="text-center text-xs text-muted-foreground mt-12 border-t pt-4">
-                    This quotation is valid for 30 days. Thank you for your business!
+                    This quotation is valid for {companyProfile.quotationValidityDays || 30} days. Thank you for your business!
                 </footer>
             </main>
         </>

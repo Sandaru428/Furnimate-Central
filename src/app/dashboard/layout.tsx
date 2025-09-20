@@ -27,7 +27,7 @@ import { useRouter } from 'next/navigation';
 
 const menuConfig = {
     dashboard: { icon: Home, label: 'Dashboard', href: '/dashboard' },
-    development: { icon: Server, label: 'Development', href: '/dashboard#development'},
+    development: { icon: Server, label: 'Development', href: '/dashboard/development'},
     reporting: { icon: BookOpenCheck, label: 'Reporting', href: '/dashboard/reporting' },
     admin: {
         label: 'Admin',

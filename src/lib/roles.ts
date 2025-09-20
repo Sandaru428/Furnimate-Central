@@ -24,6 +24,7 @@ export type MainTab = typeof MAIN_TABS[number]['id'];
 
 export type AuthProfile = {
     id: string;
+    companyId: string;
     name: string;
     email: string;
     role: UserRole;
