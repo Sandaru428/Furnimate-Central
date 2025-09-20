@@ -28,6 +28,12 @@ export function UserNav() {
         return null;
     }
 
+    const onResetPassword = () => {
+        if (user?.email) {
+            handlePasswordReset(user.email);
+        }
+    }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -49,7 +55,7 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={handlePasswordReset}>
+          <DropdownMenuItem onClick={onResetPassword}>
             Reset Password
           </DropdownMenuItem>
           <DropdownMenuSub>
