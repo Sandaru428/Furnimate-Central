@@ -21,7 +21,6 @@ type AuthContextType = {
   authProfile: AuthProfile | null;
   loading: boolean;
   handleSignIn: (email: string, pass: string) => Promise<boolean>;
-  handleSignUp: (email: string, pass: string) => Promise<boolean>;
   handlePasswordReset: () => Promise<void>;
   handleSignOut: () => Promise<void>;
 };
@@ -85,24 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return false;
     }
   };
-  
-  const handleSignUp = async (email: string, pass: string) => {
-    try {
-      await createUserWithEmailAndPassword(auth, email, pass);
-       toast({
-        title: "Account Created",
-        description: "You have been successfully signed up.",
-      });
-      return true;
-    } catch (error: any) {
-       toast({
-        variant: "destructive",
-        title: "Sign-up Failed",
-        description: error.message,
-      });
-      return false;
-    }
-  };
 
   const handlePasswordReset = async () => {
     if (!user?.email) {
@@ -147,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, authProfile, loading, handleSignIn, handleSignUp, handlePasswordReset, handleSignOut }}>
+    <AuthContext.Provider value={{ user, authProfile, loading, handleSignIn, handlePasswordReset, handleSignOut }}>
       {children}
     </AuthContext.Provider>
   );

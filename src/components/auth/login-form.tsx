@@ -25,6 +25,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -84,12 +94,24 @@ export function LoginForm() {
                 <FormItem>
                   <div className="flex items-center">
                     <FormLabel>Password</FormLabel>
-                    <Link
-                      href="#"
-                      className="ml-auto inline-block text-sm underline"
-                    >
-                      Forgot your password?
-                    </Link>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="link" type="button" className="ml-auto inline-block text-sm underline">
+                                Forgot your password?
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Password Reset</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                To reset your password, please contact your system administrator.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogAction>OK</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} />
@@ -103,12 +125,6 @@ export function LoginForm() {
             </Button>
           </form>
         </Form>
-        <div className="mt-4 text-center text-sm">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="underline">
-            Sign up
-          </Link>
-        </div>
       </CardContent>
     </Card>
   );
