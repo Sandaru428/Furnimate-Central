@@ -14,15 +14,18 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { currencies } from '@/lib/currencies';
 import { useAtom } from 'jotai';
 import { currencyAtom, companyProfileAtom } from '@/lib/store';
 import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import { doc, setDoc } from "firebase/firestore"; 
 
 const formSchema = z.object({
+  id: z.string().optional(),
   companyName: z.string().min(1, 'Company name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone number is required'),
@@ -41,29 +44,46 @@ export default function CompanyProfilePage() {
 
   const form = useForm<CompanyProfileForm>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    values: {
       ...companyProfile,
       currency: selectedCurrency.code,
     },
   });
 
-  function onSubmit(values: CompanyProfileForm) {
-    const newLogo = values.logo && values.logo.length > 0 ? values.logo[0].name : companyProfile.logo;
-    const newProfileData = {
-        ...values,
-        logo: newLogo,
-    };
-    setCompanyProfile(newProfileData);
-    
-    const newCurrency = currencies.find(c => c.code === values.currency);
-    if (newCurrency) {
-        setCurrency(newCurrency);
+  async function onSubmit(values: CompanyProfileForm) {
+    try {
+        // We can use a fixed ID like 'main' since there's only one profile per company
+        const profileId = companyProfile.id || 'main';
+
+        const newLogo = values.logo && values.logo.length > 0 ? values.logo[0].name : companyProfile.logo;
+        const newProfileData = {
+            ...values,
+            logo: newLogo,
+            id: profileId,
+        };
+
+        // Save to Firestore
+        await setDoc(doc(db, "companyProfile", profileId), newProfileData);
+        
+        // Update local state
+        setCompanyProfile(newProfileData);
+        
+        const newCurrency = currencies.find(c => c.code === values.currency);
+        if (newCurrency) {
+            setCurrency(newCurrency);
+        }
+        
+        toast({
+        title: 'Profile Updated',
+        description: 'Your company profile has been successfully saved.',
+        });
+    } catch (error) {
+         toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: 'Could not save the company profile to the database.',
+        });
     }
-    
-    toast({
-      title: 'Profile Updated',
-      description: 'Your company profile has been saved.',
-    });
   }
 
   return (
@@ -72,7 +92,8 @@ export default function CompanyProfilePage() {
         <h1 className="text-2xl font-bold mb-4">Company Profile</h1>
         <Card>
           <CardHeader>
-            <CardTitle>Company Profile</CardTitle>
+            <CardTitle>Company Information</CardTitle>
+            <CardDescription>Update your company's public details and global settings.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -85,8 +106,9 @@ export default function CompanyProfilePage() {
                         <FormItem>
                           <FormLabel>Company Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Your Company Inc." {...field} />
+                            <Input placeholder="Your Company Inc." {...field} readOnly />
                           </FormControl>
+                           <p className="text-xs text-muted-foreground">Company name is used as an identifier and cannot be changed.</p>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -122,7 +144,7 @@ export default function CompanyProfilePage() {
                       name="currency"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Currency</FormLabel>
+                          <FormLabel>Global Currency</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -172,7 +194,7 @@ export default function CompanyProfilePage() {
                         name="autoLogoutMinutes"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Auto-Logout (minutes)</FormLabel>
+                                <FormLabel>Auto-Logout Timer (minutes)</FormLabel>
                                 <FormControl>
                                     <Input type="number" placeholder="0" {...field} />
                                 </FormControl>

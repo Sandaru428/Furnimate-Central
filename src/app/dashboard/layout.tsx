@@ -2,7 +2,7 @@
 'use client';
 
 import { useAtom } from 'jotai';
-import { companyProfileAtom, authProfileAtom } from '@/lib/store';
+import { companyProfileAtom } from '@/lib/store';
 import { Logo } from "@/components/icons/logo";
 import {
     Sidebar,

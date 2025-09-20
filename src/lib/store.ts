@@ -22,6 +22,7 @@ export type Currency = {
 }
 
 export type CompanyProfile = {
+  id: string;
   companyName: string;
   email: string;
   phone: string;
@@ -32,6 +33,7 @@ export type CompanyProfile = {
 
 export type AuthProfile = {
     id: string;
+    companyId: string;
     name: string;
     email: string;
     role: UserRole;
@@ -62,6 +64,7 @@ export type UserRoleDef = {
 export const currencyAtom = atom<Currency>({ code: 'LKR', name: 'Sri Lankan Rupee' });
 
 export const companyProfileAtom = atom<CompanyProfile>({
+  id: 'main',
   companyName: 'Siraiva ltd',
   email: 'absiraivaws@gmail.com',
   phone: '+94773606494',

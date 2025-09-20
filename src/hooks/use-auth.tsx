@@ -13,8 +13,9 @@ import { auth, db } from "@/lib/firebase";
 import { useToast } from "./use-toast";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
-import { authProfileAtom, type AuthProfile } from "@/lib/store";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { authProfileAtom, companyProfileAtom, currencyAtom, type AuthProfile, type CompanyProfile } from "@/lib/store";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { currencies } from "@/lib/currencies";
 
 type AuthContextType = {
   user: User | null;
@@ -30,6 +31,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [authProfile, setAuthProfile] = useAtom(authProfileAtom);
+  const [, setCompanyProfile] = useAtom(companyProfileAtom);
+  const [, setCurrency] = useAtom(currencyAtom);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
@@ -41,8 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const q = query(collection(db, "users"), where("email", "==", user.email));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
-            const userDoc = querySnapshot.docs[0].data() as AuthProfile;
-
+            const userDocData = querySnapshot.docs[0].data() as Omit<AuthProfile, 'id'>;
+            const userDocId = querySnapshot.docs[0].id;
+            const userDoc = { ...userDocData, id: userDocId };
+            
+            // Fetch the role to get the latest access options
             const rolesQuery = query(collection(db, "userRoles"), where("companyId", "==", userDoc.companyId), where("name", "==", userDoc.role));
             const roleSnapshot = await getDocs(rolesQuery);
 
@@ -51,11 +57,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 userDoc.accessOptions = roleDoc.accessOptions;
             }
             
-            setUser(user);
             setAuthProfile(userDoc);
+            
+            // Now fetch the company profile associated with this user
+            const profileDocRef = doc(db, "companyProfile", 'main');
+            const profileDocSnap = await getDoc(profileDocRef);
+            
+            if (profileDocSnap.exists()) {
+              const companyProfileData = profileDocSnap.data() as CompanyProfile;
+              setCompanyProfile(companyProfileData);
+              const newCurrency = currencies.find(c => c.code === companyProfileData.currency);
+              if (newCurrency) {
+                setCurrency(newCurrency);
+              }
+            }
+            setUser(user);
+
         } else {
-            setUser(user); // Still set firebase user
+            // User exists in Firebase Auth but not in our 'users' collection
+            setUser(user);
             setAuthProfile(null);
+            toast({
+                variant: 'destructive',
+                title: 'Authorization Error',
+                description: 'Your user profile could not be found in the company database.'
+            });
         }
       } else {
         setUser(null);
@@ -65,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [setAuthProfile]);
+  }, [setAuthProfile, setCompanyProfile, setCurrency, toast]);
 
   const handleSignIn = async (email: string, pass: string) => {
     try {
