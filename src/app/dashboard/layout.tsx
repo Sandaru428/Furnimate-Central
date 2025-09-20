@@ -17,13 +17,14 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
   } from "@/components/ui/sidebar";
-import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck, Landmark, UserCog, UserRound } from "lucide-react";
+import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck, Landmark, UserCog, UserRound, Server } from "lucide-react";
 import { DashboardHeader } from '@/components/dashboard-header';
 import { MAIN_TABS, MainTab, AuthProfile } from '@/lib/roles';
 import { useAuth } from '@/hooks/use-auth';
 
 const menuConfig = {
     dashboard: { icon: Home, label: 'Dashboard', href: '/dashboard' },
+    development: { icon: Server, label: 'Development', href: '/dashboard#development'},
     reporting: { icon: BookOpenCheck, label: 'Reporting', href: '/dashboard/reporting' },
     admin: {
         label: 'Admin',
@@ -85,6 +86,14 @@ export default function DashboardLayout({
                                 <SidebarMenuButton href={menuConfig.dashboard.href}>
                                     <menuConfig.dashboard.icon />
                                     {menuConfig.dashboard.label}
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                         )}
+                         {hasAccess('development', authProfile, loading) && (
+                            <SidebarMenuItem>
+                                <SidebarMenuButton href={menuConfig.development.href}>
+                                    <menuConfig.development.icon />
+                                    {menuConfig.development.label}
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                          )}

@@ -22,6 +22,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -39,7 +45,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
 import { paymentsAtom, currencyAtom, Payment, companyProfileAtom } from '@/lib/store';
@@ -49,9 +55,10 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const transactionSchema = z.object({
+  id: z.string().optional(),
   type: z.enum(['income', 'expense'], { required_error: 'Transaction type is required.' }),
   description: z.string().min(1, 'Description is required.'),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
@@ -83,6 +90,7 @@ export default function IncomeExpensesPage() {
   const [companyProfile] = useAtom(companyProfileAtom);
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -136,32 +144,93 @@ export default function IncomeExpensesPage() {
             default:
                 details = `Ad-hoc ${values.type}`;
         }
-
-    const newPayment: Omit<Payment, 'id'> = {
-      companyId: companyProfile.companyName,
-      description: values.description,
-      date: format(new Date(), 'yyyy-MM-dd'),
-      amount: values.amount,
-      method: values.method,
-      details: details,
-      type: values.type,
-    };
     
     try {
-        const docRef = await addDoc(collection(db, 'payments'), newPayment);
-        setPayments(prev => [{...newPayment, id: docRef.id}, ...prev]);
-        toast({
-        title: 'Transaction Added',
-        description: `A new ${values.type} of ${currency.code} ${values.amount} has been recorded.`,
-        });
+        if (editingTransaction) {
+            // Update
+            const updatedPayment: Partial<Payment> = {
+                description: values.description,
+                amount: values.amount,
+                method: values.method,
+                details: details,
+                type: values.type,
+            };
+            const docRef = doc(db, 'payments', editingTransaction.id);
+            await updateDoc(docRef, updatedPayment);
+            setPayments(prev => prev.map(p => p.id === editingTransaction.id ? { ...p, ...updatedPayment } : p));
+            toast({
+                title: 'Transaction Updated',
+                description: `The ${values.type} of ${currency.code} ${values.amount} has been updated.`,
+            });
+        } else {
+            // Create
+            const newPayment: Omit<Payment, 'id'> = {
+                companyId: companyProfile.companyName,
+                description: values.description,
+                date: format(new Date(), 'yyyy-MM-dd'),
+                amount: values.amount,
+                method: values.method,
+                details: details,
+                type: values.type,
+            };
+            const docRef = await addDoc(collection(db, 'payments'), newPayment);
+            setPayments(prev => [{...newPayment, id: docRef.id}, ...prev]);
+            toast({
+                title: 'Transaction Added',
+                description: `A new ${values.type} of ${currency.code} ${values.amount} has been recorded.`,
+            });
+        }
         form.reset();
+        setEditingTransaction(null);
         setIsDialogOpen(false);
     } catch (error) {
         toast({
             variant: 'destructive',
             title: 'Error',
-            description: 'Failed to add transaction.',
+            description: 'Failed to save transaction.',
         });
+    }
+  }
+
+  const openDialog = (transaction: Payment | null) => {
+    if (transaction) {
+        setEditingTransaction(transaction);
+        // This is a simplified reset. A real implementation might need to parse details back into form fields.
+        form.reset({
+            id: transaction.id,
+            type: transaction.type,
+            description: transaction.description,
+            amount: transaction.amount,
+            method: transaction.method,
+            // You might need more complex logic here to parse details back into individual fields
+        });
+    } else {
+        setEditingTransaction(null);
+        form.reset({
+            type: undefined,
+            description: '',
+            amount: '' as any,
+            method: undefined,
+            cardLast4: '',
+            fromBankName: '',
+            fromAccountNumber: '',
+            toBankName: '',
+            toAccountNumber: '',
+            chequeBank: '',
+            chequeDate: '',
+            chequeNumber: '',
+        });
+    }
+    setIsDialogOpen(true);
+  };
+  
+  const handleDelete = async (transactionId: string) => {
+    try {
+        await deleteDoc(doc(db, "payments", transactionId));
+        setPayments(payments.filter(p => p.id !== transactionId));
+        toast({ title: 'Transaction Deleted' });
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete transaction.' });
     }
   }
   
@@ -174,17 +243,17 @@ export default function IncomeExpensesPage() {
       <main className="p-4">
         <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold">Income & Expenses</h1>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingTransaction(null); setIsDialogOpen(isOpen); }}>
                 <DialogTrigger asChild>
-                <Button>
+                <Button onClick={() => openDialog(null)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Transaction
                 </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>New Transaction</DialogTitle>
-                    <CardDescription>Record a miscellaneous income or expense.</CardDescription>
+                    <DialogTitle>{editingTransaction ? 'Edit Transaction' : 'New Transaction'}</DialogTitle>
+                    <CardDescription>{editingTransaction ? 'Update the details of this transaction.' : 'Record a miscellaneous income or expense.'}</CardDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
@@ -225,7 +294,7 @@ export default function IncomeExpensesPage() {
                         <DialogClose asChild>
                             <Button variant="outline">Cancel</Button>
                         </DialogClose>
-                        <Button type="submit">Add Transaction</Button>
+                        <Button type="submit">{editingTransaction ? 'Save Changes' : 'Add Transaction'}</Button>
                     </DialogFooter>
                     </form>
                 </Form>
@@ -245,12 +314,13 @@ export default function IncomeExpensesPage() {
                             <TableHead>Description</TableHead>
                             <TableHead>Type</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                              <TableRow>
-                                <TableCell colSpan={4} className="text-center">
+                                <TableCell colSpan={5} className="text-center">
                                     Loading...
                                 </TableCell>
                             </TableRow>
@@ -267,11 +337,25 @@ export default function IncomeExpensesPage() {
                                 <TableCell className={cn("text-right", payment.type === 'income' ? 'text-green-600' : 'text-red-600')}>
                                     {payment.type === 'income' ? '+' : '-'}{currency.code} {payment.amount.toFixed(2)}
                                 </TableCell>
+                                <TableCell>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Open menu</span>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => openDialog(payment)}>Edit</DropdownMenuItem>
+                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(payment.id!)}>Delete</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
                             </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center">
+                                <TableCell colSpan={5} className="text-center">
                                     No ad-hoc transactions found.
                                 </TableCell>
                             </TableRow>

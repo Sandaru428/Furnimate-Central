@@ -4,6 +4,7 @@ export type UserRole = typeof USER_ROLES[number];
 
 export const MAIN_TABS = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'development', label: 'Development' },
     { id: 'reporting', label: 'Reporting' },
     { id: 'company-profile', label: 'Company Profile' },
     { id: 'notification-templates', label: 'Notification Templates' },
