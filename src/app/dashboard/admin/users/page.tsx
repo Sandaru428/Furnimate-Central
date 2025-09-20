@@ -95,7 +95,6 @@ export default function UsersPage() {
   const { toast } = useToast();
   const { handlePasswordReset } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [companyProfile] = useAtom(companyProfileAtom);
 
   const userForm = useForm<User>({
     resolver: zodResolver(userSchema),
@@ -141,15 +140,10 @@ export default function UsersPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!companyProfile.companyName) {
-        setLoading(false);
-        return;
-      }
       setLoading(true);
-      const companyId = companyProfile.companyName;
-      const usersQuery = query(collection(db, "users"), where("companyId", "==", companyId));
-      const staffQuery = query(collection(db, "staff"), where("companyId", "==", companyId));
-      const rolesQuery = query(collection(db, "userRoles"), where("companyId", "==", companyId));
+      const usersQuery = query(collection(db, "users"));
+      const staffQuery = query(collection(db, "staff"));
+      const rolesQuery = query(collection(db, "userRoles"));
       
       const [usersSnapshot, staffSnapshot, rolesSnapshot] = await Promise.all([
           getDocs(usersQuery),
@@ -163,7 +157,7 @@ export default function UsersPage() {
       let rolesData = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserRoleDef));
       if (rolesData.length === 0) {
         // Seed roles if none exist
-        const defaultRoles: Omit<UserRoleDef, 'id' | 'companyId'>[] = [
+        const defaultRoles: Omit<UserRoleDef, 'id'>[] = [
           { name: 'Super Admin', accessOptions: allAccessOptions },
           { name: 'Admin', accessOptions: [] },
           { name: 'Level-1', accessOptions: [] },
@@ -172,8 +166,8 @@ export default function UsersPage() {
         ];
         const newRoles = [];
         for (const role of defaultRoles) {
-            const docRef = await addDoc(collection(db, 'userRoles'), { ...role, companyId });
-            newRoles.push({ ...role, companyId, id: docRef.id });
+            const docRef = await addDoc(collection(db, 'userRoles'), { ...role });
+            newRoles.push({ ...role, id: docRef.id });
         }
         rolesData = newRoles;
       }
@@ -184,7 +178,7 @@ export default function UsersPage() {
       setLoading(false);
     };
     fetchData();
-  }, [companyProfile, setStaff, setUserRoles]);
+  }, [setStaff, setUserRoles]);
 
   async function onUserSubmit(values: User) {
     try {
@@ -192,7 +186,6 @@ export default function UsersPage() {
       if (!selectedRole) throw new Error("Selected role not found");
 
       const dataToSave: any = {
-        companyId: companyProfile.companyName,
         staffId: values.staffId,
         name: values.name,
         email: values.email,
@@ -223,7 +216,6 @@ export default function UsersPage() {
   async function onRoleSubmit(values: RoleFormValues) {
     try {
         const dataToSave = {
-            companyId: companyProfile.companyName,
             name: values.name,
             accessOptions: values.accessOptions,
         };

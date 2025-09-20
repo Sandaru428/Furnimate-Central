@@ -48,12 +48,10 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query } from 'firebase/firestore';
 import { format, parseISO } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAtom } from 'jotai';
-import { companyProfileAtom } from '@/lib/store';
 
 const customerSchema = z.object({
   id: z.string().optional(),
@@ -74,7 +72,6 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [companyProfile] = useAtom(companyProfileAtom);
 
   const form = useForm<Customer>({
     resolver: zodResolver(customerSchema),
@@ -97,12 +94,8 @@ export default function CustomersPage() {
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      if (!companyProfile.companyName) {
-        setLoading(false);
-        return;
-      }
       setLoading(true);
-      const q = query(collection(db, "customers"), where("companyId", "==", companyProfile.companyName));
+      const q = query(collection(db, "customers"));
       const querySnapshot = await getDocs(q);
       const customersData = querySnapshot.docs.map(doc => {
           const data = doc.data();
@@ -116,12 +109,11 @@ export default function CustomersPage() {
       setLoading(false);
     };
     fetchCustomers();
-  }, [companyProfile]);
+  }, []);
 
   async function onSubmit(values: Customer) {
     try {
       const dataToSave: any = {
-        companyId: companyProfile.companyName,
         name: values.name,
         email: values.email,
         phone: values.phone,

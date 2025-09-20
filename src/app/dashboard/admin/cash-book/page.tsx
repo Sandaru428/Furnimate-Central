@@ -18,11 +18,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useAtom } from 'jotai';
-import { paymentsAtom, currencyAtom, saleOrdersAtom, purchaseOrdersAtom, companyProfileAtom } from '@/lib/store';
+import { paymentsAtom, currencyAtom, saleOrdersAtom, purchaseOrdersAtom } from '@/lib/store';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query } from 'firebase/firestore';
 import type { Payment } from '@/lib/store';
 import { Input } from '@/components/ui/input';
 
@@ -31,23 +31,16 @@ export default function CashBookPage() {
     const [saleOrders, setSaleOrders] = useAtom(saleOrdersAtom);
     const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
     const [currency] = useAtom(currencyAtom);
-    const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         const fetchAllData = async () => {
-            if (!companyProfile.companyName) {
-                setLoading(false);
-                return;
-            };
             setLoading(true);
 
-            const companyId = companyProfile.companyName;
-
-            const paymentsQuery = query(collection(db, "payments"), where("companyId", "==", companyId));
-            const soQuery = query(collection(db, "saleOrders"), where("companyId", "==", companyId));
-            const poQuery = query(collection(db, "purchaseOrders"), where("companyId", "==", companyId));
+            const paymentsQuery = query(collection(db, "payments"));
+            const soQuery = query(collection(db, "saleOrders"));
+            const poQuery = query(collection(db, "purchaseOrders"));
 
             const [paymentsSnapshot, soSnapshot, poSnapshot] = await Promise.all([
                 getDocs(paymentsQuery),
@@ -67,7 +60,7 @@ export default function CashBookPage() {
             setLoading(false);
         };
         fetchAllData();
-    }, [setPayments, setSaleOrders, setPurchaseOrders, companyProfile]);
+    }, [setPayments, setSaleOrders, setPurchaseOrders]);
     
     const getNameForPayment = (payment: Payment) => {
         if (!payment.orderId) {

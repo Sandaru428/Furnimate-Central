@@ -50,9 +50,9 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAtom } from 'jotai';
-import { currencyAtom, companyProfileAtom } from '@/lib/store';
+import { currencyAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -88,24 +88,19 @@ export default function MasterDataPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [currency] = useAtom(currencyAtom);
-    const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchMasterData = async () => {
-            if (!companyProfile.companyName) {
-                setLoading(false);
-                return;
-            };
             setLoading(true);
-            const q = query(collection(db, "masterData"), where("companyId", "==", companyProfile.companyName));
+            const q = query(collection(db, "masterData"));
             const querySnapshot = await getDocs(q);
             const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MasterDataItem));
             setMasterData(data);
             setLoading(false);
         };
         fetchMasterData();
-    }, [companyProfile]);
+    }, []);
 
     const form = useForm<MasterDataItem>({
         resolver: zodResolver(itemSchema),
@@ -125,8 +120,7 @@ export default function MasterDataPage() {
 
     async function onSubmit(values: MasterDataItem) {
         try {
-            const dataToSave: Omit<MasterDataItem, 'id'> & { companyId: string } = {
-                companyId: companyProfile.companyName,
+            const dataToSave: Omit<MasterDataItem, 'id'> = {
                 itemCode: values.itemCode,
                 name: values.name,
                 type: values.type,

@@ -48,11 +48,11 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, query, where, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query, deleteDoc } from 'firebase/firestore';
 import { format, parseISO } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAtom } from 'jotai';
-import { companyProfileAtom, staffAtom, type Staff } from '@/lib/store';
+import { staffAtom, type Staff } from '@/lib/store';
 
 const staffSchema = z.object({
   id: z.string().optional(),
@@ -73,7 +73,6 @@ export default function StaffPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [companyProfile] = useAtom(companyProfileAtom);
 
   const form = useForm<Staff>({
     resolver: zodResolver(staffSchema),
@@ -97,12 +96,8 @@ export default function StaffPage() {
 
   useEffect(() => {
     const fetchStaff = async () => {
-      if (!companyProfile.companyName) {
-        setLoading(false);
-        return;
-      }
       setLoading(true);
-      const q = query(collection(db, "staff"), where("companyId", "==", companyProfile.companyName));
+      const q = query(collection(db, "staff"));
       const querySnapshot = await getDocs(q);
       const staffData = querySnapshot.docs.map(doc => {
           const data = doc.data();
@@ -116,12 +111,11 @@ export default function StaffPage() {
       setLoading(false);
     };
     fetchStaff();
-  }, [companyProfile, setStaff]);
+  }, [setStaff]);
 
   async function onSubmit(values: Staff) {
     try {
       const dataToSave: any = {
-        companyId: companyProfile.companyName,
         name: values.name,
         nic: values.nic,
         contactNumber: values.contactNumber,
@@ -137,7 +131,7 @@ export default function StaffPage() {
         // Update
         const docRef = doc(db, 'staff', editingStaff.id);
         await updateDoc(docRef, dataToSave);
-        setStaff(prev => prev.map(c => c.id === editingStaff.id ? { ...c, ...values, dateOfBirth: values.dateOfBirth } : c));
+        setStaff(prev => prev.map(c => c.id === editingStaff.id ? { ...c, ...values, dateOfBirth: values.dateOfBirth } as Staff : c));
         toast({
           title: 'Staff Updated',
           description: `${values.name} has been successfully updated.`,
@@ -323,5 +317,3 @@ export default function StaffPage() {
     </>
   );
 }
-
-    

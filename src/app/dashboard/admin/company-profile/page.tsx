@@ -53,11 +53,12 @@ export default function CompanyProfilePage() {
 
   async function onSubmit(values: CompanyProfileForm) {
     try {
-        // We can use a fixed ID like 'main' since there's only one profile per company
-        const profileId = companyProfile.id || 'main';
+        const profileId = 'main';
 
         const newLogo = values.logo && values.logo.length > 0 ? values.logo[0].name : companyProfile.logo;
+        
         const newProfileData = {
+            ...companyProfile,
             ...values,
             logo: newLogo,
             id: profileId,

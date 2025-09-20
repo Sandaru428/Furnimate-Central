@@ -48,14 +48,14 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, currencyAtom, Payment, companyProfileAtom } from '@/lib/store';
+import { paymentsAtom, currencyAtom, Payment } from '@/lib/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const transactionSchema = z.object({
   id: z.string().optional(),
@@ -87,7 +87,6 @@ type TransactionForm = z.infer<typeof transactionSchema>;
 export default function IncomeExpensesPage() {
   const [payments, setPayments] = useAtom(paymentsAtom);
   const [currency] = useAtom(currencyAtom);
-  const [companyProfile] = useAtom(companyProfileAtom);
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Payment | null>(null);
@@ -95,19 +94,15 @@ export default function IncomeExpensesPage() {
 
   useEffect(() => {
     const fetchPayments = async () => {
-        if (!companyProfile.companyName) {
-            setLoading(false);
-            return;
-        };
         setLoading(true);
-        const q = query(collection(db, "payments"), where("companyId", "==", companyProfile.companyName));
+        const q = query(collection(db, "payments"));
         const querySnapshot = await getDocs(q);
         const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
         setPayments(data);
         setLoading(false);
     };
     fetchPayments();
-  }, [setPayments, companyProfile]);
+  }, [setPayments]);
 
   const form = useForm<TransactionForm>({
     resolver: zodResolver(transactionSchema),
@@ -157,7 +152,7 @@ export default function IncomeExpensesPage() {
             };
             const docRef = doc(db, 'payments', editingTransaction.id);
             await updateDoc(docRef, updatedPayment);
-            setPayments(prev => prev.map(p => p.id === editingTransaction.id ? { ...p, ...updatedPayment } : p));
+            setPayments(prev => prev.map(p => p.id === editingTransaction.id ? { ...p, ...updatedPayment } as Payment : p));
             toast({
                 title: 'Transaction Updated',
                 description: `The ${values.type} of ${currency.code} ${values.amount} has been updated.`,
@@ -165,7 +160,6 @@ export default function IncomeExpensesPage() {
         } else {
             // Create
             const newPayment: Omit<Payment, 'id'> = {
-                companyId: companyProfile.companyName,
                 description: values.description,
                 date: format(new Date(), 'yyyy-MM-dd'),
                 amount: values.amount,
@@ -174,7 +168,7 @@ export default function IncomeExpensesPage() {
                 type: values.type,
             };
             const docRef = await addDoc(collection(db, 'payments'), newPayment);
-            setPayments(prev => [{...newPayment, id: docRef.id}, ...prev]);
+            setPayments(prev => [{...newPayment, id: docRef.id} as Payment, ...prev]);
             toast({
                 title: 'Transaction Added',
                 description: `A new ${values.type} of ${currency.code} ${values.amount} has been recorded.`,

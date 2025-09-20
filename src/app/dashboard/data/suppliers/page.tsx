@@ -48,10 +48,8 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAtom } from 'jotai';
-import { companyProfileAtom } from '@/lib/store';
 
 const supplierSchema = z.object({
     id: z.string().optional(),
@@ -74,7 +72,6 @@ export default function SuppliersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [companyProfile] = useAtom(companyProfileAtom);
 
   const form = useForm<Supplier>({
     resolver: zodResolver(supplierSchema),
@@ -99,24 +96,19 @@ export default function SuppliersPage() {
 
   useEffect(() => {
     const fetchSuppliers = async () => {
-        if (!companyProfile.companyName) {
-            setLoading(false);
-            return;
-        }
         setLoading(true);
-        const q = query(collection(db, "suppliers"), where("companyId", "==", companyProfile.companyName));
+        const q = query(collection(db, "suppliers"));
         const querySnapshot = await getDocs(q);
         const suppliersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier));
         setSuppliers(suppliersData);
         setLoading(false);
     };
     fetchSuppliers();
-  }, [companyProfile]);
+  }, []);
 
   async function onSubmit(values: Supplier) {
     try {
         const dataToSave = {
-            companyId: companyProfile.companyName,
             name: values.name,
             contactPerson: values.contactPerson || '',
             email: values.email || '',

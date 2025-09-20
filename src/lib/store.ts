@@ -6,7 +6,6 @@ import type { UserRole, MainTab } from './roles';
 // Data types
 export type Payment = {
     id: string;
-    companyId: string;
     orderId?: string; // Optional: Can be a SO or PO ID
     description: string; // Used for ad-hoc entries
     date: string;
@@ -34,7 +33,6 @@ export type CompanyProfile = {
 
 export type AuthProfile = {
     id: string;
-    companyId: string;
     name: string;
     email: string;
     role: UserRole;
@@ -43,7 +41,6 @@ export type AuthProfile = {
 
 export type Staff = {
   id?: string;
-  companyId: string;
   name: string;
   dateOfBirth?: string;
   nic?: string;
@@ -55,7 +52,6 @@ export type Staff = {
 
 export type UserRoleDef = {
     id: string;
-    companyId: string;
     name: string;
     accessOptions: MainTab[];
 }

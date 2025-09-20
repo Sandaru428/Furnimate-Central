@@ -63,12 +63,11 @@ import {
     purchaseOrdersAtom,
     stocksAtom,
     suppliersAtom,
-    companyProfileAtom,
 } from '@/lib/store';
 import type { StockItem } from '../stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query } from 'firebase/firestore';
 
 
 const lineItemSchema = z.object({
@@ -193,42 +192,35 @@ export default function PurchaseOrdersPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
-    const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!companyProfile.companyName) {
-                setLoading(false);
-                return;
-            };
             setLoading(true);
 
-            const companyId = companyProfile.companyName;
-            
-            const poQuery = query(collection(db, "purchaseOrders"), where("companyId", "==", companyId));
+            const poQuery = query(collection(db, "purchaseOrders"));
             const poSnapshot = await getDocs(poQuery);
             const poData = poSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as PurchaseOrder));
             setPurchaseOrders(poData);
 
-            const stocksQuery = query(collection(db, "stocks"), where("companyId", "==", companyId));
+            const stocksQuery = query(collection(db, "stocks"));
             const stocksSnapshot = await getDocs(stocksQuery);
             const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
             setStocks(stocksData);
 
-            const suppliersQuery = query(collection(db, "suppliers"), where("companyId", "==", companyId));
+            const suppliersQuery = query(collection(db, "suppliers"));
             const suppliersSnapshot = await getDocs(suppliersQuery);
             const suppliersData = suppliersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setSuppliers(suppliersData as any);
             
-            const paymentsQuery = query(collection(db, "payments"), where("companyId", "==", companyId));
+            const paymentsQuery = query(collection(db, "payments"));
             const paymentsSnapshot = await getDocs(paymentsQuery);
             const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
             setPayments(paymentsData);
             setLoading(false);
         };
         fetchData();
-    }, [setPurchaseOrders, setStocks, setSuppliers, setPayments, companyProfile]);
+    }, [setPurchaseOrders, setStocks, setSuppliers, setPayments]);
     
     const handlePrint = (poId: string) => {
         router.push(`/dashboard/data/purchase-orders/${poId}/print`);
@@ -282,7 +274,6 @@ toBankName: '',
 
     async function handleCreateOrUpdateSubmit(values: CreatePurchaseOrder) {
         const dataToSave = {
-            companyId: companyProfile.companyName,
             ...values,
         };
 
@@ -299,7 +290,7 @@ toBankName: '',
         } else {
             // Create logic
             const poCollection = collection(db, "purchaseOrders");
-            const poSnapshot = await getDocs(query(poCollection, where("companyId", "==", companyProfile.companyName)));
+            const poSnapshot = await getDocs(query(poCollection));
             const nextId = poSnapshot.size > 0 ? Math.max(...poSnapshot.docs.map(d => parseInt(d.id.split('-')[1]))) + 1 : 1;
             const newPOId = `PO-${String(nextId).padStart(3, '0')}`;
             
@@ -332,7 +323,7 @@ toBankName: '',
         setPurchaseOrders(prevPOs => prevPOs.map(po => po.id === selectedPO.id ? updatedPO : po ));
 
         for (const receivedItem of values.lineItems) {
-            const stocksQuery = query(collection(db, "stocks"), where("companyId", "==", companyProfile.companyName), where("itemCode", "==", receivedItem.itemId));
+            const stocksQuery = query(collection(db, "stocks"), where("itemCode", "==", receivedItem.itemId));
             const itemDocSnapshot = await getDocs(stocksQuery);
             
             if (!itemDocSnapshot.empty) {
@@ -366,7 +357,6 @@ toBankName: '',
         }
 
         const newPayment: Omit<Payment, 'id'> = {
-            companyId: companyProfile.companyName,
             orderId: selectedPO.id,
             description: `Payment for ${selectedPO.id}`,
             date: format(new Date(), 'yyyy-MM-dd'),
@@ -377,7 +367,7 @@ toBankName: '',
         };
 
         const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);
-        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id}]);
+        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id} as Payment]);
 
         const totalPaid = currentAmountPaid + newPayment.amount;
 

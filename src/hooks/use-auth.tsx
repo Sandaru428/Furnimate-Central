@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userDoc = { ...userDocData, id: userDocId };
             
             // Fetch the role to get the latest access options
-            const rolesQuery = query(collection(db, "userRoles"), where("companyId", "==", userDoc.companyId), where("name", "==", userDoc.role));
+            const rolesQuery = query(collection(db, "userRoles"), where("name", "==", userDoc.role));
             const roleSnapshot = await getDocs(rolesQuery);
 
             if (!roleSnapshot.empty) {
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             setAuthProfile(userDoc);
             
-            // Now fetch the company profile associated with this user
+            // Now fetch the company profile 
             const profileDocRef = doc(db, "companyProfile", 'main');
             const profileDocSnap = await getDoc(profileDocRef);
             

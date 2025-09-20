@@ -51,9 +51,9 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAtom } from 'jotai';
-import { currencyAtom, companyProfileAtom } from '@/lib/store';
+import { currencyAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -89,7 +89,6 @@ export default function StocksPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [currency] = useAtom(currencyAtom);
-    const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
 
     const form = useForm<StockItem>({
@@ -125,25 +124,20 @@ export default function StocksPage() {
 
     useEffect(() => {
         const fetchStocks = async () => {
-            if (!companyProfile.companyName) {
-                setLoading(false);
-                return;
-            };
             setLoading(true);
-            const q = query(collection(db, "stocks"), where("companyId", "==", companyProfile.companyName));
+            const q = query(collection(db, "stocks"));
             const querySnapshot = await getDocs(q);
             const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
             setStocks(data);
             setLoading(false);
         };
         fetchStocks();
-    }, [companyProfile]);
+    }, []);
 
 
     async function onSubmit(values: StockItem) {
         try {
-            const dataToSave: Omit<StockItem, 'id'> & { companyId: string } = {
-                companyId: companyProfile.companyName,
+            const dataToSave: Omit<StockItem, 'id'> = {
                 itemCode: values.itemCode,
                 name: values.name,
                 type: values.type,
