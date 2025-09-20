@@ -1,6 +1,5 @@
 
 import { atom } from 'jotai';
-import { initialCustomersData, initialSuppliersData, initialMasterData, initialPurchaseOrdersData, initialQuotationsData, initialSaleOrdersData, initialPaymentsData } from './dummy-data';
 import type { UserRole, MainTab } from './roles';
 
 // Data types
