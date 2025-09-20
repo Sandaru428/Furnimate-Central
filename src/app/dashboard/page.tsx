@@ -138,6 +138,9 @@ export default function DashboardPage() {
   }, [stocks]);
 
   const stockChartConfig = {
+    value: {
+        label: "Value",
+    },
     raw: { label: "Raw Materials", color: "hsl(var(--chart-1))" },
     finished: { label: "Finished Goods", color: "hsl(var(--chart-2))" }
   };
@@ -349,10 +352,11 @@ export default function DashboardPage() {
                 <CardContent>
                     <ChartContainer config={stockChartConfig} className="mx-auto aspect-square h-[250px]">
                         <PieChart>
-                            <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                            <ChartTooltip formatter={(value, name) => `${(name as string)}: ${currency.code} ${Number(value).toLocaleString()}`} content={<ChartTooltipContent nameKey="name" />} />
                             <Pie data={stockValueData} dataKey="value" nameKey="name" innerRadius={60} strokeWidth={5}>
-                                <Cell key="raw-materials" fill="var(--color-raw)" />
-                                <Cell key="finished-goods" fill="var(--color-finished)" />
+                                {stockValueData.map((entry) => (
+                                    <Cell key={entry.name} fill={entry.name === 'Raw Materials' ? 'var(--color-raw)' : 'var(--color-finished)'} />
+                                ))}
                             </Pie>
                             <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                         </PieChart>
@@ -367,7 +371,7 @@ export default function DashboardPage() {
                 <CardContent>
                     <ChartContainer config={{}} className="mx-auto aspect-square h-[250px]">
                          <PieChart>
-                             <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                            <ChartTooltip formatter={(value, name) => `${(name as string)}: ${currency.code} ${Number(value).toLocaleString()}`} content={<ChartTooltipContent nameKey="name" />} />
                              <Pie data={rawMaterialsChartData} dataKey="value" nameKey="name" innerRadius={60}>
                                 {rawMaterialsChartData.map((_, index) => (
                                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -385,7 +389,7 @@ export default function DashboardPage() {
                 <CardContent>
                      <ChartContainer config={{}} className="mx-auto aspect-square h-[250px]">
                          <PieChart>
-                             <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                            <ChartTooltip formatter={(value, name) => `${(name as string)}: ${currency.code} ${Number(value).toLocaleString()}`} content={<ChartTooltipContent nameKey="name" />} />
                              <Pie data={finishedGoodsChartData} dataKey="value" nameKey="name" innerRadius={60}>
                                 {finishedGoodsChartData.map((_, index) => (
                                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
