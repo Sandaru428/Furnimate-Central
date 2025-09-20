@@ -60,7 +60,7 @@ import { currencyAtom, stocksAtom, customersAtom, quotationsAtom, saleOrdersAtom
 import type { StockItem } from '../../data/stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query } from 'firebase/firestore';
 
 
 const lineItemSchema = z.object({
@@ -159,7 +159,6 @@ export default function QuotationsPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
-    const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
 
     const handlePrint = (quoteId: string) => {
@@ -168,32 +167,26 @@ export default function QuotationsPage() {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!companyProfile.companyName) {
-                setLoading(false);
-                return;
-            }
             setLoading(true);
 
-            const companyId = companyProfile.companyName;
-
-            const quotationsQuery = query(collection(db, "quotations"), where("companyId", "==", companyId));
+            const quotationsQuery = query(collection(db, "quotations"));
             const quotationsSnapshot = await getDocs(quotationsQuery);
             const quotationsData = quotationsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Quotation));
             setQuotations(quotationsData);
 
-            const stocksQuery = query(collection(db, "stocks"), where("companyId", "==", companyId));
+            const stocksQuery = query(collection(db, "stocks"));
             const stocksSnapshot = await getDocs(stocksQuery);
             const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
             setStocks(stocksData);
 
-            const customersQuery = query(collection(db, "customers"), where("companyId", "==", companyId));
+            const customersQuery = query(collection(db, "customers"));
             const customersSnapshot = await getDocs(customersQuery);
             const customersData = customersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setCustomers(customersData as any);
             setLoading(false);
         };
         fetchData();
-    }, [setQuotations, setStocks, setCustomers, companyProfile]);
+    }, [setQuotations, setStocks, setCustomers]);
 
 
     const form = useForm<CreateQuotation>({
@@ -218,28 +211,26 @@ export default function QuotationsPage() {
             
              if (editingQuotation) {
                 // Update
-                const updatedQuotation: Omit<Quotation, 'id'> & { companyId: string } = {
+                const updatedQuotation: Omit<Quotation, 'id'> = {
                     ...editingQuotation,
                     ...values,
-                    companyId: companyProfile.companyName,
                     amount: totalAmount,
                     status: 'Draft',
                 };
                 
-                const { id, ...dataToSave } = updatedQuotation;
+                const { id, ...dataToSave } = updatedQuotation as any;
                 await updateDoc(doc(db, "quotations", editingQuotation.id), dataToSave);
-                setQuotations(quotations.map(q => q.id === editingQuotation.id ? { ...updatedQuotation, id: q.id } : q));
+                setQuotations(quotations.map(q => q.id === editingQuotation.id ? { ...updatedQuotation, id: q.id } as Quotation : q));
                 toast({ title: 'Quotation Updated', description: `Quotation ${editingQuotation.id} has been updated.` });
              } else {
                 // Create
-                const quoQuery = query(collection(db, "quotations"), where("companyId", "==", companyProfile.companyName));
+                const quoQuery = query(collection(db, "quotations"));
                 const quoSnapshot = await getDocs(quoQuery);
                 const nextId = quoSnapshot.size > 0 ? Math.max(...quoSnapshot.docs.map(q => parseInt(q.id.split('-')[1]))) + 1 : 1;
                 const newQuotationId = `QUO-${String(nextId).padStart(3, '0')}`;
                 
                 const newQuotation: Quotation = {
                     id: newQuotationId,
-                    companyId: companyProfile.companyName,
                     customer: values.customer,
                     date: format(new Date(), 'yyyy-MM-dd'),
                     status: 'Draft',
@@ -299,7 +290,7 @@ export default function QuotationsPage() {
 
         let insufficientStock = false;
         for (const item of quotation.lineItems) {
-            const stocksQuery = query(collection(db, "stocks"), where("companyId", "==", companyProfile.companyName), where("itemCode", "==", item.itemId));
+            const stocksQuery = query(collection(db, "stocks"), where("itemCode", "==", item.itemId));
             const masterItemSnapshot = await getDocs(stocksQuery);
             
             if (masterItemSnapshot.empty) {
@@ -321,7 +312,6 @@ export default function QuotationsPage() {
         const newOrderId = `ORD-${quotation.id.split('-')[1]}`;
         const newOrder = {
             id: newOrderId,
-            companyId: companyProfile.companyName,
             quotationId: quotation.id,
             customer: quotation.customer,
             date: format(new Date(), 'yyyy-MM-dd'),

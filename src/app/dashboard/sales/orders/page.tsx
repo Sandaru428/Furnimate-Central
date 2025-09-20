@@ -57,7 +57,7 @@ import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, quotationsAtom, co
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, updateDoc, addDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, addDoc, query } from 'firebase/firestore';
 
 
 const paymentSchema = z.object({
@@ -102,7 +102,6 @@ export default function SaleOrdersPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [currency] = useAtom(currencyAtom);
-    const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
 
     const handlePrint = (orderId: string) => {
@@ -111,24 +110,19 @@ export default function SaleOrdersPage() {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!companyProfile.companyName) {
-                setLoading(false);
-                return;
-            };
             setLoading(true);
-            const companyId = companyProfile.companyName;
 
-            const soQuery = query(collection(db, "saleOrders"), where("companyId", "==", companyId));
+            const soQuery = query(collection(db, "saleOrders"));
             const soSnapshot = await getDocs(soQuery);
             const soData = soSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SaleOrder));
             setOrders(soData);
 
-            const paymentsQuery = query(collection(db, "payments"), where("companyId", "==", companyId));
+            const paymentsQuery = query(collection(db, "payments"));
             const paymentsSnapshot = await getDocs(paymentsQuery);
             const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
             setPayments(paymentsData);
 
-            const quotationsQuery = query(collection(db, "quotations"), where("companyId", "==", companyId));
+            const quotationsQuery = query(collection(db, "quotations"));
             const quotationsSnapshot = await getDocs(quotationsQuery);
             const quotationsData = quotationsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setQuotations(quotationsData as any);
@@ -136,7 +130,7 @@ export default function SaleOrdersPage() {
             setLoading(false);
         };
         fetchData();
-    }, [setOrders, setPayments, setQuotations, companyProfile]);
+    }, [setOrders, setPayments, setQuotations]);
 
 
     const form = useForm<PaymentFormValues>({
@@ -202,7 +196,6 @@ export default function SaleOrdersPage() {
         }
 
         const newPayment: Omit<Payment, 'id'> = {
-            companyId: companyProfile.companyName,
             orderId: selectedOrder.id,
             description: `Payment for ${selectedOrder.id}`,
             date: format(new Date(), 'yyyy-MM-dd'),
@@ -213,7 +206,7 @@ export default function SaleOrdersPage() {
         };
 
         const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);
-        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id}]);
+        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id} as Payment]);
 
         const totalPaid = currentAmountPaid + newPayment.amount;
 
