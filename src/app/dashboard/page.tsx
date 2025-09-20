@@ -18,6 +18,10 @@ import {
   Server,
   Archive,
   Gift,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  TrendingDown,
+  CircleArrowRight,
 } from 'lucide-react';
 import {
   Bar,
@@ -40,6 +44,7 @@ import { format, parseISO, isToday } from 'date-fns';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { useToast } from '@/hooks/use-toast';
 import type { StockItem } from './data/stocks/page';
+import { useRouter } from 'next/navigation';
 
 
 const CHART_COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
@@ -52,6 +57,7 @@ export default function DashboardPage() {
   const [customers] = useAtom(customersAtom);
   const [staff] = useAtom(staffAtom);
   const { toast } = useToast();
+  const router = useRouter();
 
   const kpiData = useMemo(() => {
     const totalRevenue = payments
@@ -164,6 +170,15 @@ export default function DashboardPage() {
 
     return [...birthdayCustomers, ...birthdayStaff];
   }, [customers, staff]);
+  
+  const stockAlerts = useMemo(() => {
+    const lowStockRM = stocks.filter(s => s.type === 'Raw Material' && s.minimumLevel && s.stockLevel < s.minimumLevel);
+    const overStockRM = stocks.filter(s => s.type === 'Raw Material' && s.maximumLevel && s.stockLevel > s.maximumLevel);
+    const lowStockFG = stocks.filter(s => s.type === 'Finished Good' && s.minimumLevel && s.stockLevel < s.minimumLevel);
+    const overStockFG = stocks.filter(s => s.type === 'Finished Good' && s.maximumLevel && s.stockLevel > s.maximumLevel);
+    return { lowStockRM, overStockRM, lowStockFG, overStockFG };
+  }, [stocks]);
+
 
   const handleSendWishes = (name: string) => {
     // In a real app, this would trigger an email.
@@ -199,6 +214,82 @@ export default function DashboardPage() {
             </Card>
             ))}
         </div>
+
+        {/* Stock Alerts */}
+        <div className="mt-4">
+            <h2 className="text-xl font-semibold mb-2">Stock Alerts</h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {stockAlerts.lowStockRM.length > 0 && (
+                    <Card className="border-destructive">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-destructive"><ArrowDownCircle /> Low Raw Materials</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm mb-4">The following items are below minimum stock levels.</p>
+                            <ul className="text-sm space-y-1 mb-4">
+                                {stockAlerts.lowStockRM.map(item => <li key={item.id}>- {item.name} ({item.stockLevel})</li>)}
+                            </ul>
+                            <Button variant="destructive" className="w-full" onClick={() => router.push('/dashboard/data/purchase-orders')}>
+                                Create Purchase Order <CircleArrowRight className="ml-2 h-4 w-4"/>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+                {stockAlerts.overStockRM.length > 0 && (
+                     <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><ArrowUpCircle /> Overstocked Raw Materials</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm mb-4">Consider using these materials in production.</p>
+                            <ul className="text-sm space-y-1 mb-4">
+                                {stockAlerts.overStockRM.map(item => <li key={item.id}>- {item.name} ({item.stockLevel})</li>)}
+                            </ul>
+                             <Button className="w-full" onClick={() => router.push('/dashboard/sales/orders')}>
+                                Plan Production <CircleArrowRight className="ml-2 h-4 w-4"/>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+                 {stockAlerts.lowStockFG.length > 0 && (
+                    <Card className="border-orange-500">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-orange-500"><TrendingDown /> Low Finished Goods</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm mb-4">These finished goods are running low.</p>
+                            <ul className="text-sm space-y-1 mb-4">
+                                {stockAlerts.lowStockFG.map(item => <li key={item.id}>- {item.name} ({item.stockLevel})</li>)}
+                            </ul>
+                             <Button variant="outline" className="w-full border-orange-500 text-orange-500 hover:bg-orange-50" onClick={() => router.push('/dashboard/sales/orders')}>
+                                Increase Production <CircleArrowRight className="ml-2 h-4 w-4"/>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+                {stockAlerts.overStockFG.length > 0 && (
+                    <Card className="border-green-500">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-green-600"><TrendingUp /> Overstocked Finished Goods</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm mb-4">Consider a sale or promotion for these items.</p>
+                            <ul className="text-sm space-y-1 mb-4">
+                                {stockAlerts.overStockFG.map(item => <li key={item.id}>- {item.name} ({item.stockLevel})</li>)}
+                            </ul>
+                            <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => router.push('/dashboard/sales/quotations')}>
+                                Create Quotation <CircleArrowRight className="ml-2 h-4 w-4"/>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+             {stockAlerts.lowStockRM.length === 0 && stockAlerts.overStockRM.length === 0 && stockAlerts.lowStockFG.length === 0 && stockAlerts.overStockFG.length === 0 && (
+                <p className="text-muted-foreground text-sm">No stock alerts at the moment. All inventory levels are normal.</p>
+            )}
+        </div>
+
+
         <div className="mt-4 grid gap-4 grid-cols-1 lg:grid-cols-2">
             <Card>
                 <CardHeader>

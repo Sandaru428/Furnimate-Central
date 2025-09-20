@@ -351,13 +351,14 @@ export default function StocksPage() {
                   <TableHead className="text-right">Stock</TableHead>
                   <TableHead className="text-right">Min Level</TableHead>
                   <TableHead className="text-right">Max Level</TableHead>
+                  <TableHead className="text-right">Total Value</TableHead>
                   <TableHead>Linked Items</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                    <TableRow><TableCell colSpan={9} className="text-center">Loading...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center">Loading...</TableCell></TableRow>
                 ) : filteredStocks.length > 0 ? (
                     filteredStocks.map((item) => (
                     <TableRow key={item.id}>
@@ -378,6 +379,7 @@ export default function StocksPage() {
                         <TableCell className="text-right">{item.stockLevel}</TableCell>
                         <TableCell className="text-right">{item.minimumLevel || '-'}</TableCell>
                         <TableCell className="text-right">{item.maximumLevel || '-'}</TableCell>
+                        <TableCell className="text-right font-medium">{currency.code} {(item.unitPrice * item.stockLevel).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell className='max-w-[150px]'>
                             <div className="flex flex-wrap gap-1">
                                 {item.linkedItems?.map(link => <Badge key={link} variant="outline" className="font-mono">{link}</Badge>)}
@@ -395,7 +397,7 @@ export default function StocksPage() {
                     </TableRow>
                     ))
                 ) : (
-                    <TableRow><TableCell colSpan={9} className="text-center">No stock data found.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center">No stock data found.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
