@@ -27,6 +27,7 @@ export type CompanyProfile = {
   phone: string;
   logo?: string | File;
   currency: string;
+  autoLogoutMinutes?: number;
 };
 
 export type AuthProfile = {
@@ -66,6 +67,7 @@ export const companyProfileAtom = atom<CompanyProfile>({
   phone: '+94773606494',
   logo: undefined,
   currency: 'LKR',
+  autoLogoutMinutes: 0,
 });
 
 export const authProfileAtom = atom<AuthProfile | null>(null);
@@ -81,5 +83,3 @@ export const saleOrdersAtom = atom<any[]>([]);
 export const paymentsAtom = atom<Payment[]>([]);
 export const staffAtom = atom<Staff[]>([]);
 export const userRolesAtom = atom<UserRoleDef[]>([]);
-
-    

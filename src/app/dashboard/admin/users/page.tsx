@@ -26,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
@@ -58,6 +59,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/hooks/use-auth';
 
 
 const userSchema = z.object({
@@ -87,6 +89,7 @@ export default function UsersPage() {
   const [editingRole, setEditingRole] = useState<UserRoleDef | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+  const { handlePasswordReset } = useAuth();
   const [loading, setLoading] = useState(true);
   const [companyProfile] = useAtom(companyProfileAtom);
 
@@ -252,6 +255,10 @@ export default function UsersPage() {
     }
   }
 
+  const handleResetPassword = async (email: string) => {
+    await handlePasswordReset(email);
+  }
+
   const openUserDialog = (user: User | null) => {
     if (user) {
         setEditingUser(user);
@@ -392,6 +399,8 @@ export default function UsersPage() {
                                     <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                     <DropdownMenuItem onClick={() => openUserDialog(user)}>Edit</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleResetPassword(user.email)}>Reset Password</DropdownMenuItem>
+                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUser(user.id!)}>Delete</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -539,5 +548,3 @@ export default function UsersPage() {
     </>
   );
 }
-
-    

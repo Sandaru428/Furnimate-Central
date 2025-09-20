@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { currencies } from '@/lib/currencies';
 import { useAtom } from 'jotai';
 import { currencyAtom, companyProfileAtom } from '@/lib/store';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   companyName: z.string().min(1, 'Company name is required'),
@@ -27,12 +28,14 @@ const formSchema = z.object({
   phone: z.string().min(1, 'Phone number is required'),
   logo: z.any().optional(),
   currency: z.string().min(1, 'Currency is required'),
+  autoLogoutMinutes: z.coerce.number().min(0, "Auto-logout must be 0 or a positive number.").optional(),
 });
 
 type CompanyProfileForm = z.infer<typeof formSchema>;
 
 export default function CompanyProfilePage() {
   const { toast } = useToast();
+  const { authProfile } = useAuth();
   const [selectedCurrency, setCurrency] = useAtom(currencyAtom);
   const [companyProfile, setCompanyProfile] = useAtom(companyProfileAtom);
 
@@ -162,6 +165,23 @@ export default function CompanyProfilePage() {
                         </FormItem>
                       )}
                     />
+
+                    {authProfile?.role === 'Super Admin' && (
+                       <FormField
+                        control={form.control}
+                        name="autoLogoutMinutes"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Auto-Logout (minutes)</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="0" {...field} />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground">Set to 0 to disable automatic logout.</p>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    )}
                 </div>
                 <Button type="submit">Save Changes</Button>
               </form>

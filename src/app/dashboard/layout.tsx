@@ -21,6 +21,9 @@ import { Home, Settings, FileText, Database, Users, Building, FileQuestion, Shop
 import { DashboardHeader } from '@/components/dashboard-header';
 import { MAIN_TABS, MainTab, AuthProfile } from '@/lib/roles';
 import { useAuth } from '@/hooks/use-auth';
+import { useEffect, useRef } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 const menuConfig = {
     dashboard: { icon: Home, label: 'Dashboard', href: '/dashboard' },
@@ -68,7 +71,38 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const [companyProfile] = useAtom(companyProfileAtom);
-    const { authProfile, loading } = useAuth();
+    const { authProfile, loading, handleSignOut } = useAuth();
+    const router = useRouter();
+    const { toast } = useToast();
+    const inactivityTimer = useRef<NodeJS.Timeout>();
+
+    const resetInactivityTimer = () => {
+        if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+
+        const logoutMinutes = companyProfile.autoLogoutMinutes || 0;
+        if (logoutMinutes <= 0) return;
+
+        inactivityTimer.current = setTimeout(() => {
+            handleSignOut();
+            toast({
+                title: "Session Expired",
+                description: "You have been logged out due to inactivity.",
+            });
+            router.push('/login');
+        }, logoutMinutes * 60 * 1000);
+    };
+
+    useEffect(() => {
+        const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
+        
+        events.forEach(event => window.addEventListener(event, resetInactivityTimer));
+        resetInactivityTimer();
+
+        return () => {
+            if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+            events.forEach(event => window.removeEventListener(event, resetInactivityTimer));
+        };
+    }, [companyProfile.autoLogoutMinutes]);
 
     return (
         <SidebarProvider>
