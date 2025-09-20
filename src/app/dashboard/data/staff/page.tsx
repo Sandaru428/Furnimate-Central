@@ -282,7 +282,7 @@ export default function StaffPage() {
                         <TableCell>{staffMember.email}</TableCell>
                         <TableCell>{staffMember.nic}</TableCell>
                         <TableCell>
-                           {staffMember.dateOfBirth ? format(parseISO(staffMember.dateOfBirth), 'PP') : '-'}
+                           {staffMember.dateOfBirth ? staffMember.dateOfBirth : '-'}
                         </TableCell>
                         <TableCell>
                         <DropdownMenu>

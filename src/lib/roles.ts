@@ -6,7 +6,6 @@ export const MAIN_TABS = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'development', label: 'Development' },
     { id: 'reporting', label: 'Reporting' },
-    // 'company-profile' is now tied to 'dashboard' access and not a separate permission
     { id: 'company-profile', label: 'Company Profile' },
     { id: 'notification-templates', label: 'Notification Templates' },
     { id: 'cash-book', label: 'Cash Book' },

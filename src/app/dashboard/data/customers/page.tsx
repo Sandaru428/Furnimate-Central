@@ -266,7 +266,7 @@ export default function CustomersPage() {
                         <TableCell>{customer.phone}</TableCell>
                         <TableCell>{customer.whatsappNumber}</TableCell>
                         <TableCell>
-                           {customer.dateOfBirth ? format(parseISO(customer.dateOfBirth), 'PP') : '-'}
+                           {customer.dateOfBirth ? customer.dateOfBirth : '-'}
                         </TableCell>
                         <TableCell>{customer.address}</TableCell>
                         <TableCell>

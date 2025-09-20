@@ -25,6 +25,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query } from 'firebase/firestore';
 import type { Payment } from '@/lib/store';
 import { Input } from '@/components/ui/input';
+import { format, parseISO } from 'date-fns';
 
 export default function CashBookPage() {
     const [payments, setPayments] = useAtom(paymentsAtom);
@@ -142,7 +143,7 @@ export default function CashBookPage() {
                 ) : filteredPayments.length > 0 ? (
                     filteredPayments.map((payment) => (
                     <TableRow key={payment.id}>
-                        <TableCell>{payment.date}</TableCell>
+                        <TableCell>{format(parseISO(payment.date), 'yyyy-MM-dd')}</TableCell>
                         <TableCell className="font-mono">
                             {payment.orderId 
                                 ? payment.orderId
