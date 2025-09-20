@@ -92,6 +92,37 @@ export default function StocksPage() {
     const [companyProfile] = useAtom(companyProfileAtom);
     const [loading, setLoading] = useState(true);
 
+    const form = useForm<StockItem>({
+        resolver: zodResolver(itemSchema),
+        defaultValues: {
+            itemCode: '',
+            name: '',
+            type: undefined,
+            unitPrice: '' as any,
+            stockLevel: '' as any,
+            minimumLevel: '' as any,
+            maximumLevel: '' as any,
+            linkedItems: [],
+        },
+    });
+
+    const itemType = form.watch('type');
+
+    useEffect(() => {
+        if (itemType && !editingItem) {
+            const prefix = itemType === 'Raw Material' ? 'RM' : 'FI';
+            const relevantItems = stocks.filter(item => item.itemCode.startsWith(prefix));
+            const maxNum = relevantItems.reduce((max, item) => {
+                const numPart = parseInt(item.itemCode.split('-')[1]);
+                return numPart > max ? numPart : max;
+            }, 0);
+            const nextNum = maxNum + 1;
+            const newItemCode = `${prefix}-${String(nextNum).padStart(3, '0')}`;
+            form.setValue('itemCode', newItemCode);
+        }
+    }, [itemType, stocks, editingItem, form]);
+
+
     useEffect(() => {
         const fetchStocks = async () => {
             if (!companyProfile.companyName) {
@@ -108,21 +139,6 @@ export default function StocksPage() {
         fetchStocks();
     }, [companyProfile]);
 
-    const form = useForm<StockItem>({
-        resolver: zodResolver(itemSchema),
-        defaultValues: {
-            itemCode: '',
-            name: '',
-            type: undefined,
-            unitPrice: '' as any,
-            stockLevel: '' as any,
-            minimumLevel: '' as any,
-            maximumLevel: '' as any,
-            linkedItems: [],
-        },
-    });
-
-    const itemType = form.watch('type');
 
     async function onSubmit(values: StockItem) {
         try {
@@ -223,78 +239,99 @@ export default function StocksPage() {
                             <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
                                 <ScrollArea className="flex-1 pr-6">
                                     <div className="space-y-4 py-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                            <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                            <FormField control={form.control} name="type" render={({ field }) => <FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Raw Material">Raw Material</SelectItem><SelectItem value="Finished Good">Finished Good</SelectItem></SelectContent></Select><FormMessage /></FormItem>} />
-                                            <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                            <FormField control={form.control} name="minimumLevel" render={({ field }) => <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                            <FormField control={form.control} name="maximumLevel" render={({ field }) => <FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 200" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                        </div>
+                                        <FormField
+                                            control={form.control}
+                                            name="type"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Type</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value} disabled={!!editingItem}>
+                                                        <FormControl>
+                                                            <SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="Raw Material">Raw Material</SelectItem>
+                                                            <SelectItem value="Finished Good">Finished Good</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
 
                                         {itemType && (
-                                            <FormField
-                                                control={form.control}
-                                                name="linkedItems"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>{itemType === 'Raw Material' ? 'Link to Finished Good(s)' : 'Link to Raw Material(s)'}</FormLabel>
-                                                        <Controller
-                                                            control={form.control}
-                                                            name="linkedItems"
-                                                            render={({ field }) => {
-                                                                const options = stocks.filter(i => i.type === (itemType === 'Raw Material' ? 'Finished Good' : 'Raw Material'));
-                                                                return (
-                                                                    <Popover>
-                                                                        <PopoverTrigger asChild>
-                                                                            <FormControl>
-                                                                                <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}>
-                                                                                    {field.value?.length ? `${field.value.length} selected` : "Select items..."}
-                                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                                </Button>
-                                                                            </FormControl>
-                                                                        </PopoverTrigger>
-                                                                        <PopoverContent className="w-[300px] p-0">
-                                                                            <ScrollArea className="max-h-60">
-                                                                                <div className="p-2 space-y-1">
-                                                                                    {options.map((option) => (
-                                                                                        <div key={option.id} className="flex items-center gap-2">
-                                                                                            <Checkbox
-                                                                                                id={option.itemCode}
-                                                                                                checked={field.value?.includes(option.itemCode)}
-                                                                                                onCheckedChange={(checked) => {
-                                                                                                    const current = field.value || [];
-                                                                                                    if (checked) {
-                                                                                                        field.onChange([...current, option.itemCode]);
-                                                                                                    } else {
-                                                                                                        field.onChange(current.filter(code => code !== option.itemCode));
-                                                                                                    }
-                                                                                                }}
-                                                                                            />
-                                                                                            <label htmlFor={option.itemCode} className="text-sm font-medium">{option.name} ({option.itemCode})</label>
-                                                                                        </div>
-                                                                                    ))}
-                                                                                </div>
-                                                                            </ScrollArea>
-                                                                        </PopoverContent>
-                                                                    </Popover>
-                                                                )
-                                                            }}
-                                                        />
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            <>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} readOnly /></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={form.control} name="minimumLevel" render={({ field }) => <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={form.control} name="maximumLevel" render={({ field }) => <FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 200" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                </div>
+
+                                                <FormField
+                                                    control={form.control}
+                                                    name="linkedItems"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>{itemType === 'Raw Material' ? 'Link to Finished Good(s)' : 'Link to Raw Material(s)'}</FormLabel>
+                                                            <Controller
+                                                                control={form.control}
+                                                                name="linkedItems"
+                                                                render={({ field }) => {
+                                                                    const options = stocks.filter(i => i.type === (itemType === 'Raw Material' ? 'Finished Good' : 'Raw Material'));
+                                                                    return (
+                                                                        <Popover>
+                                                                            <PopoverTrigger asChild>
+                                                                                <FormControl>
+                                                                                    <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}>
+                                                                                        {field.value?.length ? `${field.value.length} selected` : "Select items..."}
+                                                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                                    </Button>
+                                                                                </FormControl>
+                                                                            </PopoverTrigger>
+                                                                            <PopoverContent className="w-[300px] p-0">
+                                                                                <ScrollArea className="max-h-60">
+                                                                                    <div className="p-2 space-y-1">
+                                                                                        {options.map((option) => (
+                                                                                            <div key={option.id} className="flex items-center gap-2">
+                                                                                                <Checkbox
+                                                                                                    id={option.itemCode}
+                                                                                                    checked={field.value?.includes(option.itemCode)}
+                                                                                                    onCheckedChange={(checked) => {
+                                                                                                        const current = field.value || [];
+                                                                                                        if (checked) {
+                                                                                                            field.onChange([...current, option.itemCode]);
+                                                                                                        } else {
+                                                                                                            field.onChange(current.filter(code => code !== option.itemCode));
+                                                                                                        }
+                                                                                                    }}
+                                                                                                />
+                                                                                                <label htmlFor={option.itemCode} className="text-sm font-medium">{option.name} ({option.itemCode})</label>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </ScrollArea>
+                                                                            </PopoverContent>
+                                                                        </Popover>
+                                                                    )
+                                                                }}
+                                                            />
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </>
                                         )}
                                     </div>
                                 </ScrollArea>
                                 <DialogFooter className="pt-4">
                                     <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                                    <Button type="submit">{editingItem ? 'Save Changes' : 'Add Item'}</Button>
+                                    <Button type="submit" disabled={!itemType}>{editingItem ? 'Save Changes' : 'Add Item'}</Button>
                                 </DialogFooter>
                             </form>
                         </Form>
