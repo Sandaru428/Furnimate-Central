@@ -154,7 +154,7 @@ const AddItemForm = ({ stocks, onAddItem }: { stocks: StockItem[], onAddItem: (i
                         <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
                     <SelectContent>
-                        {stocks.map(item => (
+                        {stocks.filter(item => item.type === 'Raw Material').map(item => (
                             <SelectItem key={item.itemCode} value={item.itemCode}>
                                 {item.name} ({item.itemCode})
                             </SelectItem>
