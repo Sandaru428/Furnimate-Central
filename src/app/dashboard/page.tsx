@@ -40,7 +40,7 @@ import { useAtom } from 'jotai';
 import { currencyAtom, paymentsAtom, saleOrdersAtom, stocksAtom, customersAtom, staffAtom } from '@/lib/store';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, isToday } from 'date-fns';
+import { format } from 'date-fns';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { useToast } from '@/hooks/use-toast';
 import type { StockItem } from './data/stocks/page';
@@ -107,7 +107,7 @@ export default function DashboardPage() {
     const monthlySales: { [key: string]: number } = {};
 
     saleOrders.forEach(order => {
-        const month = format(parseISO(order.date), 'MMM yyyy');
+        const month = format(new Date(order.date), 'MMM yyyy');
         if (!monthlySales[month]) {
             monthlySales[month] = 0;
         }
@@ -163,7 +163,6 @@ export default function DashboardPage() {
         if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) return false;
         try {
             const [year, month, day] = dob.split('-').map(Number);
-            // new Date(Date.UTC(...)) is crucial to avoid timezone issues
             const birthDate = new Date(Date.UTC(year, month - 1, day));
             return birthDate.getUTCDate() === today.getUTCDate() && birthDate.getUTCMonth() === today.getUTCMonth();
         } catch {
@@ -176,6 +175,18 @@ export default function DashboardPage() {
     return [...birthdayCustomers, ...birthdayStaff];
   }, [customers, staff]);
   
+  useEffect(() => {
+    if (birthdayList.length > 0) {
+      birthdayList.forEach(person => {
+        toast({
+          title: `🎂 Happy Birthday, ${person.name}!`,
+          description: "Don't forget to send your wishes.",
+          duration: 10000,
+        });
+      });
+    }
+  }, [birthdayList, toast]);
+
   const stockAlerts = useMemo(() => {
     const lowStockRM = stocks.filter(s => s.type === 'Raw Material' && s.minimumLevel && s.stockLevel < s.minimumLevel);
     const overStockRM = stocks.filter(s => s.type === 'Raw Material' && s.maximumLevel && s.stockLevel > s.maximumLevel);
