@@ -128,7 +128,7 @@ export default function StocksPage() {
             const q = query(collection(db, "stocks"));
             const querySnapshot = await getDocs(q);
             const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
-            setStocks(data);
+            setStocks(data.sort((a, b) => a.itemCode.localeCompare(b.itemCode)));
             setLoading(false);
         };
         fetchStocks();
@@ -152,7 +152,7 @@ export default function StocksPage() {
                 // Update
                 const docRef = doc(db, 'stocks', editingItem.id);
                 await updateDoc(docRef, dataToSave);
-                setStocks(stocks.map(item => item.id === editingItem.id ? { ...item, ...values, id: item.id } : item));
+                setStocks(stocks.map(item => item.id === editingItem.id ? { ...item, ...values, id: item.id } : item).sort((a, b) => a.itemCode.localeCompare(b.itemCode)));
                 toast({
                   title: 'Item Updated',
                   description: `${values.name} has been successfully updated.`,
@@ -160,7 +160,7 @@ export default function StocksPage() {
             } else {
                 // Create
                 const docRef = await addDoc(collection(db, 'stocks'), dataToSave);
-                setStocks(prev => [{ ...values, id: docRef.id }, ...prev]);
+                setStocks(prev => [...prev, { ...values, id: docRef.id }].sort((a, b) => a.itemCode.localeCompare(b.itemCode)));
                 toast({
                   title: 'Item Added',
                   description: `${values.name} has been successfully added.`,
@@ -363,7 +363,17 @@ export default function StocksPage() {
                     <TableRow key={item.id}>
                         <TableCell className="font-mono">{item.itemCode}</TableCell>
                         <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell><Badge variant="secondary">{item.type}</Badge></TableCell>
+                        <TableCell>
+                             <Badge 
+                                variant="outline" 
+                                className={cn(
+                                    item.type === 'Finished Good' && 'border-blue-500 text-blue-500',
+                                    item.type === 'Raw Material' && 'border-green-500 text-green-500'
+                                )}
+                            >
+                                {item.type}
+                            </Badge>
+                        </TableCell>
                         <TableCell className="text-right">{currency.code} {item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell className="text-right">{item.stockLevel}</TableCell>
                         <TableCell className="text-right">{item.minimumLevel || '-'}</TableCell>

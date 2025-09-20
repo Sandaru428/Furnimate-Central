@@ -78,6 +78,12 @@ const initialTemplates: Template[] = [
     subject: 'Reset your password',
     body: 'Hi there, \n\nPlease click the following link to reset your password: {reset_link}\n\nIf you did not request this, please ignore this email.\n\nThanks,\nSiraiva Ltd',
   },
+   {
+    id: 'tmpl_4',
+    name: 'Birthday Wishes',
+    subject: 'Happy Birthday!',
+    body: 'Wish you a happy birthday to you may God bless you and your family.',
+  },
 ];
 
 
