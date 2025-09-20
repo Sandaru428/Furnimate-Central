@@ -55,19 +55,28 @@ export default function CompanyProfilePage() {
     try {
         const profileId = 'main';
 
-        const newLogo = values.logo && values.logo.length > 0 ? values.logo[0].name : companyProfile.logo;
+        const logoIsFile = values.logo && values.logo.length > 0 && values.logo[0] instanceof File;
+        const newLogo = logoIsFile ? values.logo[0].name : companyProfile.logo;
         
         const newProfileData = {
-            ...companyProfile,
-            ...values,
-            logo: newLogo,
-            id: profileId,
+            ...companyProfile, // start with existing profile
+            ...values,         // override with form values
+            logo: newLogo,     // set the logo name
+            id: profileId,     // ensure the ID is set
         };
 
+        // This removes the actual File object before saving to Firestore
+        const dataToSave = { ...newProfileData };
+        delete dataToSave.logo; // Remove the FileList or file name to avoid type issues
+        if (newLogo) {
+            dataToSave.logo = newLogo;
+        }
+
+
         // Save to Firestore
-        await setDoc(doc(db, "companyProfile", profileId), newProfileData);
+        await setDoc(doc(db, "companyProfile", profileId), dataToSave);
         
-        // Update local state
+        // Update local state with the new data
         setCompanyProfile(newProfileData);
         
         const newCurrency = currencies.find(c => c.code === values.currency);
