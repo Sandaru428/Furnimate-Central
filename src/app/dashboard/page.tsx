@@ -45,6 +45,9 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLe
 import { useToast } from '@/hooks/use-toast';
 import type { StockItem } from './data/stocks/page';
 import { useRouter } from 'next/navigation';
+import { collection, getDocs, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Staff } from '@/lib/store';
 
 
 const CHART_COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
@@ -54,10 +57,39 @@ export default function DashboardPage() {
   const [payments] = useAtom(paymentsAtom);
   const [saleOrders] = useAtom(saleOrdersAtom);
   const [stocks] = useAtom(stocksAtom);
-  const [customers] = useAtom(customersAtom);
-  const [staff] = useAtom(staffAtom);
+  const [customers, setCustomers] = useAtom(customersAtom);
+  const [staff, setStaff] = useAtom(staffAtom);
   const { toast } = useToast();
   const router = useRouter();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const customersQuery = query(collection(db, "customers"));
+            const customersSnapshot = await getDocs(customersQuery);
+            const customersData = customersSnapshot.docs.map(doc => {
+                const data = doc.data();
+                return { 
+                    id: doc.id, 
+                    ...data,
+                    dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
+                }
+            });
+            setCustomers(customersData as any);
+
+            const staffQuery = query(collection(db, "staff"));
+            const staffSnapshot = await getDocs(staffQuery);
+            const staffData = staffSnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                     id: doc.id,
+                     ...data,
+                     dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
+                } as Staff
+            });
+            setStaff(staffData);
+        };
+        fetchData();
+    }, [setCustomers, setStaff]);
 
   const kpiData = useMemo(() => {
     const totalRevenue = payments
@@ -89,7 +121,7 @@ export default function DashboardPage() {
         title: 'Pending Shipments',
         amount: pendingShipments,
         valuePrefix: '',
-        change: `Orders in 'Processing' state`,
+        change: `Orders in \'Processing\' state`,
         icon: <Package className="text-muted-foreground" />,
       },
       {
@@ -169,7 +201,7 @@ export default function DashboardPage() {
             return false;
         }
     };
-    const birthdayCustomers = customers.filter(c => isBirthday(c.dateOfBirth)).map(c => ({...c, type: 'Customer'}));
+    const birthdayCustomers = customers.filter(c => isBirthday((c as any).dateOfBirth)).map(c => ({...(c as any), type: 'Customer'}));
     const birthdayStaff = staff.filter(s => isBirthday(s.dateOfBirth)).map(s => ({...s, type: 'Staff'}));
 
     return [...birthdayCustomers, ...birthdayStaff];
@@ -243,7 +275,7 @@ export default function DashboardPage() {
                         <CardContent>
                             <p className="text-sm mb-4">The following items are below minimum stock levels.</p>
                             <ul className="text-sm space-y-1 mb-4">
-                                {stockAlerts.lowStockRM.map(item => <li key={item.id}>- {item.name} ({item.stockLevel})</li>)}
+                                {stockAlerts.lowStockRM.map(item => <li key={(item as any).id}>- {item.name} ({item.stockLevel})</li>)}
                             </ul>
                             <Button variant="destructive" className="w-full" onClick={() => router.push('/dashboard/data/purchase-orders')}>
                                 Create Purchase Order <CircleArrowRight className="ml-2 h-4 w-4"/>
@@ -259,7 +291,7 @@ export default function DashboardPage() {
                         <CardContent>
                             <p className="text-sm mb-4">Consider using these materials in production.</p>
                             <ul className="text-sm space-y-1 mb-4">
-                                {stockAlerts.overStockRM.map(item => <li key={item.id}>- {item.name} ({item.stockLevel})</li>)}
+                                {stockAlerts.overStockRM.map(item => <li key={(item as any).id}>- {item.name} ({item.stockLevel})</li>)}
                             </ul>
                              <Button className="w-full" onClick={() => router.push('/dashboard/sales/orders')}>
                                 Plan Production <CircleArrowRight className="ml-2 h-4 w-4"/>
@@ -275,7 +307,7 @@ export default function DashboardPage() {
                         <CardContent>
                             <p className="text-sm mb-4">These finished goods are running low.</p>
                             <ul className="text-sm space-y-1 mb-4">
-                                {stockAlerts.lowStockFG.map(item => <li key={item.id}>- {item.name} ({item.stockLevel})</li>)}
+                                {stockAlerts.lowStockFG.map(item => <li key={(item as any).id}>- {item.name} ({item.stockLevel})</li>)}
                             </ul>
                              <Button variant="outline" className="w-full border-orange-500 text-orange-500 hover:bg-orange-50" onClick={() => router.push('/dashboard/sales/orders')}>
                                 Increase Production <CircleArrowRight className="ml-2 h-4 w-4"/>
@@ -291,7 +323,7 @@ export default function DashboardPage() {
                         <CardContent>
                             <p className="text-sm mb-4">Consider a sale or promotion for these items.</p>
                             <ul className="text-sm space-y-1 mb-4">
-                                {stockAlerts.overStockFG.map(item => <li key={item.id}>- {item.name} ({item.stockLevel})</li>)}
+                                {stockAlerts.overStockFG.map(item => <li key={(item as any).id}>- {item.name} ({item.stockLevel})</li>)}
                             </ul>
                             <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => router.push('/dashboard/sales/quotations')}>
                                 Create Quotation <CircleArrowRight className="ml-2 h-4 w-4"/>
@@ -416,4 +448,3 @@ export default function DashboardPage() {
       </main>
     </>
   );
-}
