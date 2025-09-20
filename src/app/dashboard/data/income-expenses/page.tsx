@@ -335,7 +335,7 @@ export default function IncomeExpensesPage() {
                                     </Badge>
                                 </TableCell>
                                 <TableCell className={cn("text-right", payment.type === 'income' ? 'text-green-600' : 'text-red-600')}>
-                                    {payment.type === 'income' ? '+' : '-'}{currency.code} {payment.amount.toFixed(2)}
+                                    {payment.type === 'income' ? '+' : '-'}{currency.code} {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </TableCell>
                                 <TableCell>
                                     <DropdownMenu>

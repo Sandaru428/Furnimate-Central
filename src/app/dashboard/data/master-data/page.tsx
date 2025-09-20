@@ -332,7 +332,7 @@ export default function MasterDataPage() {
                         <TableCell className="font-mono">{item.itemCode}</TableCell>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell><Badge variant="secondary">{item.type}</Badge></TableCell>
-                        <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{currency.code} {item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell className="text-right">{item.stockLevel}</TableCell>
                         <TableCell className="text-right">{item.minimumLevel || '-'}</TableCell>
                         <TableCell className="text-right">{item.maximumLevel || '-'}</TableCell>

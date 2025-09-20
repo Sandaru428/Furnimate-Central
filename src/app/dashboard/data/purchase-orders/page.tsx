@@ -353,7 +353,7 @@ toBankName: '',
         const currentAmountPaid = payments.filter(p => p.orderId === selectedPO.id).reduce((acc, p) => acc + p.amount, 0);
         
         if (values.amount > selectedPO.totalAmount - currentAmountPaid) {
-            toast({ variant: 'destructive', title: 'Invalid Amount', description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedPO.totalAmount - currentAmountPaid).toFixed(2)}`});
+            toast({ variant: 'destructive', title: 'Invalid Amount', description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedPO.totalAmount - currentAmountPaid).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`});
             return;
         }
 
@@ -386,7 +386,7 @@ toBankName: '',
             setPurchaseOrders(prev => prev.map(o => o.id === selectedPO.id ? { ...o, status: 'Paid' } : o));
              toast({ title: 'Payment Complete', description: `Final payment for PO ${selectedPO.id} has been recorded.` });
         } else {
-             toast({ title: 'Installment Recorded', description: `Payment of ${currency.code} ${values.amount.toFixed(2)} for PO ${selectedPO.id} recorded.` });
+             toast({ title: 'Installment Recorded', description: `Payment of ${currency.code} ${values.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for PO ${selectedPO.id} recorded.` });
         }
         setIsPaymentDialogOpen(false);
     }
@@ -446,7 +446,7 @@ toBankName: '',
         const url = window.location.href;
         const shareData = {
             title: `Purchase Order ${po.id}`,
-            text: `Check out this purchase order to ${po.supplierName} for ${currency.code} ${po.totalAmount.toFixed(2)}.`,
+            text: `Check out this purchase order to ${po.supplierName} for ${currency.code} ${po.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
             url: url,
         };
         try {
@@ -580,7 +580,7 @@ toBankName: '',
                           <TableCell>{po.date}</TableCell>
                           <TableCell className="font-mono">{po.id}</TableCell>
                           <TableCell className="font-medium">{po.supplierName}</TableCell>
-                          <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{currency.code} {po.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                           <TableCell>
                           <Badge 
                               variant={statusVariant[po.status]}
@@ -653,7 +653,7 @@ toBankName: '',
                                                       <TableCell className="font-medium">{itemDetails?.name}</TableCell>
                                                       <TableCell>{quantity}</TableCell>
                                                       <TableCell><FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} /></TableCell>
-                                                      <TableCell className="text-right font-mono">{currency.code} {totalValue.toFixed(2)}</TableCell>
+                                                      <TableCell className="text-right font-mono">{currency.code} {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                                   </TableRow>
                                               );
                                           })}
@@ -676,7 +676,7 @@ toBankName: '',
                   <DialogHeader>
                       <DialogTitle>Record Payment for PO {selectedPO?.id}</DialogTitle>
                       <CardDescription>
-                          Total: {currency.code} {selectedPO?.totalAmount.toFixed(2)} | Paid: {currency.code} {amountPaid.toFixed(2)} | Remaining: {currency.code} {remainingAmount.toFixed(2)}
+                          Total: {currency.code} {selectedPO?.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Paid: {currency.code} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Remaining: {currency.code} {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </CardDescription>
                   </DialogHeader>
                   <Form {...paymentForm}>

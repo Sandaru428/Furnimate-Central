@@ -102,8 +102,8 @@ export default function PurchaseOrderPrintPage() {
                                     <TableCell>{item.itemId}</TableCell>
                                     <TableCell>{itemDetails?.name || 'N/A'}</TableCell>
                                     <TableCell className="text-right">{item.quantity}</TableCell>
-                                    {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {(item.unitPrice || 0).toFixed(2)}</TableCell>}
-                                    {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {(item.totalValue || 0).toFixed(2)}</TableCell>}
+                                    {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {(item.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>}
+                                    {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {(item.totalValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>}
                                 </TableRow>
                             );
                         })}
@@ -111,7 +111,7 @@ export default function PurchaseOrderPrintPage() {
                 </Table>
                 {po.status !== 'Draft' && (
                     <div className="text-right mt-4 pr-4 text-xl font-bold">
-                        Total: {currency.code} {po.totalAmount.toFixed(2)}
+                        Total: {currency.code} {po.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                 )}
                 <footer className="text-center text-xs text-muted-foreground mt-12 border-t pt-4">

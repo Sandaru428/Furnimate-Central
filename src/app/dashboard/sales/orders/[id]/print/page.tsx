@@ -160,8 +160,8 @@ export default function SaleOrderPrintPage() {
                                             <TableRow key={item.itemId}>
                                                 <TableCell>{itemDetails?.name || item.itemId}</TableCell>
                                                 <TableCell className="text-right">{item.quantity}</TableCell>
-                                                <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
-                                                <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
+                                                <TableCell className="text-right">{currency.code} {item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                                <TableCell className="text-right">{currency.code} {item.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                             </TableRow>
                                         );
                                     })}
@@ -190,7 +190,7 @@ export default function SaleOrderPrintPage() {
                                             <TableCell>{payment.date}</TableCell>
                                             <TableCell>{payment.method}</TableCell>
                                             <TableCell>{payment.details}</TableCell>
-                                            <TableCell className="text-right">{currency.code} {payment.amount.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">{currency.code} {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -205,15 +205,15 @@ export default function SaleOrderPrintPage() {
                         <div className="space-y-2 text-right">
                             <div className="flex justify-between font-semibold text-lg">
                                 <span>Total Amount:</span>
-                                <span>{currency.code} {order.amount.toFixed(2)}</span>
+                                <span>{currency.code} {order.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Total Paid:</span>
-                                <span>{currency.code} {totalPaid.toFixed(2)}</span>
+                                <span>{currency.code} {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             <div className={cn("flex justify-between font-bold text-xl", amountDue > 0 ? 'text-red-600' : 'text-green-600')}>
                                 <span>Amount Due:</span>
-                                <span>{currency.code} {amountDue.toFixed(2)}</span>
+                                <span>{currency.code} {amountDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                         </div>
                     </div>
@@ -226,5 +226,4 @@ export default function SaleOrderPrintPage() {
         </>
     );
 }
-
     

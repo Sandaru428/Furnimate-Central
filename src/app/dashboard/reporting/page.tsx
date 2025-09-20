@@ -224,7 +224,7 @@ export default function ReportingPage() {
                                 <TableCell>{p.date}</TableCell>
                                 <TableCell className="font-mono">{p.orderId ? `${p.type === 'income' ? 'Sale Order: ' : 'Purchase Order: '}${p.orderId}` : p.description}</TableCell>
                                 <TableCell><Badge variant={p.type === 'income' ? 'default' : 'destructive'} className={cn(p.type === 'income' ? 'bg-green-600' : 'bg-red-600', 'text-white')}>{p.type}</Badge></TableCell>
-                                <TableCell className={cn("text-right", p.type === 'income' ? 'text-green-600' : 'text-red-600')}>{p.type === 'income' ? '+' : '-'}{currency.code} {p.amount.toFixed(2)}</TableCell>
+                                <TableCell className={cn("text-right", p.type === 'income' ? 'text-green-600' : 'text-red-600')}>{p.type === 'income' ? '+' : '-'}{currency.code} {p.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 <TableCell>{p.details}</TableCell>
                                 </TableRow>
                             )) : <TableRow><TableCell colSpan={5} className="text-center">No transactions in this period.</TableCell></TableRow>}
@@ -247,7 +247,7 @@ export default function ReportingPage() {
                                 <TableCell>{po.date}</TableCell>
                                 <TableCell className="font-mono">{po.id}</TableCell>
                                 <TableCell>{po.supplierName}</TableCell>
-                                <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{currency.code} {po.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 <TableCell><Badge>{po.status}</Badge></TableCell>
                                 </TableRow>
                             )) : <TableRow><TableCell colSpan={5} className="text-center">No purchase orders in this period.</TableCell></TableRow>}
@@ -270,7 +270,7 @@ export default function ReportingPage() {
                                 <TableCell>{so.date}</TableCell>
                                 <TableCell className="font-mono">{so.id}</TableCell>
                                 <TableCell>{so.customer}</TableCell>
-                                <TableCell className="text-right">{currency.code} {so.amount.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{currency.code} {so.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 <TableCell><Badge>{so.status}</Badge></TableCell>
                                 </TableRow>
                             )) : <TableRow><TableCell colSpan={5} className="text-center">No sale orders in this period.</TableCell></TableRow>}
@@ -293,7 +293,7 @@ export default function ReportingPage() {
                                 <TableCell>{q.date}</TableCell>
                                 <TableCell className="font-mono">{q.id}</TableCell>
                                 <TableCell>{q.customer}</TableCell>
-                                <TableCell className="text-right">{currency.code} {q.amount.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{currency.code} {q.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 <TableCell><Badge>{q.status}</Badge></TableCell>
                                 </TableRow>
                             )) : <TableRow><TableCell colSpan={5} className="text-center">No quotations in this period.</TableCell></TableRow>}

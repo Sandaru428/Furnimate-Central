@@ -100,8 +100,8 @@ export default function QuotationPrintPage() {
                                 <TableRow key={item.itemId}>
                                     <TableCell>{itemDetails?.name || item.itemId}</TableCell>
                                     <TableCell className="text-right">{item.quantity}</TableCell>
-                                    <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
-                                    <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right">{currency.code} {item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right">{currency.code} {item.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 </TableRow>
                             );
                         })}
@@ -109,7 +109,7 @@ export default function QuotationPrintPage() {
                 </Table>
                 
                 <div className="text-right mt-4 pr-4 text-xl font-bold">
-                    Total: {currency.code} {quotation.amount.toFixed(2)}
+                    Total: {currency.code} {quotation.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
 
                 <footer className="text-center text-xs text-muted-foreground mt-12 border-t pt-4">

@@ -343,7 +343,7 @@ export default function QuotationsPage() {
         const url = window.location.href;
         const shareData = {
             title: `Quotation ${quote.id}`,
-            text: `Check out this quotation for ${quote.customer} for a total of ${currency.code} ${quote.amount.toFixed(2)}.`,
+            text: `Check out this quotation for ${quote.customer} for a total of ${currency.code} ${quote.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
             url: url,
         };
         try {
@@ -442,8 +442,8 @@ export default function QuotationsPage() {
                                                         <TableRow key={field.id}>
                                                             <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
                                                             <TableCell>{field.quantity}</TableCell>
-                                                            <TableCell className="text-right">{currency.code} {field.unitPrice.toFixed(2)}</TableCell>
-                                                            <TableCell className="text-right">{currency.code} {field.totalValue.toFixed(2)}</TableCell>
+                                                            <TableCell className="text-right">{currency.code} {field.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                                            <TableCell className="text-right">{currency.code} {field.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                                             <TableCell>
                                                                 <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
                                                                     <Trash2 className="h-4 w-4 text-destructive"/>
@@ -466,7 +466,7 @@ export default function QuotationsPage() {
                             <DialogFooter className="pt-4">
                                 <div className='w-full flex justify-between items-center'>
                                     <div className="text-lg font-semibold">
-                                        Total: {currency.code} {totalAmount.toFixed(2)}
+                                        Total: {currency.code} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
                                     <div className="flex gap-2">
                                         <DialogClose asChild>
@@ -512,7 +512,7 @@ export default function QuotationsPage() {
                           <TableCell className="text-right">
                             {quote.lineItems.reduce((acc, item) => acc + item.quantity, 0)}
                           </TableCell>
-                          <TableCell className="text-right">{currency.code} {quote.amount.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{currency.code} {quote.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                           <TableCell>
                           <Badge 
                               variant={statusVariant[quote.status] || 'secondary'}

@@ -188,7 +188,7 @@ export default function SaleOrdersPage() {
             toast({
                 variant: 'destructive',
                 title: 'Invalid Amount',
-                description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedOrder.amount - currentAmountPaid).toFixed(2)}`,
+                description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedOrder.amount - currentAmountPaid).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             });
             return;
         }
@@ -227,7 +227,7 @@ export default function SaleOrdersPage() {
         } else {
              toast({
                 title: 'Installment Recorded',
-                description: `Payment of ${currency.code} ${values.amount.toFixed(2)} for sale order ${selectedOrder.id} recorded.`
+                description: `Payment of ${currency.code} ${values.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for sale order ${selectedOrder.id} recorded.`
             });
         }
 
@@ -238,7 +238,7 @@ export default function SaleOrdersPage() {
         const url = window.location.href;
         const shareData = {
             title: `Sale Order ${order.id}`,
-            text: `Check out this sale order for ${order.customer} for a total of ${currency.code} ${order.amount.toFixed(2)}.`,
+            text: `Check out this sale order for ${order.customer} for a total of ${currency.code} ${order.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
             url: url,
         };
         try {
@@ -308,7 +308,7 @@ export default function SaleOrdersPage() {
                                     <TableCell className="font-mono">{order.quotationId}</TableCell>
                                     <TableCell className="font-medium">{order.customer}</TableCell>
                                     <TableCell className="text-right">{totalQty}</TableCell>
-                                    <TableCell className="text-right">{currency.code} {order.amount.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right">{currency.code} {order.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                     <TableCell>
                                         <Badge variant={order.status === 'Paid' ? 'outline' : 'default'}>{order.status}</Badge>
                                     </TableCell>
@@ -358,7 +358,7 @@ export default function SaleOrdersPage() {
                     <DialogHeader>
                         <DialogTitle>Record Payment for {selectedOrder?.id}</DialogTitle>
                         <CardDescription>
-                            Total: {currency.code} {selectedOrder?.amount.toFixed(2)} | Paid: {currency.code} {amountPaid.toFixed(2)} | Remaining: {currency.code} {remainingAmount.toFixed(2)}
+                            Total: {currency.code} {selectedOrder?.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Paid: {currency.code} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Remaining: {currency.code} {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </CardDescription>
                     </DialogHeader>
                     <Form {...form}>
