@@ -420,9 +420,7 @@ export default function StocksPage() {
   return (
     <>
       <main className="p-4">
-        <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold">Stocks</h1>
-        </div>
+        <h1 className="text-2xl font-bold mb-4">Stocks</h1>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="itemList">Stock Ledger</TabsTrigger>
@@ -635,33 +633,12 @@ export default function StocksPage() {
                     <CardDescription>Manage relationships between Finished Goods and Raw Materials.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="w-full md:w-1/2">
-                        <Label htmlFor="main-item-select">Select Main Item</Label>
-                        <Select onValueChange={handleMainItemSelect} value={selectedMainItemId || undefined}>
-                            <SelectTrigger id="main-item-select"><SelectValue placeholder="Select an item..." /></SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                    <SelectLabel>Finished Goods</SelectLabel>
-                                    {stocks.filter(s => s.type === 'Finished Good').map(item => (
-                                        <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
-                                    ))}
-                                </SelectGroup>
-                                <SelectGroup>
-                                    <SelectLabel>Raw Materials</SelectLabel>
-                                    {stocks.filter(s => s.type === 'Raw Material').map(item => (
-                                        <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
-                                    ))}
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {selectedMainItemId && (
+                    {selectedMainItemId ? (
                         <div>
                              <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <Label>Link {relatedItemTypeLabel}</Label>
-                                    <p className="text-sm text-muted-foreground">Select and quantify all related items below.</p>
+                                    <p className="text-sm text-muted-foreground">Select and quantify all related items for: <span className="font-semibold">{stocks.find(s => s.id === selectedMainItemId)?.name}</span></p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox
@@ -724,6 +701,10 @@ export default function StocksPage() {
                                 </Table>
                             </div>
                         </div>
+                    ) : (
+                         <div className="text-center text-muted-foreground py-12">
+                            <p>Please select an item from the "Stock Level" tab and click "Related Items" to manage its relationships.</p>
+                        </div>
                     )}
                     <div className="flex justify-end">
                         <Button onClick={handleSaveRelations} disabled={!selectedMainItemId}>Save Changes</Button>
@@ -736,6 +717,7 @@ export default function StocksPage() {
     </>
   );
 }
+
 
 
 
