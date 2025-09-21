@@ -186,6 +186,7 @@ export default function StocksPage() {
         });
 
         saleOrders.forEach(so => {
+            if (!so.lineItems) return; // Defensive check
             so.lineItems.forEach((item: any) => {
                  const stockItem = stocks.find(s => s.itemCode === item.itemId);
                 if (stockItem) {
