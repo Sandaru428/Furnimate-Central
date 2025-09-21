@@ -72,7 +72,10 @@ const itemSchema = z.object({
     stockLevel: z.coerce.number().int().min(0, "Stock level cannot be negative."),
     minimumLevel: z.coerce.number().int().min(0, "Minimum level cannot be negative.").optional(),
     maximumLevel: z.coerce.number().int().min(0, "Maximum level cannot be negative.").optional(),
-    linkedItems: z.array(z.string()).optional(),
+    linkedItems: z.array(z.object({
+        id: z.string(),
+        quantity: z.coerce.number().int().positive(),
+    })).optional(),
 }).refine(data => {
     if (data.minimumLevel !== undefined && data.maximumLevel !== undefined) {
         return data.maximumLevel >= data.minimumLevel;
@@ -259,7 +262,7 @@ export default function StocksPage() {
             if (editingItem && editingItem.id) {
                 // Update
                 const docRef = doc(db, 'stocks', editingItem.id);
-                await updateDoc(docRef, dataToSave);
+                await updateDoc(docRef, dataToSave as any);
                 setStocks(stocks.map(item => item.id === editingItem.id ? { ...item, ...values, id: item.id } : item).sort((a, b) => a.itemCode.localeCompare(b.itemCode)));
                 toast({
                   title: 'Item Updated',
@@ -328,6 +331,90 @@ export default function StocksPage() {
     const totalStockValue = filteredStockLevels.reduce((acc, item) => acc + (item.stockLevel * item.unitPrice), 0);
     const totalStockCount = filteredStockLevels.reduce((acc, item) => acc + item.stockLevel, 0);
 
+    const BomManager = ({ control, stocks, itemType }: { control: any, stocks: StockItem[], itemType: 'Raw Material' | 'Finished Good' | undefined }) => {
+        const { fields, append, remove, update } = useFieldArray({ control, name: "linkedItems" });
+        const [popoverOpen, setPopoverOpen] = useState(false);
+    
+        const rawMaterials = useMemo(() => stocks.filter(s => s.type === 'Raw Material'), [stocks]);
+    
+        const selectedItems = useMemo(() => new Set(fields.map((field: any) => field.id)), [fields]);
+    
+        const handleSelect = (material: StockItem) => {
+            if (selectedItems.has(material.id!)) {
+                const index = fields.findIndex((field: any) => field.id === material.id);
+                remove(index);
+            } else {
+                append({ id: material.id, quantity: 1 });
+            }
+        };
+
+        const renderLabel = () => {
+            if (itemType === 'Finished Good') {
+                return 'Define Bill of Materials (BOM)';
+            } else if (itemType === 'Raw Material') {
+                return 'Link to Finished Good(s)';
+            }
+            return '';
+        };
+
+        if (itemType !== 'Finished Good') return null;
+    
+        return (
+            <FormItem>
+                <FormLabel>{renderLabel()}</FormLabel>
+                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-between">
+                            {selectedItems.size > 0 ? `${selectedItems.size} raw materials selected` : "Select raw materials..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                        <ScrollArea className="max-h-60">
+                            <div className="p-2 space-y-1">
+                                {rawMaterials.map(material => (
+                                    <div key={material.id} className="flex items-center gap-2 p-1 rounded-md hover:bg-muted">
+                                        <Checkbox
+                                            id={`bom-${material.id}`}
+                                            checked={selectedItems.has(material.id!)}
+                                            onCheckedChange={() => handleSelect(material)}
+                                        />
+                                        <label htmlFor={`bom-${material.id}`} className="text-sm font-medium flex-1">
+                                            {material.name} ({material.itemCode})
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </PopoverContent>
+                </Popover>
+
+                {fields.length > 0 && (
+                    <div className="space-y-2 mt-2 border rounded-lg p-2">
+                        {fields.map((field, index) => {
+                            const material = rawMaterials.find(rm => rm.id === (field as any).id);
+                            return material ? (
+                                <div key={field.id} className="flex items-center justify-between gap-2">
+                                    <span className="text-sm">{material.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        <Label htmlFor={`qty-${field.id}`} className="text-xs">Qty:</Label>
+                                        <Input
+                                            id={`qty-${field.id}`}
+                                            type="number"
+                                            className="h-8 w-20"
+                                            defaultValue={(field as any).quantity}
+                                            onChange={(e) => update(index, { ...field, quantity: parseInt(e.target.value, 10) || 1 })}
+                                            min="1"
+                                        />
+                                    </div>
+                                </div>
+                            ) : null;
+                        })}
+                    </div>
+                )}
+            </FormItem>
+        );
+    };
 
   return (
     <>
@@ -398,59 +485,8 @@ export default function StocksPage() {
                                                         <FormField control={form.control} name="minimumLevel" render={({ field }) => <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                         <FormField control={form.control} name="maximumLevel" render={({ field }) => <FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 200" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                     </div>
-
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="linkedItems"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>{itemType === 'Raw Material' ? 'Link to Finished Good(s)' : 'Define Bill of Materials (BOM)'}</FormLabel>
-                                                                <Controller
-                                                                    control={form.control}
-                                                                    name="linkedItems"
-                                                                    render={({ field }) => {
-                                                                        const options = stocks.filter(i => i.type === (itemType === 'Raw Material' ? 'Finished Good' : 'Raw Material'));
-                                                                        return (
-                                                                            <Popover>
-                                                                                <PopoverTrigger asChild>
-                                                                                    <FormControl>
-                                                                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}>
-                                                                                            {field.value?.length ? `${field.value.length} raw materials selected` : "Select raw materials..."}
-                                                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                                        </Button>
-                                                                                    </FormControl>
-                                                                                </PopoverTrigger>
-                                                                                <PopoverContent className="w-[300px] p-0">
-                                                                                    <ScrollArea className="max-h-60">
-                                                                                        <div className="p-2 space-y-1">
-                                                                                            {options.map((option) => (
-                                                                                                <div key={option.id} className="flex items-center gap-2">
-                                                                                                    <Checkbox
-                                                                                                        id={option.itemCode}
-                                                                                                        checked={field.value?.includes(option.itemCode)}
-                                                                                                        onCheckedChange={(checked) => {
-                                                                                                            const current = field.value || [];
-                                                                                                            if (checked) {
-                                                                                                                field.onChange([...current, option.itemCode]);
-                                                                                                            } else {
-                                                                                                                field.onChange(current.filter(code => code !== option.itemCode));
-                                                                                                            }
-                                                                                                        }}
-                                                                                                    />
-                                                                                                    <label htmlFor={option.itemCode} className="text-sm font-medium">{option.name} ({option.itemCode})</label>
-                                                                                                </div>
-                                                                                            ))}
-                                                                                        </div>
-                                                                                    </ScrollArea>
-                                                                                </PopoverContent>
-                                                                            </Popover>
-                                                                        )
-                                                                    }}
-                                                                />
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
+                                                    
+                                                    <BomManager control={form.control} stocks={stocks} itemType={itemType}/>
                                                 </>
                                             )}
                                         </div>
@@ -483,29 +519,44 @@ export default function StocksPage() {
                     <TableHead className="text-right">In</TableHead>
                     <TableHead className="text-right">Out</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {loading ? (
-                        <TableRow><TableCell colSpan={7} className="text-center">Loading...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="text-center">Loading...</TableCell></TableRow>
                     ) : filteredStockMovements.length > 0 ? (
-                        filteredStockMovements.map((item, index) => (
-                        <TableRow key={`${item.refId}-${item.itemCode}-${index}`}>
-                            <TableCell>{format(parseISO(item.date), 'yyyy-MM-dd')}</TableCell>
-                            <TableCell className="font-mono">{item.itemCode}</TableCell>
-                            <TableCell className="font-medium">{item.itemName}</TableCell>
-                            <TableCell className="font-mono">
-                                <Badge variant={item.type === 'PO' ? 'secondary' : 'outline'}>
-                                {item.refId}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="text-right text-green-600 font-medium">{item.inQty > 0 ? item.inQty : '-'}</TableCell>
-                            <TableCell className="text-right text-red-600 font-medium">{item.outQty > 0 ? item.outQty : '-'}</TableCell>
-                            <TableCell className="text-right font-bold">{item.balance}</TableCell>
-                        </TableRow>
-                        ))
+                        filteredStockMovements.map((item, index) => {
+                            const stockItem = stocks.find(s => s.itemCode === item.itemCode);
+                            return (
+                                <TableRow key={`${item.refId}-${item.itemCode}-${index}`}>
+                                    <TableCell>{format(parseISO(item.date), 'yyyy-MM-dd')}</TableCell>
+                                    <TableCell className="font-mono">{item.itemCode}</TableCell>
+                                    <TableCell className="font-medium">{item.itemName}</TableCell>
+                                    <TableCell className="font-mono">
+                                        <Badge variant={item.type === 'PO' ? 'secondary' : 'outline'}>
+                                        {item.refId}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right text-green-600 font-medium">{item.inQty > 0 ? item.inQty : '-'}</TableCell>
+                                    <TableCell className="text-right text-red-600 font-medium">{item.outQty > 0 ? item.outQty : '-'}</TableCell>
+                                    <TableCell className="text-right font-bold">{item.balance}</TableCell>
+                                    <TableCell>
+                                    {stockItem && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => openDialog(stockItem)}>Edit</DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(stockItem.id!)}>Delete</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
+                                </TableCell>
+                                </TableRow>
+                            )
+                        })
                     ) : (
-                        <TableRow><TableCell colSpan={7} className="text-center">No stock movements found.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="text-center">No stock movements found.</TableCell></TableRow>
                     )}
                 </TableBody>
                 </Table>
