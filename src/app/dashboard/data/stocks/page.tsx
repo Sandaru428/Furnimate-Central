@@ -46,10 +46,10 @@ import {
     FormMessage,
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle, Edit } from 'lucide-react';
+import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectLabel } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useAtom } from 'jotai';
 import { currencyAtom, stocksAtom, purchaseOrdersAtom, saleOrdersAtom, companyProfileAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
@@ -354,8 +354,8 @@ export default function StocksPage() {
         if (itemType !== 'Finished Good') return null;
     
         return (
-            <FormItem className="col-span-1 md:col-span-2">
-                <FormLabel>{renderLabel()}</FormLabel>
+            <div className="col-span-1 md:col-span-2 space-y-2">
+                <Label>{renderLabel()}</Label>
                 <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                     <PopoverTrigger asChild>
                         <Button variant="outline" role="combobox" className="w-full justify-between">
@@ -415,7 +415,7 @@ export default function StocksPage() {
                          <p className="text-sm text-muted-foreground text-center py-2">No raw materials selected.</p>
                     )}
                 </div>
-            </FormItem>
+            </div>
         );
     };
 
@@ -607,36 +607,38 @@ export default function StocksPage() {
                                     <Form {...form}>
                                         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
                                             <ScrollArea className="flex-1 pr-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="type"
-                                                        render={({ field }) => (
-                                                            <FormItem className="md:col-span-2">
-                                                                <FormLabel>Type</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value} disabled={!!editingItem}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="Raw Material">Raw Material</SelectItem>
-                                                                        <SelectItem value="Finished Good">Finished Good</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
+                                                <div className="py-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <FormField
+                                                            control={form.control}
+                                                            name="type"
+                                                            render={({ field }) => (
+                                                                <FormItem className="md:col-span-2">
+                                                                    <FormLabel>Type</FormLabel>
+                                                                    <Select onValueChange={field.onChange} value={field.value} disabled={!!editingItem}>
+                                                                        <FormControl>
+                                                                            <SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger>
+                                                                        </FormControl>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="Raw Material">Raw Material</SelectItem>
+                                                                            <SelectItem value="Finished Good">Finished Good</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
 
-                                                    {itemType && (
-                                                        <>
-                                                            <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} readOnly /></FormControl><FormMessage /></FormItem>} />
-                                                            <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                            <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                            <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                            <BomManager control={form.control} stocks={stocks} itemType={itemType}/>
-                                                        </>
-                                                    )}
+                                                        {itemType && (
+                                                            <>
+                                                                <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} readOnly /></FormControl><FormMessage /></FormItem>} />
+                                                                <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                                <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                                <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                                <BomManager control={form.control} stocks={stocks} itemType={itemType}/>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </ScrollArea>
                                             <DialogFooter className="pt-4">
@@ -713,14 +715,18 @@ export default function StocksPage() {
                             <Select onValueChange={handleMainItemSelect} value={selectedMainItemId || undefined}>
                                 <SelectTrigger id="main-item-select"><SelectValue placeholder="Select an item..." /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectLabel>Finished Goods</SelectLabel>
-                                    {stocks.filter(s => s.type === 'Finished Good').map(item => (
-                                        <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
-                                    ))}
-                                    <SelectLabel>Raw Materials</SelectLabel>
-                                     {stocks.filter(s => s.type === 'Raw Material').map(item => (
-                                        <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
-                                    ))}
+                                    <SelectGroup>
+                                        <SelectLabel>Finished Goods</SelectLabel>
+                                        {stocks.filter(s => s.type === 'Finished Good').map(item => (
+                                            <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                    <SelectGroup>
+                                        <SelectLabel>Raw Materials</SelectLabel>
+                                        {stocks.filter(s => s.type === 'Raw Material').map(item => (
+                                            <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
+                                        ))}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -772,6 +778,7 @@ export default function StocksPage() {
     </>
   );
 }
+
 
 
 
