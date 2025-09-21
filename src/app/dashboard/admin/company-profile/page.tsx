@@ -31,6 +31,7 @@ const formSchema = z.object({
   phone: z.string().min(1, 'Phone number is required'),
   logo: z.any().optional(),
   currency: z.string().min(1, 'Currency is required'),
+  stockOrderMethod: z.enum(['FIFO', 'LIFO']).optional(),
   autoLogoutMinutes: z.coerce.number().min(0, "Auto-logout must be 0 or a positive number.").optional(),
   quotationValidityDays: z.coerce.number().min(1, "Validity period must be at least 1 day.").optional(),
 });
@@ -169,6 +170,28 @@ export default function CompanyProfilePage() {
                               ))}
                             </SelectContent>
                           </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="stockOrderMethod"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Order Method</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a method" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="FIFO">FIFO (First In, First Out)</SelectItem>
+                                <SelectItem value="LIFO">LIFO (Last In, First Out)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                           <p className="text-xs text-muted-foreground">Determines how stock is allocated during sales.</p>
                           <FormMessage />
                         </FormItem>
                       )}

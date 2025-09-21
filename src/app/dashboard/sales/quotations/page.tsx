@@ -60,7 +60,7 @@ import { currencyAtom, stocksAtom, customersAtom, quotationsAtom, saleOrdersAtom
 import type { StockItem } from '../../data/stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, writeBatch, where } from 'firebase/firestore';
 
 
 const lineItemSchema = z.object({
@@ -292,23 +292,29 @@ export default function QuotationsPage() {
         const quotation = quotations.find(q => q.id === quotationId);
         if (!quotation) return;
 
+        const batch = writeBatch(db);
         let insufficientStock = false;
+        const updatedStocks: StockItem[] = [];
+
         for (const item of quotation.lineItems) {
-            const stocksQuery = query(collection(db, "stocks"), where("itemCode", "==", item.itemId));
-            const masterItemSnapshot = await getDocs(stocksQuery);
+            const stockItem = stocks.find(s => s.itemCode === item.itemId);
             
-            if (masterItemSnapshot.empty) {
+            if (!stockItem) {
                 insufficientStock = true;
                 toast({ variant: "destructive", title: 'Item Not Found', description: `Item with code ${item.itemId} not found.` });
                 break;
             }
 
-            const masterItem = masterItemSnapshot.docs[0].data() as StockItem;
-            if (masterItem.stockLevel < item.quantity) {
+            if (stockItem.stockLevel < item.quantity) {
                 insufficientStock = true;
-                toast({ variant: "destructive", title: 'Stock Unavailable', description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${masterItem.stockLevel}` });
+                toast({ variant: "destructive", title: 'Stock Unavailable', description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${stockItem.stockLevel}` });
                 break;
             }
+            
+            const stockDocRef = doc(db, 'stocks', stockItem.id!);
+            const newStockLevel = stockItem.stockLevel - item.quantity;
+            batch.update(stockDocRef, { stockLevel: newStockLevel });
+            updatedStocks.push({ ...stockItem, stockLevel: newStockLevel });
         }
 
         if (insufficientStock) return;
@@ -323,13 +329,19 @@ export default function QuotationsPage() {
             status: 'Processing',
         };
         
-        await setDoc(doc(db, "saleOrders", newOrderId), newOrder);
+        const saleOrderRef = doc(db, "saleOrders", newOrderId);
+        batch.set(saleOrderRef, newOrder);
+
+        const quotationRef = doc(db, "quotations", quotationId);
+        batch.update(quotationRef, { status: 'Converted' });
+        
+        await batch.commit();
+
         setSaleOrders(prev => [newOrder, ...prev] as any);
-
-        await updateDoc(doc(db, "quotations", quotationId), { status: 'Converted' });
         setQuotations(quotations.map(q => q.id === quotationId ? { ...q, status: 'Converted' } : q ));
+        setStocks(currentStocks => currentStocks.map(s => updatedStocks.find(us => us.id === s.id) || s));
 
-        toast({ title: 'Quotation Converted to Sale Order', description: `Stock checked and available. Sale Order created from ${quotationId}.` });
+        toast({ title: 'Quotation Converted to Sale Order', description: `Stock allocated and sale order created from ${quotationId}.` });
         router.push('/dashboard/sales/orders');
     };
 

@@ -28,6 +28,7 @@ export type CompanyProfile = {
   currency: string;
   autoLogoutMinutes?: number;
   quotationValidityDays?: number;
+  stockOrderMethod?: 'FIFO' | 'LIFO';
 };
 
 export type AuthProfile = {
@@ -68,6 +69,7 @@ export const companyProfileAtom = atom<CompanyProfile>({
   currency: 'LKR',
   autoLogoutMinutes: 0,
   quotationValidityDays: 30,
+  stockOrderMethod: 'FIFO',
 });
 
 export const authProfileAtom = atom<AuthProfile | null>(null);
