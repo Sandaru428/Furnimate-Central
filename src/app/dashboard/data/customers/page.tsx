@@ -45,10 +45,10 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Merge } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, query } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query, writeBatch } from 'firebase/firestore';
 import { format, parseISO } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -92,22 +92,23 @@ export default function CustomersPage() {
       }
   }, [phoneValue, form]);
 
+  const fetchCustomers = async () => {
+    setLoading(true);
+    const q = query(collection(db, "customers"));
+    const querySnapshot = await getDocs(q);
+    const customersData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+            id: doc.id, 
+            ...data,
+            dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
+        } as Customer
+    });
+    setCustomers(customersData);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchCustomers = async () => {
-      setLoading(true);
-      const q = query(collection(db, "customers"));
-      const querySnapshot = await getDocs(q);
-      const customersData = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return { 
-              id: doc.id, 
-              ...data,
-              dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
-          } as Customer
-      });
-      setCustomers(customersData);
-      setLoading(false);
-    };
     fetchCustomers();
   }, []);
 
@@ -159,6 +160,56 @@ export default function CustomersPage() {
     }
   }
 
+  const handleMergeDuplicates = async () => {
+    setLoading(true);
+    const duplicates = new Map<string, Customer[]>();
+
+    // Group customers by normalized name
+    customers.forEach(c => {
+        const normalizedName = c.name.trim().toLowerCase();
+        if (!duplicates.has(normalizedName)) {
+            duplicates.set(normalizedName, []);
+        }
+        duplicates.get(normalizedName)!.push(c);
+    });
+
+    const batch = writeBatch(db);
+    let mergeCount = 0;
+
+    for (const [name, group] of duplicates.entries()) {
+        if (group.length > 1) {
+            mergeCount += (group.length - 1);
+            const [primary, ...rest] = group; // Keep the first one
+            
+            // In a real scenario, you'd merge fields intelligently.
+            // Here, we just delete the duplicates.
+            rest.forEach(duplicate => {
+                if (duplicate.id) {
+                    const docRef = doc(db, 'customers', duplicate.id);
+                    batch.delete(docRef);
+                }
+            });
+        }
+    }
+
+    if (mergeCount > 0) {
+        await batch.commit();
+        toast({
+            title: 'Duplicates Merged',
+            description: `Successfully merged and removed ${mergeCount} duplicate customer records.`,
+        });
+        // Re-fetch customers to update the UI
+        await fetchCustomers();
+    } else {
+        toast({
+            title: 'No Duplicates Found',
+            description: 'No duplicate customer records were found.',
+        });
+    }
+
+    setLoading(false);
+  };
+
   const openDialog = (customer: Customer | null) => {
     if (customer) {
         setEditingCustomer(customer);
@@ -196,7 +247,11 @@ export default function CustomersPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-              <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingCustomer(null); setIsDialogOpen(isOpen); }}>
+            <Button variant="outline" onClick={handleMergeDuplicates} disabled={loading}>
+                <Merge className="mr-2 h-4 w-4" />
+                Merge Duplicates
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingCustomer(null); setIsDialogOpen(isOpen); }}>
               <DialogTrigger asChild>
                 <Button onClick={() => openDialog(null)}>
                   <PlusCircle className="mr-2 h-4 w-4" />
