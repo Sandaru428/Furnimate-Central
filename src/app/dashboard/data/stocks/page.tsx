@@ -77,7 +77,10 @@ const itemSchema = z.object({
     })).optional(),
 });
 
-export type StockItem = z.infer<typeof itemSchema>;
+export type StockItem = z.infer<typeof itemSchema> & {
+    minimumLevel?: number;
+    maximumLevel?: number;
+};
 
 type StockMovement = {
     date: string;
@@ -426,71 +429,12 @@ export default function StocksPage() {
             </div>
         <TabsContent value="itemList">
             <div className="flex items-center justify-between mb-4">
-                <h1 className="text-2xl font-bold sr-only">Stocks</h1>
-                <div className="flex items-center gap-2">
-                    <Input
-                        placeholder="Search items or refs..."
-                        className="w-64"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                        <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingItem(null); setIsDialogOpen(isOpen); }}>
-                        <DialogTrigger asChild>
-                            <Button onClick={() => openDialog(null)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add New Item
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
-                            <DialogHeader>
-                                <DialogTitle>{editingItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
-                            </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-                                    <ScrollArea className="flex-1 pr-6">
-                                        <div className="space-y-4 py-4">
-                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="type"
-                                                    render={({ field }) => (
-                                                        <FormItem className="md:col-span-2">
-                                                            <FormLabel>Type</FormLabel>
-                                                            <Select onValueChange={field.onChange} value={field.value} disabled={!!editingItem}>
-                                                                <FormControl>
-                                                                    <SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger>
-                                                                </FormControl>
-                                                                <SelectContent>
-                                                                    <SelectItem value="Raw Material">Raw Material</SelectItem>
-                                                                    <SelectItem value="Finished Good">Finished Good</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-
-                                                {itemType && (
-                                                    <>
-                                                        <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} readOnly /></FormControl><FormMessage /></FormItem>} />
-                                                        <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                        <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                        <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                        <BomManager control={form.control} stocks={stocks} itemType={itemType}/>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </ScrollArea>
-                                    <DialogFooter className="pt-4">
-                                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                                        <Button type="submit" disabled={!itemType}>{editingItem ? 'Save Changes' : 'Add Item'}</Button>
-                                    </DialogFooter>
-                                </form>
-                            </Form>
-                        </DialogContent>
-                    </Dialog>
-                </div>
+                <Input
+                    placeholder="Search items or refs..."
+                    className="w-64"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
             </div>
             <Card>
             <CardHeader>
@@ -579,6 +523,60 @@ export default function StocksPage() {
                                     <SelectItem value="Finished Good">Finished Good</SelectItem>
                                 </SelectContent>
                             </Select>
+                            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingItem(null); setIsDialogOpen(isOpen); }}>
+                                <DialogTrigger asChild>
+                                    <Button onClick={() => openDialog(null)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Add New Item
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
+                                    <DialogHeader>
+                                        <DialogTitle>{editingItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
+                                    </DialogHeader>
+                                    <Form {...form}>
+                                        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                                            <ScrollArea className="flex-1 pr-6">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="type"
+                                                        render={({ field }) => (
+                                                            <FormItem className="md:col-span-2">
+                                                                <FormLabel>Type</FormLabel>
+                                                                <Select onValueChange={field.onChange} value={field.value} disabled={!!editingItem}>
+                                                                    <FormControl>
+                                                                        <SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger>
+                                                                    </FormControl>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="Raw Material">Raw Material</SelectItem>
+                                                                        <SelectItem value="Finished Good">Finished Good</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+
+                                                    {itemType && (
+                                                        <>
+                                                            <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} readOnly /></FormControl><FormMessage /></FormItem>} />
+                                                            <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                            <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                            <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                            <BomManager control={form.control} stocks={stocks} itemType={itemType}/>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </ScrollArea>
+                                            <DialogFooter className="pt-4">
+                                                <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                                                <Button type="submit" disabled={!itemType}>{editingItem ? 'Save Changes' : 'Add Item'}</Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </Form>
+                                </DialogContent>
+                            </Dialog>
                         </div>
                         <div className="text-right">
                             <div className="text-sm text-muted-foreground">Total Stock Count</div>
@@ -641,5 +639,6 @@ export default function StocksPage() {
     </>
   );
 }
+
 
 
