@@ -357,7 +357,7 @@ export default function StocksPage() {
         setRelatedItemsState(prev => {
             const exists = prev.some(item => item.id === relatedId);
             if (isChecked) {
-                return exists ? prev : [...prev, { id: relatedId, quantity: 1 }];
+                return exists ? prev : [...prev, { id: relatedId, quantity: 0 }];
             } else {
                 return prev.filter(item => item.id !== relatedId);
             }
@@ -366,7 +366,7 @@ export default function StocksPage() {
 
     const handleRelatedItemQuantityChange = (relatedId: string, quantity: number) => {
         setRelatedItemsState(prev => 
-            prev.map(item => item.id === relatedId ? { ...item, quantity: quantity > 0 ? quantity : 1 } : item)
+            prev.map(item => item.id === relatedId ? { ...item, quantity: quantity >= 0 ? quantity : 0 } : item)
         );
     };
     
@@ -747,7 +747,7 @@ export default function StocksPage() {
                                     <TableBody>
                                         {filteredRelatedItems.map(item => {
                                             const isChecked = relatedItemsState.some(ri => ri.id === item.id);
-                                            const currentQuantity = relatedItemsState.find(ri => ri.id === item.id)?.quantity || 1;
+                                            const currentQuantity = relatedItemsState.find(ri => ri.id === item.id)?.quantity || 0;
                                             return (
                                             <TableRow key={item.id}>
                                                 <TableCell>
@@ -764,7 +764,7 @@ export default function StocksPage() {
                                                         value={currentQuantity}
                                                         onChange={(e) => handleRelatedItemQuantityChange(item.id!, parseInt(e.target.value))}
                                                         className="h-8"
-                                                        min="1"
+                                                        min="0"
                                                         disabled={!isChecked}
                                                     />
                                                 </TableCell>
@@ -801,4 +801,5 @@ export default function StocksPage() {
     </>
   );
 }
+
 
