@@ -72,7 +72,7 @@ const itemSchema = z.object({
     unitOfMeasure: z.string().optional(),
     linkedItems: z.array(z.object({
         id: z.string(),
-        quantity: z.coerce.number().int().positive(),
+        quantity: z.coerce.number().nonnegative(),
     })).optional(),
     minimumLevel: z.coerce.number().optional(),
     maximumLevel: z.coerce.number().optional(),
@@ -392,20 +392,20 @@ export default function StocksPage() {
         }
     };
     
-    const { mainItemTypeLabel, relatedItems } = useMemo(() => {
-        if (!selectedMainItemId) return { mainItems: [], relatedItems: [], mainItemTypeLabel: '', relatedItemTypeLabel: '' };
+    const { mainItem, relatedItems } = useMemo(() => {
+        if (!selectedMainItemId) return { mainItem: null, relatedItems: [] };
 
         const mainItem = stocks.find(s => s.id === selectedMainItemId);
-        if (!mainItem) return { mainItems: [], relatedItems: [], mainItemTypeLabel: '', relatedItemTypeLabel: '' };
+        if (!mainItem) return { mainItem: null, relatedItems: [] };
 
         if (mainItem.type === 'Finished Good') {
             return {
-                mainItemTypeLabel: 'Finished Good',
+                mainItem: mainItem,
                 relatedItems: stocks.filter(s => s.type === 'Raw Material'),
             };
         } else { // Raw Material
             return {
-                mainItemTypeLabel: 'Raw Material',
+                mainItem: mainItem,
                 relatedItems: stocks.filter(s => s.type === 'Finished Good'),
             };
         }
@@ -605,8 +605,8 @@ export default function StocksPage() {
                                                                                         };
 
                                                                                         const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-                                                                                            const newQuantity = parseInt(e.target.value, 10);
-                                                                                            if (!isNaN(newQuantity) && newQuantity > 0) {
+                                                                                            const newQuantity = parseFloat(e.target.value);
+                                                                                            if (!isNaN(newQuantity) && newQuantity >= 0) {
                                                                                                 const newValue = field.value?.map(li =>
                                                                                                     li.id === rawMaterial.id ? { ...li, quantity: newQuantity } : li
                                                                                                 );
@@ -630,7 +630,8 @@ export default function StocksPage() {
                                                                                                         value={linkedItem.quantity}
                                                                                                         onChange={handleQuantityChange}
                                                                                                         className="h-8 w-20"
-                                                                                                        min="1"
+                                                                                                        min="0"
+                                                                                                        step="0.01"
                                                                                                     />
                                                                                                 )}
                                                                                             </div>
@@ -721,8 +722,10 @@ export default function StocksPage() {
                         <div>
                              <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <Label>Link {mainItemTypeLabel === 'Finished Good' ? 'Raw Materials' : 'Finished Goods'}</Label>
-                                    <p className="text-sm text-muted-foreground">Select and quantify all related items for: <span className="font-semibold">{stocks.find(s => s.id === selectedMainItemId)?.name}</span></p>
+                                    <Label>
+                                         {mainItem?.type === 'Finished Good' ? 'Link Raw Materials' : 'Link Finished Goods'}
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">Select and quantify all related items for: <span className="font-semibold">{mainItem?.itemCode} - {mainItem?.name}</span></p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox
@@ -762,9 +765,10 @@ export default function StocksPage() {
                                                     <Input 
                                                         type="number" 
                                                         value={currentQuantity}
-                                                        onChange={(e) => handleRelatedItemQuantityChange(item.id!, parseInt(e.target.value))}
+                                                        onChange={(e) => handleRelatedItemQuantityChange(item.id!, parseFloat(e.target.value))}
                                                         className="h-8"
                                                         min="0"
+                                                        step="0.01"
                                                         disabled={!isChecked}
                                                     />
                                                 </TableCell>
@@ -801,5 +805,6 @@ export default function StocksPage() {
     </>
   );
 }
+
 
 
