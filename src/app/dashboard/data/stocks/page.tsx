@@ -107,7 +107,8 @@ export default function StocksPage() {
     const [activeTab, setActiveTab] = useState("itemList");
     const [stockLevelSearchTerm, setStockLevelSearchTerm] = useState("");
     const [stockLevelFilter, setStockLevelFilter] = useState<"all" | "Raw Material" | "Finished Good">("all");
-
+    const [selectedMainItemId, setSelectedMainItemId] = useState<string | null>(null);
+    const [relatedItemIds, setRelatedItemIds] = useState<string[]>([]);
 
     const form = useForm<StockItem>({
         resolver: zodResolver(itemSchema),
@@ -382,9 +383,9 @@ export default function StocksPage() {
                     </PopoverContent>
                 </Popover>
 
-                {fields.length > 0 && (
-                    <div className="space-y-2 mt-2 border rounded-lg p-2">
-                        {fields.map((field, index) => {
+                <div className="space-y-2 mt-2 border rounded-lg p-2 max-h-48 overflow-y-auto">
+                    {fields.length > 0 ? (
+                        fields.map((field, index) => {
                             const material = rawMaterials.find(rm => rm.id === (field as any).id);
                             return material ? (
                                 <div key={field.id} className="flex items-center justify-between gap-2">
@@ -409,12 +410,80 @@ export default function StocksPage() {
                                     </div>
                                 </div>
                             ) : null;
-                        })}
-                    </div>
-                )}
+                        })
+                    ) : (
+                         <p className="text-sm text-muted-foreground text-center py-2">No raw materials selected.</p>
+                    )}
+                </div>
             </FormItem>
         );
     };
+
+    const handleMainItemSelect = (itemId: string) => {
+        setSelectedMainItemId(itemId);
+        const mainItem = stocks.find(s => s.id === itemId);
+        if (mainItem) {
+            setRelatedItemIds(mainItem.linkedItems?.map(li => li.id) || []);
+        } else {
+            setRelatedItemIds([]);
+        }
+    };
+    
+    const handleRelatedItemToggle = (relatedId: string, isChecked: boolean | 'indeterminate') => {
+        setRelatedItemIds(prev => isChecked ? [...prev, relatedId] : prev.filter(id => id !== relatedId));
+    };
+
+    const handleSelectAllRelated = (allIds: string[], isChecked: boolean | 'indeterminate') => {
+        setRelatedItemIds(isChecked ? allIds : []);
+    };
+    
+    const handleSaveRelations = async () => {
+        if (!selectedMainItemId) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No main item selected.' });
+            return;
+        }
+        const mainItem = stocks.find(s => s.id === selectedMainItemId);
+        if (!mainItem) return;
+
+        // For simplicity, we assume qty is 1 when linking this way. BOM manager handles detailed qty.
+        const newLinkedItems = relatedItemIds.map(id => ({ id, quantity: 1 })); 
+        
+        try {
+            const docRef = doc(db, 'stocks', selectedMainItemId);
+            await updateDoc(docRef, { linkedItems: newLinkedItems });
+            
+            setStocks(prev => prev.map(s => s.id === selectedMainItemId ? { ...s, linkedItems: newLinkedItems } : s));
+            
+            toast({ title: 'Success', description: 'Item relationships have been updated.' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update relationships.' });
+        }
+    };
+    
+    const { mainItems, relatedItems, mainItemTypeLabel, relatedItemTypeLabel } = useMemo(() => {
+        if (!selectedMainItemId) return { mainItems: [], relatedItems: [], mainItemTypeLabel: '', relatedItemTypeLabel: '' };
+
+        const mainItem = stocks.find(s => s.id === selectedMainItemId);
+        if (!mainItem) return { mainItems: [], relatedItems: [], mainItemTypeLabel: '', relatedItemTypeLabel: '' };
+
+        if (mainItem.type === 'Finished Good') {
+            return {
+                mainItems: stocks.filter(s => s.type === 'Finished Good'),
+                relatedItems: stocks.filter(s => s.type === 'Raw Material'),
+                mainItemTypeLabel: 'Finished Good',
+                relatedItemTypeLabel: 'Raw Materials'
+            };
+        } else { // Raw Material
+            return {
+                mainItems: stocks.filter(s => s.type === 'Raw Material'),
+                relatedItems: stocks.filter(s => s.type === 'Finished Good'),
+                mainItemTypeLabel: 'Raw Material',
+                relatedItemTypeLabel: 'Finished Goods'
+            };
+        }
+    }, [stocks, selectedMainItemId]);
+
+    const isAllRelatedSelected = relatedItems.length > 0 && relatedItemIds.length === relatedItems.length;
 
   return (
     <>
@@ -425,6 +494,7 @@ export default function StocksPage() {
                 <TabsList>
                     <TabsTrigger value="itemList">Stock Ledger</TabsTrigger>
                     <TabsTrigger value="stockLevel">Stock Level</TabsTrigger>
+                    <TabsTrigger value="relatedItems">Related Items</TabsTrigger>
                 </TabsList>
             </div>
         <TabsContent value="itemList">
@@ -594,15 +664,13 @@ export default function StocksPage() {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Type</TableHead>
                                 <TableHead className="text-right">Stock Level</TableHead>
-                                <TableHead className="text-right">Min Level</TableHead>
-                                <TableHead className="text-right">Max Level</TableHead>
                                 <TableHead className="text-right">Value</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                            {loading ? (
-                                <TableRow><TableCell colSpan={8} className="text-center">Loading...</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={6} className="text-center">Loading...</TableCell></TableRow>
                             ) : filteredStockLevels.length > 0 ? (
                                 filteredStockLevels.map((item) => (
                                     <TableRow key={item.id}>
@@ -612,8 +680,6 @@ export default function StocksPage() {
                                             <Badge variant={item.type === 'Raw Material' ? 'outline' : 'default'}>{item.type}</Badge>
                                         </TableCell>
                                         <TableCell className="text-right font-bold">{item.stockLevel}</TableCell>
-                                        <TableCell className="text-right">{item.minimumLevel || '-'}</TableCell>
-                                        <TableCell className="text-right">{item.maximumLevel || '-'}</TableCell>
                                         <TableCell className="text-right">{currency.code} {(item.unitPrice * item.stockLevel).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                         <TableCell>
                                             <DropdownMenu>
@@ -627,10 +693,78 @@ export default function StocksPage() {
                                     </TableRow>
                                 ))
                             ) : (
-                                <TableRow><TableCell colSpan={8} className="text-center">No items match your search.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={6} className="text-center">No items match your search.</TableCell></TableRow>
                             )}
                         </TableBody>
                      </Table>
+                </CardContent>
+            </Card>
+        </TabsContent>
+         <TabsContent value="relatedItems">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Related Items</CardTitle>
+                    <CardDescription>Manage relationships between Finished Goods and Raw Materials.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormItem>
+                            <FormLabel>Select Main Item</FormLabel>
+                            <Select onValueChange={handleMainItemSelect} value={selectedMainItemId || undefined}>
+                                <SelectTrigger><SelectValue placeholder="Select an item..." /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectLabel>Finished Goods</SelectLabel>
+                                    {stocks.filter(s => s.type === 'Finished Good').map(item => (
+                                        <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
+                                    ))}
+                                    <SelectLabel>Raw Materials</SelectLabel>
+                                     {stocks.filter(s => s.type === 'Raw Material').map(item => (
+                                        <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </FormItem>
+                    </div>
+
+                    {selectedMainItemId && (
+                        <div>
+                             <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <FormLabel>Link {relatedItemTypeLabel}</FormLabel>
+                                    <p className="text-sm text-muted-foreground">Select all related items below.</p>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="select-all-related"
+                                        checked={isAllRelatedSelected}
+                                        onCheckedChange={(checked) => handleSelectAllRelated(relatedItems.map(ri => ri.id!), checked)}
+                                    />
+                                    <Label htmlFor="select-all-related" className="text-sm font-medium">Select All</Label>
+                                </div>
+                            </div>
+                            <ScrollArea className="h-72 rounded-md border">
+                                <div className="p-4 space-y-2">
+                                    {relatedItems.map(item => (
+                                        <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                            <FormControl>
+                                                <Checkbox
+                                                    checked={relatedItemIds.includes(item.id!)}
+                                                    onCheckedChange={(checked) => handleRelatedItemToggle(item.id!, checked)}
+                                                />
+                                            </FormControl>
+                                            <div className="space-y-1 leading-none">
+                                                <FormLabel className="font-normal">{item.name}</FormLabel>
+                                                <p className="text-xs text-muted-foreground">{item.itemCode}</p>
+                                            </div>
+                                        </FormItem>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    )}
+                    <div className="flex justify-end">
+                        <Button onClick={handleSaveRelations} disabled={!selectedMainItemId}>Save Changes</Button>
+                    </div>
                 </CardContent>
             </Card>
         </TabsContent>
@@ -639,6 +773,7 @@ export default function StocksPage() {
     </>
   );
 }
+
 
 
 
