@@ -708,10 +708,10 @@ export default function StocksPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormItem>
-                            <FormLabel>Select Main Item</FormLabel>
+                        <div className="space-y-2">
+                            <Label htmlFor="main-item-select">Select Main Item</Label>
                             <Select onValueChange={handleMainItemSelect} value={selectedMainItemId || undefined}>
-                                <SelectTrigger><SelectValue placeholder="Select an item..." /></SelectTrigger>
+                                <SelectTrigger id="main-item-select"><SelectValue placeholder="Select an item..." /></SelectTrigger>
                                 <SelectContent>
                                     <SelectLabel>Finished Goods</SelectLabel>
                                     {stocks.filter(s => s.type === 'Finished Good').map(item => (
@@ -723,14 +723,14 @@ export default function StocksPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </FormItem>
+                        </div>
                     </div>
 
                     {selectedMainItemId && (
                         <div>
                              <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <FormLabel>Link {relatedItemTypeLabel}</FormLabel>
+                                    <Label>Link {relatedItemTypeLabel}</Label>
                                     <p className="text-sm text-muted-foreground">Select all related items below.</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
@@ -745,18 +745,17 @@ export default function StocksPage() {
                             <ScrollArea className="h-72 rounded-md border">
                                 <div className="p-4 space-y-2">
                                     {relatedItems.map(item => (
-                                        <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
-                                            <FormControl>
-                                                <Checkbox
-                                                    checked={relatedItemIds.includes(item.id!)}
-                                                    onCheckedChange={(checked) => handleRelatedItemToggle(item.id!, checked)}
-                                                />
-                                            </FormControl>
+                                        <div key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                            <Checkbox
+                                                id={`related-${item.id}`}
+                                                checked={relatedItemIds.includes(item.id!)}
+                                                onCheckedChange={(checked) => handleRelatedItemToggle(item.id!, checked)}
+                                            />
                                             <div className="space-y-1 leading-none">
-                                                <FormLabel className="font-normal">{item.name}</FormLabel>
+                                                <Label htmlFor={`related-${item.id}`} className="font-normal">{item.name}</Label>
                                                 <p className="text-xs text-muted-foreground">{item.itemCode}</p>
                                             </div>
-                                        </FormItem>
+                                        </div>
                                     ))}
                                 </div>
                             </ScrollArea>
@@ -773,6 +772,7 @@ export default function StocksPage() {
     </>
   );
 }
+
 
 
 
