@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -46,7 +46,7 @@ import {
     FormMessage,
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
@@ -259,8 +259,6 @@ export default function StocksPage() {
                 unitPrice: values.unitPrice,
                 stockLevel: values.stockLevel,
                 linkedItems: values.linkedItems || [],
-                minimumLevel: values.minimumLevel,
-                maximumLevel: values.maximumLevel,
             };
 
             if (editingItem && editingItem.id) {
@@ -332,98 +330,6 @@ export default function StocksPage() {
 
     const totalStockValue = filteredStockLevels.reduce((acc, item) => acc + (item.stockLevel * item.unitPrice), 0);
     const totalStockCount = filteredStockLevels.reduce((acc, item) => acc + item.stockLevel, 0);
-
-    const BomManager = ({ control, stocks, itemType }: { control: any, stocks: StockItem[], itemType: 'Raw Material' | 'Finished Good' | undefined }) => {
-        const { fields, append, remove } = useFieldArray({ control, name: "linkedItems" });
-        const [popoverOpen, setPopoverOpen] = useState(false);
-    
-        const rawMaterials = useMemo(() => stocks.filter(s => s.type === 'Raw Material'), [stocks]);
-    
-        const selectedItems = useMemo(() => new Set(fields.map((field: any) => field.id)), [fields]);
-    
-        const handleSelect = (material: StockItem) => {
-            if (selectedItems.has(material.id!)) {
-                const index = fields.findIndex((field: any) => field.id === material.id);
-                remove(index);
-            } else {
-                append({ id: material.id, quantity: 1 });
-            }
-        };
-
-        const renderLabel = () => {
-            if (itemType === 'Finished Good') {
-                return 'Define Bill of Materials (BOM)';
-            }
-            return '';
-        };
-
-        if (itemType !== 'Finished Good') return null;
-    
-        return (
-            <div className="col-span-1 md:col-span-2 space-y-2">
-                <Label>{renderLabel()}</Label>
-                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-between">
-                            {selectedItems.size > 0 ? `${selectedItems.size} raw materials selected` : "Select raw materials..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
-                        <ScrollArea className="max-h-60">
-                            <div className="p-2 space-y-1">
-                                {rawMaterials.map(material => (
-                                    <div key={material.id} className="flex items-center gap-2 p-1 rounded-md hover:bg-muted">
-                                        <Checkbox
-                                            id={`bom-${material.id}`}
-                                            checked={selectedItems.has(material.id!)}
-                                            onCheckedChange={() => handleSelect(material)}
-                                        />
-                                        <label htmlFor={`bom-${material.id}`} className="text-sm font-medium flex-1">
-                                            {material.name} ({material.itemCode})
-                                        </label>
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                    </PopoverContent>
-                </Popover>
-
-                <div className="space-y-2 mt-2 border rounded-lg p-2 max-h-48 overflow-y-auto">
-                    {fields.length > 0 ? (
-                        fields.map((field, index) => {
-                            const material = rawMaterials.find(rm => rm.id === (field as any).id);
-                            return material ? (
-                                <div key={field.id} className="flex items-center justify-between gap-2">
-                                    <span className="text-sm">{material.name}</span>
-                                    <div className="flex items-center gap-2">
-                                        <Label htmlFor={`qty-${field.id}`} className="text-xs">Qty:</Label>
-                                        <Controller
-                                            control={control}
-                                            name={`linkedItems.${index}.quantity`}
-                                            defaultValue={(field as any).quantity}
-                                            render={({ field: controllerField }) => (
-                                                <Input
-                                                    id={`qty-${field.id}`}
-                                                    type="number"
-                                                    className="h-8 w-20"
-                                                    {...controllerField}
-                                                    onChange={(e) => controllerField.onChange(parseInt(e.target.value, 10) || 1)}
-                                                    min="1"
-                                                />
-                                            )}
-                                        />
-                                    </div>
-                                </div>
-                            ) : null;
-                        })
-                    ) : (
-                         <p className="text-sm text-muted-foreground text-center py-2">No raw materials selected.</p>
-                    )}
-                </div>
-            </div>
-        );
-    };
 
     const handleMainItemSelect = (itemId: string) => {
         setSelectedMainItemId(itemId);
@@ -505,6 +411,11 @@ export default function StocksPage() {
     });
 
     const isAllRelatedSelected = relatedItems.length > 0 && relatedItemsState.length === relatedItems.length;
+
+    const handleViewRelatedItems = (item: StockItem) => {
+        setActiveTab("relatedItems");
+        handleMainItemSelect(item.id!);
+    };
 
   return (
     <>
@@ -615,7 +526,7 @@ export default function StocksPage() {
                                         Add New Item
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
+                                <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
                                     <DialogHeader>
                                         <DialogTitle>{editingItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
                                     </DialogHeader>
@@ -650,9 +561,6 @@ export default function StocksPage() {
                                                                 <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                                 <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                                 <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                                <FormField control={form.control} name="minimumLevel" render={({ field }) => <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem>}/>
-                                                                <FormField control={form.control} name="maximumLevel" render={({ field }) => <FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g., 100" {...field} /></FormControl><FormMessage /></FormItem>}/>
-                                                                <BomManager control={form.control} stocks={stocks} itemType={itemType}/>
                                                             </>
                                                         )}
                                                     </div>
@@ -705,6 +613,7 @@ export default function StocksPage() {
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onClick={() => openDialog(item)}>Edit</DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleViewRelatedItems(item)}>Related Items</DropdownMenuItem>
                                                     <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id!)}>Delete</DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -827,6 +736,7 @@ export default function StocksPage() {
     </>
   );
 }
+
 
 
 
