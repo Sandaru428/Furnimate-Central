@@ -67,7 +67,8 @@ import {
 import type { StockItem } from '../stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
+import { toSentenceCase } from '@/lib/utils';
 
 
 const lineItemSchema = z.object({
@@ -275,6 +276,7 @@ toBankName: '',
     async function handleCreateOrUpdateSubmit(values: CreatePurchaseOrder) {
         const dataToSave = {
             ...values,
+            supplierName: toSentenceCase(values.supplierName),
         };
 
         if (editingPO) {
@@ -315,6 +317,7 @@ toBankName: '',
     
     async function handleReceiveSubmit(values: ReceiveItemsForm) {
         if (!selectedPO) return;
+
         const totalAmount = values.lineItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
         const updatedPO = { ...selectedPO, status: 'Fulfilled' as const, totalAmount, lineItems: values.lineItems };
 
@@ -322,17 +325,28 @@ toBankName: '',
         await updateDoc(doc(db, "purchaseOrders", selectedPO.id), dataToSave);
         setPurchaseOrders(prevPOs => prevPOs.map(po => po.id === selectedPO.id ? updatedPO : po ));
 
+        const batch = writeBatch(db);
+
         for (const receivedItem of values.lineItems) {
-            const stocksQuery = query(collection(db, "stocks"), where("itemCode", "==", receivedItem.itemId));
-            const itemDocSnapshot = await getDocs(stocksQuery);
-            
-            if (!itemDocSnapshot.empty) {
-                const itemDocRef = itemDocSnapshot.docs[0].ref;
-                const currentItem = itemDocSnapshot.docs[0].data() as StockItem;
-                await updateDoc(itemDocRef, { stockLevel: currentItem.stockLevel + receivedItem.quantity });
+            const stockItem = stocks.find(s => s.itemCode === receivedItem.itemId);
+            if (stockItem && stockItem.id) {
+                const itemDocRef = doc(db, 'stocks', stockItem.id);
+                const newStockLevel = (stockItem.stockLevel || 0) + receivedItem.quantity;
+                batch.update(itemDocRef, { stockLevel: newStockLevel });
             }
         }
         
+        await batch.commit();
+        
+        // Optimistically update local state as well
+        setStocks(currentStocks => currentStocks.map(stock => {
+            const received = values.lineItems.find(li => li.itemId === stock.itemCode);
+            if (received) {
+                return { ...stock, stockLevel: (stock.stockLevel || 0) + received.quantity };
+            }
+            return stock;
+        }));
+
         toast({ title: 'Purchase Order Fulfilled', description: `Stock for PO ${selectedPO.id} has been updated.` });
         setIsReceiveDialogOpen(false);
         setSelectedPO(null);
