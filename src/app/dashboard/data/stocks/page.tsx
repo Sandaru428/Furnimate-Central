@@ -794,9 +794,14 @@ export default function StocksPage() {
                                                     />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Button variant="ghost" size="icon" onClick={() => openDialog(item)}>
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => openDialog(item)}>Edit</DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </TableCell>
                                             </TableRow>
                                             )
@@ -817,4 +822,5 @@ export default function StocksPage() {
     </>
   );
 }
+
 
