@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -61,6 +61,7 @@ import { ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseISO, format } from 'date-fns';
+import { Label } from '@/components/ui/label';
 
 
 const itemSchema = z.object({
@@ -189,7 +190,7 @@ export default function StocksPage() {
         });
 
         saleOrders.forEach(so => {
-            if (!so.lineItems) return; // Defensive check
+            if (!so.lineItems) return;
             so.lineItems.forEach((item: any) => {
                  const stockItem = stocks.find(s => s.itemCode === item.itemId);
                 if (stockItem) {
@@ -225,10 +226,19 @@ export default function StocksPage() {
 
         sortedMovements.forEach(m => {
             if (balances[m.itemCode] === undefined) {
-                balances[m.itemCode] = 0;
+                const stockItem = stocks.find(s => s.itemCode === m.itemCode);
+                balances[m.itemCode] = stockItem?.stockLevel || 0;
             }
-            balances[m.itemCode] += m.inQty - m.outQty;
-            movementsWithBalance.push({ ...m, balance: balances[m.itemCode] });
+            
+            let balanceAfter;
+            if (m.type === 'PO') {
+                balanceAfter = (balances[m.itemCode] || 0) + m.inQty;
+            } else {
+                balanceAfter = (balances[m.itemCode] || 0) - m.outQty;
+            }
+            
+            movementsWithBalance.push({ ...m, balance: balanceAfter });
+            balances[m.itemCode] = balanceAfter;
         });
 
         const finalSortOrder = companyProfile.stockOrderMethod === 'LIFO' ? (a:any, b:any) => b.date.localeCompare(a.date) : (a:any, b:any) => a.date.localeCompare(b.date);
