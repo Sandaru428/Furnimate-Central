@@ -257,7 +257,7 @@ export default function StocksPage() {
 
     async function onSubmit(values: StockItem) {
         try {
-            const dataToSave: Omit<StockItem, 'id'> = {
+            const dataToSave = {
                 itemCode: values.itemCode,
                 name: values.name,
                 type: values.type,
@@ -265,6 +265,8 @@ export default function StocksPage() {
                 stockLevel: values.stockLevel,
                 unitOfMeasure: values.unitOfMeasure || 'Units',
                 linkedItems: values.linkedItems || [],
+                minimumLevel: values.minimumLevel || null,
+                maximumLevel: values.maximumLevel || null,
             };
 
             if (editingItem && editingItem.id) {
@@ -460,7 +462,7 @@ export default function StocksPage() {
                     <TableHead className="text-right">In</TableHead>
                     <TableHead className="text-right">Out</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead>Unit</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -479,20 +481,10 @@ export default function StocksPage() {
                                         {item.refId}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right text-green-600 font-medium">{item.inQty > 0 ? `${item.inQty} ${item.unitOfMeasure || ''}`.trim() : '-'}</TableCell>
-                                    <TableCell className="text-right text-red-600 font-medium">{item.outQty > 0 ? `${item.outQty} ${item.unitOfMeasure || ''}`.trim() : '-'}</TableCell>
+                                    <TableCell className="text-right text-green-600 font-medium">{item.inQty > 0 ? item.inQty : '-'}</TableCell>
+                                    <TableCell className="text-right text-red-600 font-medium">{item.outQty > 0 ? item.outQty : '-'}</TableCell>
                                     <TableCell className="text-right font-bold">{item.balance}</TableCell>
-                                    <TableCell>
-                                    {stockItem && (
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => openDialog(stockItem)}>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(stockItem.id!)}>Delete</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    )}
-                                </TableCell>
+                                    <TableCell>{item.unitOfMeasure || 'Units'}</TableCell>
                                 </TableRow>
                             )
                         })
@@ -589,6 +581,66 @@ export default function StocksPage() {
                                                                         </FormItem>
                                                                     )}
                                                                 />
+                                                                 <FormField control={form.control} name="minimumLevel" render={({ field }) => <FormItem><FormLabel>Minimum Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                                <FormField control={form.control} name="maximumLevel" render={({ field }) => <FormItem><FormLabel>Maximum Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                                
+                                                                {itemType === 'Finished Good' && (
+                                                                    <div className="md:col-span-2">
+                                                                        <Label>Bill of Materials</Label>
+                                                                        <div className="space-y-2 mt-2 border rounded-md p-2 max-h-40 overflow-y-auto">
+                                                                            {stocks.filter(s => s.type === 'Raw Material').map(rawMaterial => (
+                                                                                <Controller
+                                                                                    key={rawMaterial.id}
+                                                                                    control={form.control}
+                                                                                    name="linkedItems"
+                                                                                    render={({ field }) => {
+                                                                                        const linkedItem = field.value?.find(li => li.id === rawMaterial.id);
+                                                                                        const isChecked = !!linkedItem;
+
+                                                                                        const handleCheckedChange = (checked: boolean) => {
+                                                                                            const newValue = checked
+                                                                                                ? [...(field.value || []), { id: rawMaterial.id!, quantity: 1 }]
+                                                                                                : field.value?.filter(li => li.id !== rawMaterial.id);
+                                                                                            field.onChange(newValue);
+                                                                                        };
+
+                                                                                        const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                                                                                            const newQuantity = parseInt(e.target.value, 10);
+                                                                                            if (!isNaN(newQuantity) && newQuantity > 0) {
+                                                                                                const newValue = field.value?.map(li =>
+                                                                                                    li.id === rawMaterial.id ? { ...li, quantity: newQuantity } : li
+                                                                                                );
+                                                                                                field.onChange(newValue);
+                                                                                            }
+                                                                                        };
+
+                                                                                        return (
+                                                                                            <div className="flex items-center justify-between">
+                                                                                                <div className="flex items-center gap-2">
+                                                                                                    <Checkbox
+                                                                                                        checked={isChecked}
+                                                                                                        onCheckedChange={handleCheckedChange}
+                                                                                                        id={`raw-mat-${rawMaterial.id}`}
+                                                                                                    />
+                                                                                                    <Label htmlFor={`raw-mat-${rawMaterial.id}`} className="font-normal">{rawMaterial.name} ({rawMaterial.itemCode})</Label>
+                                                                                                </div>
+                                                                                                {isChecked && (
+                                                                                                    <Input
+                                                                                                        type="number"
+                                                                                                        value={linkedItem.quantity}
+                                                                                                        onChange={handleQuantityChange}
+                                                                                                        className="h-8 w-20"
+                                                                                                        min="1"
+                                                                                                    />
+                                                                                                )}
+                                                                                            </div>
+                                                                                        );
+                                                                                    }}
+                                                                                />
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </>
                                                         )}
                                                     </div>
@@ -749,3 +801,4 @@ export default function StocksPage() {
     </>
   );
 }
+
