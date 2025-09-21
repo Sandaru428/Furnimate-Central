@@ -56,8 +56,6 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, query, deleteDoc } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseISO, format } from 'date-fns';
@@ -71,6 +69,7 @@ const itemSchema = z.object({
     type: z.enum(['Raw Material', 'Finished Good'], { required_error: "Item type is required" }),
     unitPrice: z.coerce.number().positive("Unit price must be a positive number."),
     stockLevel: z.coerce.number().int().min(0, "Stock level cannot be negative."),
+    unitOfMeasure: z.string().optional(),
     linkedItems: z.array(z.object({
         id: z.string(),
         quantity: z.coerce.number().int().positive(),
@@ -90,12 +89,15 @@ type StockMovement = {
     inQty: number;
     outQty: number;
     balance: number;
+    unitOfMeasure?: string;
 };
 
 type LinkedItemState = {
     id: string;
     quantity: number;
 };
+
+const unitsOfMeasure = ["Kg", "Feet", "Square Feet", "Litre", "Watts", "Hours", "Units"];
 
 
 export default function StocksPage() {
@@ -122,6 +124,7 @@ export default function StocksPage() {
             type: undefined,
             unitPrice: '' as any,
             stockLevel: '' as any,
+            unitOfMeasure: 'Units',
             linkedItems: [],
         },
     });
@@ -180,6 +183,7 @@ export default function StocksPage() {
                         type: 'PO',
                         inQty: item.quantity,
                         outQty: 0,
+                        unitOfMeasure: stockItem.unitOfMeasure,
                     });
                 }
             });
@@ -198,6 +202,7 @@ export default function StocksPage() {
                         type: 'SO',
                         inQty: 0,
                         outQty: item.quantity,
+                        unitOfMeasure: stockItem.unitOfMeasure,
                     });
                 }
             });
@@ -258,6 +263,7 @@ export default function StocksPage() {
                 type: values.type,
                 unitPrice: values.unitPrice,
                 stockLevel: values.stockLevel,
+                unitOfMeasure: values.unitOfMeasure || 'Units',
                 linkedItems: values.linkedItems || [],
             };
 
@@ -295,7 +301,10 @@ export default function StocksPage() {
     const openDialog = (item: StockItem | null) => {
         if (item) {
             setEditingItem(item);
-            form.reset(item);
+            form.reset({
+                ...item,
+                unitOfMeasure: item.unitOfMeasure || 'Units'
+            });
         } else {
             setEditingItem(null);
             form.reset({
@@ -304,6 +313,7 @@ export default function StocksPage() {
                 type: undefined,
                 unitPrice: '' as any,
                 stockLevel: '' as any,
+                unitOfMeasure: 'Units',
                 linkedItems: [],
             });
         }
@@ -320,13 +330,13 @@ export default function StocksPage() {
         }
     };
       
-    const filteredStockLevels = stocks.filter(item => {
+    const filteredStockLevels = useMemo(() => stocks.filter(item => {
         const typeMatch = stockLevelFilter === 'all' || item.type === stockLevelFilter;
         const searchMatch = searchTerm === "" ||
             item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             item.itemCode.toLowerCase().includes(searchTerm.toLowerCase());
         return typeMatch && searchMatch;
-    });
+    }), [stocks, stockLevelFilter, searchTerm]);
 
     const totalStockValue = filteredStockLevels.reduce((acc, item) => acc + (item.stockLevel * item.unitPrice), 0);
     const totalStockCount = filteredStockLevels.reduce((acc, item) => acc + item.stockLevel, 0);
@@ -380,7 +390,7 @@ export default function StocksPage() {
         }
     };
     
-    const { mainItems, relatedItems, mainItemTypeLabel, relatedItemTypeLabel } = useMemo(() => {
+    const { mainItemTypeLabel, relatedItems } = useMemo(() => {
         if (!selectedMainItemId) return { mainItems: [], relatedItems: [], mainItemTypeLabel: '', relatedItemTypeLabel: '' };
 
         const mainItem = stocks.find(s => s.id === selectedMainItemId);
@@ -388,27 +398,23 @@ export default function StocksPage() {
 
         if (mainItem.type === 'Finished Good') {
             return {
-                mainItems: stocks.filter(s => s.type === 'Finished Good'),
-                relatedItems: stocks.filter(s => s.type === 'Raw Material'),
                 mainItemTypeLabel: 'Finished Good',
-                relatedItemTypeLabel: 'Raw Materials'
+                relatedItems: stocks.filter(s => s.type === 'Raw Material'),
             };
         } else { // Raw Material
             return {
-                mainItems: stocks.filter(s => s.type === 'Raw Material'),
-                relatedItems: stocks.filter(s => s.type === 'Finished Good'),
                 mainItemTypeLabel: 'Raw Material',
-                relatedItemTypeLabel: 'Finished Goods'
+                relatedItems: stocks.filter(s => s.type === 'Finished Good'),
             };
         }
     }, [stocks, selectedMainItemId]);
     
-    const filteredRelatedItems = relatedItems.filter(item => {
+    const filteredRelatedItems = useMemo(() => relatedItems.filter(item => {
         const searchMatch = searchTerm === "" ||
             item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             item.itemCode.toLowerCase().includes(searchTerm.toLowerCase());
         return searchMatch;
-    });
+    }), [relatedItems, searchTerm]);
 
     const isAllRelatedSelected = relatedItems.length > 0 && relatedItemsState.length === relatedItems.length;
 
@@ -473,8 +479,8 @@ export default function StocksPage() {
                                         {item.refId}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right text-green-600 font-medium">{item.inQty > 0 ? item.inQty : '-'}</TableCell>
-                                    <TableCell className="text-right text-red-600 font-medium">{item.outQty > 0 ? item.outQty : '-'}</TableCell>
+                                    <TableCell className="text-right text-green-600 font-medium">{item.inQty > 0 ? `${item.inQty} ${item.unitOfMeasure || ''}`.trim() : '-'}</TableCell>
+                                    <TableCell className="text-right text-red-600 font-medium">{item.outQty > 0 ? `${item.outQty} ${item.unitOfMeasure || ''}`.trim() : '-'}</TableCell>
                                     <TableCell className="text-right font-bold">{item.balance}</TableCell>
                                     <TableCell>
                                     {stockItem && (
@@ -559,6 +565,30 @@ export default function StocksPage() {
                                                                 <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                                 <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                                 <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                                <FormField
+                                                                    control={form.control}
+                                                                    name="unitOfMeasure"
+                                                                    render={({ field }) => (
+                                                                        <FormItem>
+                                                                        <FormLabel>Unit of Measure</FormLabel>
+                                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                                            <FormControl>
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder="Select a unit" />
+                                                                            </SelectTrigger>
+                                                                            </FormControl>
+                                                                            <SelectContent>
+                                                                            {unitsOfMeasure.map(unit => (
+                                                                                <SelectItem key={unit} value={unit}>
+                                                                                {unit}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                        <FormMessage />
+                                                                        </FormItem>
+                                                                    )}
+                                                                />
                                                             </>
                                                         )}
                                                     </div>
@@ -589,13 +619,14 @@ export default function StocksPage() {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Type</TableHead>
                                 <TableHead className="text-right">Stock Level</TableHead>
+                                <TableHead>Unit</TableHead>
                                 <TableHead className="text-right">Value</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                            {loading ? (
-                                <TableRow><TableCell colSpan={6} className="text-center">Loading...</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={7} className="text-center">Loading...</TableCell></TableRow>
                             ) : filteredStockLevels.length > 0 ? (
                                 filteredStockLevels.map((item) => (
                                     <TableRow key={item.id}>
@@ -605,6 +636,7 @@ export default function StocksPage() {
                                             <Badge variant={item.type === 'Raw Material' ? 'outline' : 'default'}>{item.type}</Badge>
                                         </TableCell>
                                         <TableCell className="text-right font-bold">{item.stockLevel}</TableCell>
+                                        <TableCell>{item.unitOfMeasure || 'Units'}</TableCell>
                                         <TableCell className="text-right">{currency.code} {(item.unitPrice * item.stockLevel).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                         <TableCell>
                                             <DropdownMenu>
@@ -619,7 +651,7 @@ export default function StocksPage() {
                                     </TableRow>
                                 ))
                             ) : (
-                                <TableRow><TableCell colSpan={6} className="text-center">No items match your search.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={7} className="text-center">No items match your search.</TableCell></TableRow>
                             )}
                         </TableBody>
                      </Table>
@@ -637,7 +669,7 @@ export default function StocksPage() {
                         <div>
                              <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <Label>Link {relatedItemTypeLabel}</Label>
+                                    <Label>Link {mainItemTypeLabel === 'Finished Good' ? 'Raw Materials' : 'Finished Goods'}</Label>
                                     <p className="text-sm text-muted-foreground">Select and quantify all related items for: <span className="font-semibold">{stocks.find(s => s.id === selectedMainItemId)?.name}</span></p>
                                 </div>
                                 <div className="flex items-center space-x-2">
@@ -717,8 +749,3 @@ export default function StocksPage() {
     </>
   );
 }
-
-
-
-
-
