@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -51,7 +51,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAtom } from 'jotai';
-import { currencyAtom, stocksAtom } from '@/lib/store';
+import { currencyAtom, stocksAtom, purchaseOrdersAtom, saleOrdersAtom, companyProfileAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, query, deleteDoc } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -60,6 +60,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { parseISO, format } from 'date-fns';
 
 
 const itemSchema = z.object({
@@ -84,8 +85,22 @@ const itemSchema = z.object({
 
 export type StockItem = z.infer<typeof itemSchema>;
 
+type StockMovement = {
+    date: string;
+    itemCode: string;
+    itemName: string;
+    refId: string;
+    type: 'PO' | 'SO';
+    inQty: number;
+    outQty: number;
+    balance: number;
+};
+
 export default function StocksPage() {
     const [stocks, setStocks] = useAtom(stocksAtom);
+    const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
+    const [saleOrders, setSaleOrders] = useAtom(saleOrdersAtom);
+    const [companyProfile] = useAtom(companyProfileAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<StockItem | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -129,16 +144,102 @@ export default function StocksPage() {
 
 
     useEffect(() => {
-        const fetchStocks = async () => {
+        const fetchAllData = async () => {
             setLoading(true);
-            const q = query(collection(db, "stocks"));
-            const querySnapshot = await getDocs(q);
-            const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
-            setStocks(data.sort((a, b) => a.itemCode.localeCompare(b.itemCode)));
+            const collections: { [key: string]: (data: any) => void } = {
+                stocks: setStocks,
+                purchaseOrders: setPurchaseOrders,
+                saleOrders: setSaleOrders,
+            };
+
+            for (const [key, setter] of Object.entries(collections)) {
+                const q = query(collection(db, key));
+                const querySnapshot = await getDocs(q);
+                const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setter(data as any);
+            }
             setLoading(false);
         };
-        fetchStocks();
-    }, [setStocks]);
+        fetchAllData();
+    }, [setStocks, setPurchaseOrders, setSaleOrders]);
+
+
+    const stockMovements = useMemo(() => {
+        const allMovements: Omit<StockMovement, 'balance'>[] = [];
+
+        purchaseOrders.forEach(po => {
+            if (po.status !== 'Fulfilled' && po.status !== 'Paid') return;
+            po.lineItems.forEach((item: any) => {
+                const stockItem = stocks.find(s => s.itemCode === item.itemId);
+                if (stockItem) {
+                    allMovements.push({
+                        date: po.date,
+                        itemCode: item.itemId,
+                        itemName: stockItem.name,
+                        refId: po.id,
+                        type: 'PO',
+                        inQty: item.quantity,
+                        outQty: 0,
+                    });
+                }
+            });
+        });
+
+        saleOrders.forEach(so => {
+            so.lineItems.forEach((item: any) => {
+                 const stockItem = stocks.find(s => s.itemCode === item.itemId);
+                if (stockItem) {
+                    allMovements.push({
+                        date: so.date,
+                        itemCode: item.itemId,
+                        itemName: stockItem.name,
+                        refId: so.id,
+                        type: 'SO',
+                        inQty: 0,
+                        outQty: item.quantity,
+                    });
+                }
+            });
+        });
+
+        const sortedMovements = allMovements.sort((a, b) => {
+            const dateComp = parseISO(a.date).getTime() - parseISO(b.date).getTime();
+            if (dateComp !== 0) return dateComp;
+            // FIFO: Sales (out) come after purchases (in) on the same day
+            if (companyProfile.stockOrderMethod === 'FIFO') {
+                return a.type === 'PO' ? -1 : 1;
+            }
+            // LIFO: Purchases (in) come after sales (out) on the same day
+            if (companyProfile.stockOrderMethod === 'LIFO') {
+                return a.type === 'SO' ? -1 : 1;
+            }
+            return 0;
+        });
+
+        const balances: { [itemCode: string]: number } = {};
+        const movementsWithBalance: StockMovement[] = [];
+
+        sortedMovements.forEach(m => {
+            if (balances[m.itemCode] === undefined) {
+                balances[m.itemCode] = 0;
+            }
+            balances[m.itemCode] += m.inQty - m.outQty;
+            movementsWithBalance.push({ ...m, balance: balances[m.itemCode] });
+        });
+
+        const finalSortOrder = companyProfile.stockOrderMethod === 'LIFO' ? (a:any, b:any) => b.date.localeCompare(a.date) : (a:any, b:any) => a.date.localeCompare(b.date);
+        
+        return movementsWithBalance.sort(finalSortOrder);
+    }, [stocks, purchaseOrders, saleOrders, companyProfile.stockOrderMethod]);
+
+    const filteredStockMovements = useMemo(() => {
+        if (!searchTerm) return stockMovements;
+        return stockMovements.filter(m => 
+            m.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            m.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            m.refId.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [stockMovements, searchTerm]);
 
 
     async function onSubmit(values: StockItem) {
@@ -214,13 +315,6 @@ export default function StocksPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete stock item.' });
         }
     };
-
-    const filteredStocks = stocks.filter(
-        (item) =>
-          item.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.type.toLowerCase().includes(searchTerm.toLowerCase())
-    );
       
     const filteredStockLevels = stocks.filter(item => {
         const typeMatch = stockLevelFilter === 'all' || item.type === stockLevelFilter;
@@ -241,7 +335,7 @@ export default function StocksPage() {
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold">Stocks</h1>
                 <TabsList>
-                    <TabsTrigger value="itemList">Item List</TabsTrigger>
+                    <TabsTrigger value="itemList">Stock Ledger</TabsTrigger>
                     <TabsTrigger value="stockLevel">Stock Level</TabsTrigger>
                 </TabsList>
             </div>
@@ -250,7 +344,7 @@ export default function StocksPage() {
                 <h1 className="text-2xl font-bold sr-only">Stocks</h1>
                 <div className="flex items-center gap-2">
                     <Input
-                        placeholder="Search items..."
+                        placeholder="Search items or refs..."
                         className="w-64"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -299,7 +393,7 @@ export default function StocksPage() {
                                                     </div>
                                                     
                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                        <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Stock Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                        <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                         <FormField control={form.control} name="minimumLevel" render={({ field }) => <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 10" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                         <FormField control={form.control} name="maximumLevel" render={({ field }) => <FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g. 200" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                     </div>
@@ -372,69 +466,45 @@ export default function StocksPage() {
             </div>
             <Card>
             <CardHeader>
-                <CardTitle>Stock Item List</CardTitle>
+                <CardTitle>Stock Ledger</CardTitle>
                 <CardDescription>
-                A consolidated list of all raw materials and finished goods.
+                A chronological record of all stock movements from purchase and sale orders. Sorted by: {companyProfile.stockOrderMethod}
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
                 <TableHeader>
                     <TableRow>
+                    <TableHead>Date</TableHead>
                     <TableHead>Item Code</TableHead>
                     <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead className="text-right">Min Level</TableHead>
-                    <TableHead className="text-right">Max Level</TableHead>
-                    <TableHead className="text-right">Total Value</TableHead>
-                    <TableHead>Linked Items</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead>Reference ID</TableHead>
+                    <TableHead className="text-right">In</TableHead>
+                    <TableHead className="text-right">Out</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {loading ? (
-                        <TableRow><TableCell colSpan={10} className="text-center">Loading...</TableCell></TableRow>
-                    ) : filteredStocks.length > 0 ? (
-                        filteredStocks.map((item) => (
-                        <TableRow key={item.id}>
+                        <TableRow><TableCell colSpan={7} className="text-center">Loading...</TableCell></TableRow>
+                    ) : filteredStockMovements.length > 0 ? (
+                        filteredStockMovements.map((item, index) => (
+                        <TableRow key={`${item.refId}-${item.itemCode}-${index}`}>
+                            <TableCell>{format(parseISO(item.date), 'yyyy-MM-dd')}</TableCell>
                             <TableCell className="font-mono">{item.itemCode}</TableCell>
-                            <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell>
-                                <Badge 
-                                    variant="outline" 
-                                    className={cn(
-                                        item.type === 'Finished Good' && 'border-blue-500 text-blue-500',
-                                        item.type === 'Raw Material' && 'border-green-500 text-green-500'
-                                    )}
-                                >
-                                    {item.type}
+                            <TableCell className="font-medium">{item.itemName}</TableCell>
+                            <TableCell className="font-mono">
+                                <Badge variant={item.type === 'PO' ? 'secondary' : 'outline'}>
+                                {item.refId}
                                 </Badge>
                             </TableCell>
-                            <TableCell className="text-right">{currency.code} {item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">{item.stockLevel}</TableCell>
-                            <TableCell className="text-right">{item.minimumLevel || '-'}</TableCell>
-                            <TableCell className="text-right">{item.maximumLevel || '-'}</TableCell>
-                            <TableCell className="text-right font-medium">{currency.code} {(item.unitPrice * item.stockLevel).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className='max-w-[150px]'>
-                                <div className="flex flex-wrap gap-1">
-                                    {item.linkedItems?.map(link => <Badge key={link} variant="outline" className="font-mono">{link}</Badge>)}
-                                </div>
-                            </TableCell>
-                            <TableCell>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => openDialog(item)}>Edit</DropdownMenuItem>
-                                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id!)}>Delete</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
+                            <TableCell className="text-right text-green-600 font-medium">{item.inQty > 0 ? item.inQty : '-'}</TableCell>
+                            <TableCell className="text-right text-red-600 font-medium">{item.outQty > 0 ? item.outQty : '-'}</TableCell>
+                            <TableCell className="text-right font-bold">{item.balance}</TableCell>
                         </TableRow>
                         ))
                     ) : (
-                        <TableRow><TableCell colSpan={10} className="text-center">No stock data found.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="text-center">No stock movements found.</TableCell></TableRow>
                     )}
                 </TableBody>
                 </Table>
