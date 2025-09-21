@@ -342,7 +342,7 @@ export default function StocksPage() {
     const totalStockCount = filteredStockLevels.reduce((acc, item) => acc + item.stockLevel, 0);
 
     const BomManager = ({ control, stocks, itemType }: { control: any, stocks: StockItem[], itemType: 'Raw Material' | 'Finished Good' | undefined }) => {
-        const { fields, append, remove, update } = useFieldArray({ control, name: "linkedItems" });
+        const { fields, append, remove } = useFieldArray({ control, name: "linkedItems" });
         const [popoverOpen, setPopoverOpen] = useState(false);
     
         const rawMaterials = useMemo(() => stocks.filter(s => s.type === 'Raw Material'), [stocks]);
@@ -368,7 +368,7 @@ export default function StocksPage() {
         if (itemType !== 'Finished Good') return null;
     
         return (
-            <FormItem>
+            <FormItem className="col-span-1 md:col-span-2">
                 <FormLabel>{renderLabel()}</FormLabel>
                 <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                     <PopoverTrigger asChild>
@@ -488,18 +488,13 @@ export default function StocksPage() {
                                             />
 
                                             {itemType && (
-                                                <>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} readOnly /></FormControl><FormMessage /></FormItem>} />
-                                                        <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                    </div>
-                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                        <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                     </div>
-                                                    
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} readOnly /></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                    <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                     <BomManager control={form.control} stocks={stocks} itemType={itemType}/>
-                                                </>
+                                                </div>
                                             )}
                                         </div>
                                     </ScrollArea>
@@ -662,3 +657,4 @@ export default function StocksPage() {
     </>
   );
 }
+
