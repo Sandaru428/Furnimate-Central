@@ -49,7 +49,7 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectLabel } from '@/components/ui/select';
 import { useAtom } from 'jotai';
 import { currencyAtom, stocksAtom, purchaseOrdersAtom, saleOrdersAtom, companyProfileAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
@@ -773,6 +773,7 @@ export default function StocksPage() {
     </>
   );
 }
+
 
 
 
