@@ -105,7 +105,6 @@ export default function StocksPage() {
     const [currency] = useAtom(currencyAtom);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("itemList");
-    const [stockLevelSearchTerm, setStockLevelSearchTerm] = useState("");
     const [stockLevelFilter, setStockLevelFilter] = useState<"all" | "Raw Material" | "Finished Good">("all");
     const [selectedMainItemId, setSelectedMainItemId] = useState<string | null>(null);
     const [relatedItemIds, setRelatedItemIds] = useState<string[]>([]);
@@ -318,9 +317,9 @@ export default function StocksPage() {
       
     const filteredStockLevels = stocks.filter(item => {
         const typeMatch = stockLevelFilter === 'all' || item.type === stockLevelFilter;
-        const searchMatch = stockLevelSearchTerm === "" ||
-            item.name.toLowerCase().includes(stockLevelSearchTerm.toLowerCase()) ||
-            item.itemCode.toLowerCase().includes(stockLevelSearchTerm.toLowerCase());
+        const searchMatch = searchTerm === "" ||
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.itemCode.toLowerCase().includes(searchTerm.toLowerCase());
         return typeMatch && searchMatch;
     });
 
@@ -482,30 +481,36 @@ export default function StocksPage() {
             };
         }
     }, [stocks, selectedMainItemId]);
+    
+    const filteredRelatedItems = relatedItems.filter(item => {
+        const searchMatch = searchTerm === "" ||
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.itemCode.toLowerCase().includes(searchTerm.toLowerCase());
+        return searchMatch;
+    });
+
 
     const isAllRelatedSelected = relatedItems.length > 0 && relatedItemIds.length === relatedItems.length;
 
   return (
     <>
       <main className="p-4">
+        <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">Stocks</h1>
+             <Input
+                placeholder="Search items or refs..."
+                className="w-64"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex items-center justify-between mb-4">
-                <h1 className="text-2xl font-bold">Stocks</h1>
-                <TabsList>
-                    <TabsTrigger value="itemList">Stock Ledger</TabsTrigger>
-                    <TabsTrigger value="stockLevel">Stock Level</TabsTrigger>
-                    <TabsTrigger value="relatedItems">Related Items</TabsTrigger>
-                </TabsList>
-            </div>
+            <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="itemList">Stock Ledger</TabsTrigger>
+                <TabsTrigger value="stockLevel">Stock Level</TabsTrigger>
+                <TabsTrigger value="relatedItems">Related Items</TabsTrigger>
+            </TabsList>
         <TabsContent value="itemList">
-            <div className="flex items-center justify-between mb-4">
-                <Input
-                    placeholder="Search items or refs..."
-                    className="w-64"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
             <Card>
             <CardHeader>
                 <CardTitle>Stock Ledger</CardTitle>
@@ -577,13 +582,7 @@ export default function StocksPage() {
                 <CardContent>
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                           <Input
-                                placeholder="Search by name or code..."
-                                className="w-64"
-                                value={stockLevelSearchTerm}
-                                onChange={(e) => setStockLevelSearchTerm(e.target.value)}
-                            />
-                            <Select value={stockLevelFilter} onValueChange={(value) => setStockLevelFilter(value as any)}>
+                           <Select value={stockLevelFilter} onValueChange={(value) => setStockLevelFilter(value as any)}>
                                 <SelectTrigger className="w-[180px]">
                                     <SelectValue placeholder="Filter by type" />
                                 </SelectTrigger>
@@ -750,7 +749,7 @@ export default function StocksPage() {
                             </div>
                             <ScrollArea className="h-72 rounded-md border">
                                 <div className="p-4 space-y-2">
-                                    {relatedItems.map(item => (
+                                    {filteredRelatedItems.map(item => (
                                         <div key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
                                             <Checkbox
                                                 id={`related-${item.id}`}
@@ -778,6 +777,7 @@ export default function StocksPage() {
     </>
   );
 }
+
 
 
 
