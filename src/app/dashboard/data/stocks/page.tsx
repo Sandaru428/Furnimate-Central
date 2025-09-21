@@ -46,7 +46,7 @@ import {
     FormMessage,
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -71,20 +71,10 @@ const itemSchema = z.object({
     type: z.enum(['Raw Material', 'Finished Good'], { required_error: "Item type is required" }),
     unitPrice: z.coerce.number().positive("Unit price must be a positive number."),
     stockLevel: z.coerce.number().int().min(0, "Stock level cannot be negative."),
-    minimumLevel: z.coerce.number().int().min(0, "Minimum level cannot be negative.").optional(),
-    maximumLevel: z.coerce.number().int().min(0, "Maximum level cannot be negative.").optional(),
     linkedItems: z.array(z.object({
         id: z.string(),
         quantity: z.coerce.number().int().positive(),
     })).optional(),
-}).refine(data => {
-    if (data.minimumLevel !== undefined && data.maximumLevel !== undefined) {
-        return data.maximumLevel >= data.minimumLevel;
-    }
-    return true;
-}, {
-    message: "Maximum level must be greater than or equal to minimum level.",
-    path: ["maximumLevel"],
 });
 
 export type StockItem = z.infer<typeof itemSchema>;
@@ -124,8 +114,6 @@ export default function StocksPage() {
             type: undefined,
             unitPrice: '' as any,
             stockLevel: '' as any,
-            minimumLevel: '' as any,
-            maximumLevel: '' as any,
             linkedItems: [],
         },
     });
@@ -210,11 +198,9 @@ export default function StocksPage() {
         const sortedMovements = allMovements.sort((a, b) => {
             const dateComp = parseISO(a.date).getTime() - parseISO(b.date).getTime();
             if (dateComp !== 0) return dateComp;
-            // FIFO: Sales (out) come after purchases (in) on the same day
             if (companyProfile.stockOrderMethod === 'FIFO') {
                 return a.type === 'PO' ? -1 : 1;
             }
-            // LIFO: Purchases (in) come after sales (out) on the same day
             if (companyProfile.stockOrderMethod === 'LIFO') {
                 return a.type === 'SO' ? -1 : 1;
             }
@@ -264,8 +250,6 @@ export default function StocksPage() {
                 type: values.type,
                 unitPrice: values.unitPrice,
                 stockLevel: values.stockLevel,
-                minimumLevel: values.minimumLevel,
-                maximumLevel: values.maximumLevel,
                 linkedItems: values.linkedItems || [],
             };
 
@@ -312,8 +296,6 @@ export default function StocksPage() {
                 type: undefined,
                 unitPrice: '' as any,
                 stockLevel: '' as any,
-                minimumLevel: '' as any,
-                maximumLevel: '' as any,
                 linkedItems: [],
             });
         }
@@ -467,35 +449,37 @@ export default function StocksPage() {
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
                                     <ScrollArea className="flex-1 pr-6">
                                         <div className="space-y-4 py-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="type"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Type</FormLabel>
-                                                        <Select onValueChange={field.onChange} value={field.value} disabled={!!editingItem}>
-                                                            <FormControl>
-                                                                <SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="Raw Material">Raw Material</SelectItem>
-                                                                <SelectItem value="Finished Good">Finished Good</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="type"
+                                                    render={({ field }) => (
+                                                        <FormItem className="md:col-span-2">
+                                                            <FormLabel>Type</FormLabel>
+                                                            <Select onValueChange={field.onChange} value={field.value} disabled={!!editingItem}>
+                                                                <FormControl>
+                                                                    <SelectTrigger><SelectValue placeholder="Select item type" /></SelectTrigger>
+                                                                </FormControl>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Raw Material">Raw Material</SelectItem>
+                                                                    <SelectItem value="Finished Good">Finished Good</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
 
-                                            {itemType && (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} readOnly /></FormControl><FormMessage /></FormItem>} />
-                                                    <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                    <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                    <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                                    <BomManager control={form.control} stocks={stocks} itemType={itemType}/>
-                                                </div>
-                                            )}
+                                                {itemType && (
+                                                    <>
+                                                        <FormField control={form.control} name="itemCode" render={({ field }) => <FormItem><FormLabel>Item Code</FormLabel><FormControl><Input placeholder="e.g., WD-002" {...field} readOnly /></FormControl><FormMessage /></FormItem>} />
+                                                        <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                        <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                        <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                        <BomManager control={form.control} stocks={stocks} itemType={itemType}/>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     </ScrollArea>
                                     <DialogFooter className="pt-4">
@@ -657,4 +641,5 @@ export default function StocksPage() {
     </>
   );
 }
+
 

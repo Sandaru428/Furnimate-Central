@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Server } from 'lucide-react';
+import { Server, Laptop, Tablet, Smartphone, Monitor } from 'lucide-react';
 import { useAtom } from 'jotai';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -85,12 +86,45 @@ const developmentChecklist = [
 export default function DevelopmentPage() {
   const { user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
+  const [previewSize, setPreviewSize] = useState({ width: '100%', height: '100%' });
 
   useEffect(() => {
     if (user) {
       setIsConnected(true);
     }
   }, [user]);
+  
+  const handlePreview = (size: 'laptop' | 'tablet' | 'phone' | 'any') => {
+    const mainContent = document.querySelector('main');
+    if (!mainContent) return;
+
+    mainContent.style.transition = 'all 0.3s ease-in-out';
+
+    switch (size) {
+        case 'laptop':
+            mainContent.style.width = '1366px';
+            mainContent.style.height = '768px';
+            mainContent.style.margin = 'auto';
+            break;
+        case 'tablet':
+            mainContent.style.width = '768px';
+            mainContent.style.height = '1024px';
+             mainContent.style.margin = 'auto';
+            break;
+        case 'phone':
+            mainContent.style.width = '375px';
+            mainContent.style.height = '667px';
+             mainContent.style.margin = 'auto';
+            break;
+        case 'any':
+        default:
+            mainContent.style.width = '100%';
+            mainContent.style.height = '100%';
+            mainContent.style.margin = '0';
+            break;
+    }
+  }
+
 
   return (
     <>
@@ -112,6 +146,21 @@ export default function DevelopmentPage() {
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
                     Data is now being fetched from Firestore. This switch is disabled.
+                </p>
+            </div>
+
+            <Separator />
+            
+             <div>
+                <h3 className="text-lg font-semibold mb-4">Device Preview</h3>
+                <div className="flex flex-wrap items-center gap-2 p-4 border rounded-lg">
+                    <Button variant="outline" onClick={() => handlePreview('any')}><Monitor className="mr-2 h-4 w-4" /> Any</Button>
+                    <Button variant="outline" onClick={() => handlePreview('laptop')}><Laptop className="mr-2 h-4 w-4" /> Laptop</Button>
+                    <Button variant="outline" onClick={() => handlePreview('tablet')}><Tablet className="mr-2 h-4 w-4" /> Tablet</Button>
+                    <Button variant="outline" onClick={() => handlePreview('phone')}><Smartphone className="mr-2 h-4 w-4" /> Phone</Button>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                    Select a device to simulate its screen size and test responsiveness.
                 </p>
             </div>
             
