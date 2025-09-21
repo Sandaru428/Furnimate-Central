@@ -100,7 +100,7 @@ export default function SuppliersPage() {
         const q = query(collection(db, "suppliers"));
         const querySnapshot = await getDocs(q);
         const suppliersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier));
-        setSuppliers(suppliersData);
+        setSuppliers(suppliersData.sort((a, b) => a.name.localeCompare(b.name)));
         setLoading(false);
     };
     fetchSuppliers();
@@ -122,7 +122,7 @@ export default function SuppliersPage() {
             // Update
             const docRef = doc(db, 'suppliers', editingSupplier.id);
             await updateDoc(docRef, dataToSave);
-            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...s, ...values, id: s.id } : s));
+            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...s, ...values, id: s.id } : s).sort((a, b) => a.name.localeCompare(b.name)));
             toast({
               title: 'Supplier Updated',
               description: `${values.name} has been successfully updated.`,
@@ -130,7 +130,7 @@ export default function SuppliersPage() {
         } else {
             // Create
             const docRef = await addDoc(collection(db, 'suppliers'), dataToSave);
-            setSuppliers(prev => [{ ...values, id: docRef.id }, ...prev]);
+            setSuppliers(prev => [...prev, { ...values, id: docRef.id }].sort((a, b) => a.name.localeCompare(b.name)));
             toast({
               title: 'Supplier Added',
               description: `${values.name} has been successfully added.`,

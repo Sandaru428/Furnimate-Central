@@ -206,12 +206,12 @@ export default function PurchaseOrdersPage() {
             const stocksQuery = query(collection(db, "stocks"));
             const stocksSnapshot = await getDocs(stocksQuery);
             const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
-            setStocks(stocksData);
+            setStocks(stocksData.sort((a, b) => a.name.localeCompare(b.name)));
 
             const suppliersQuery = query(collection(db, "suppliers"));
             const suppliersSnapshot = await getDocs(suppliersQuery);
             const suppliersData = suppliersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setSuppliers(suppliersData as any);
+            setSuppliers(suppliersData.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any);
             
             const paymentsQuery = query(collection(db, "payments"));
             const paymentsSnapshot = await getDocs(paymentsQuery);

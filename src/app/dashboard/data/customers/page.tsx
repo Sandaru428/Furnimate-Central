@@ -104,7 +104,7 @@ export default function CustomersPage() {
             dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
         } as Customer
     });
-    setCustomers(customersData);
+    setCustomers(customersData.sort((a, b) => a.name.localeCompare(b.name)));
     setLoading(false);
   };
 
@@ -129,7 +129,7 @@ export default function CustomersPage() {
         // Update
         const docRef = doc(db, 'customers', editingCustomer.id);
         await updateDoc(docRef, dataToSave);
-        setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...values, dateOfBirth: values.dateOfBirth } : c));
+        setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...values, dateOfBirth: values.dateOfBirth } : c).sort((a, b) => a.name.localeCompare(b.name)));
         toast({
           title: 'Customer Updated',
           description: `${values.name} has been successfully updated.`,
@@ -141,7 +141,7 @@ export default function CustomersPage() {
           ...values, 
           id: docRef.id,
         };
-        setCustomers(prev => [newCustomer, ...prev]);
+        setCustomers(prev => [...prev, newCustomer].sort((a, b) => a.name.localeCompare(b.name)));
         toast({
           title: 'Customer Added',
           description: `${values.name} has been successfully added.`,

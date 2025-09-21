@@ -179,14 +179,15 @@ export default function QuotationsPage() {
             const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
             
             // De-duplicate stocks data
-            const uniqueStocks = Array.from(new Map(stocksData.map(item => [item.id, item])).values());
+            const uniqueStocks = Array.from(new Map(stocksData.map(item => [item.id, item])).values())
+                .sort((a, b) => a.name.localeCompare(b.name));
             setStocks(uniqueStocks);
 
 
             const customersQuery = query(collection(db, "customers"));
             const customersSnapshot = await getDocs(customersQuery);
             const customersData = customersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setCustomers(customersData as any);
+            setCustomers(customersData.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any);
             setLoading(false);
         };
         fetchData();

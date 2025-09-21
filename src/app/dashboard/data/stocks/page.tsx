@@ -49,7 +49,7 @@ import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select';
 import { useAtom } from 'jotai';
 import { currencyAtom, stocksAtom, purchaseOrdersAtom, saleOrdersAtom, companyProfileAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
@@ -150,7 +150,7 @@ export default function StocksPage() {
         const fetchAllData = async () => {
             setLoading(true);
             const collections: { [key: string]: (data: any) => void } = {
-                stocks: setStocks,
+                stocks: (data) => setStocks(data.sort((a: StockItem, b: StockItem) => a.name.localeCompare(b.name))),
                 purchaseOrders: setPurchaseOrders,
                 saleOrders: setSaleOrders,
             };
@@ -273,7 +273,7 @@ export default function StocksPage() {
                 // Update
                 const docRef = doc(db, 'stocks', editingItem.id);
                 await updateDoc(docRef, dataToSave as any);
-                setStocks(stocks.map(item => item.id === editingItem.id ? { ...item, ...values, id: item.id } : item).sort((a, b) => a.itemCode.localeCompare(b.itemCode)));
+                setStocks(stocks.map(item => item.id === editingItem.id ? { ...item, ...values, id: item.id } : item).sort((a, b) => a.name.localeCompare(b.name)));
                 toast({
                   title: 'Item Updated',
                   description: `${values.name} has been successfully updated.`,
@@ -281,7 +281,7 @@ export default function StocksPage() {
             } else {
                 // Create
                 const docRef = await addDoc(collection(db, 'stocks'), dataToSave);
-                setStocks(prev => [...prev, { ...values, id: docRef.id }].sort((a, b) => a.itemCode.localeCompare(b.itemCode)));
+                setStocks(prev => [...prev, { ...values, id: docRef.id }].sort((a, b) => a.name.localeCompare(b.name)));
                 toast({
                   title: 'Item Added',
                   description: `${values.name} has been successfully added.`,
@@ -347,7 +347,7 @@ export default function StocksPage() {
         setSelectedMainItemId(itemId);
         const mainItem = stocks.find(s => s.id === itemId);
         if (mainItem && mainItem.linkedItems) {
-            setRelatedItemsState(mainItem.linkedItems);
+            setRelatedItemsState(mainItem.linkedItems.map(li => ({ id: li.id, quantity: li.quantity })));
         } else {
             setRelatedItemsState([]);
         }
@@ -371,7 +371,7 @@ export default function StocksPage() {
     };
     
     const handleSelectAllRelated = (allRelatedItems: StockItem[], isChecked: boolean | 'indeterminate') => {
-        setRelatedItemsState(isChecked ? allRelatedItems.map(item => ({ id: item.id!, quantity: 1 })) : []);
+        setRelatedItemsState(isChecked ? allRelatedItems.map(item => ({ id: item.id!, quantity: 0 })) : []);
     };
     
     const handleSaveRelations = async () => {
@@ -599,7 +599,7 @@ export default function StocksPage() {
 
                                                                                         const handleCheckedChange = (checked: boolean) => {
                                                                                             const newValue = checked
-                                                                                                ? [...(field.value || []), { id: rawMaterial.id!, quantity: 1 }]
+                                                                                                ? [...(field.value || []), { id: rawMaterial.id!, quantity: 0 }]
                                                                                                 : field.value?.filter(li => li.id !== rawMaterial.id);
                                                                                             field.onChange(newValue);
                                                                                         };
@@ -723,9 +723,9 @@ export default function StocksPage() {
                              <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <Label>
-                                         {mainItem?.type === 'Finished Good' ? 'Link Raw Materials' : 'Link Finished Goods'}
+                                         {mainItem?.type === 'Finished Good' ? 'Link Raw Materials to:' : 'Link Finished Goods to:'} <span className="font-semibold">{mainItem?.itemCode} - {mainItem?.name}</span>
                                     </Label>
-                                    <p className="text-sm text-muted-foreground">Select and quantify all related items for: <span className="font-semibold">{mainItem?.itemCode} - {mainItem?.name}</span></p>
+                                    <p className="text-sm text-muted-foreground">Select and quantify all related items.</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox
@@ -791,7 +791,7 @@ export default function StocksPage() {
                         </div>
                     ) : (
                          <div className="text-center text-muted-foreground py-12">
-                            <p>Please select an item from the "Stock Level" tab and click "Related Items" to manage its relationships.</p>
+                            <p>Select an item from the "Stock Level" tab and click "Related Items" in its menu to manage relationships.</p>
                         </div>
                     )}
                     <div className="flex justify-end">
@@ -805,6 +805,3 @@ export default function StocksPage() {
     </>
   );
 }
-
-
-
