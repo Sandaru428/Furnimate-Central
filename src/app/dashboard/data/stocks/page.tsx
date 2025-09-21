@@ -46,7 +46,7 @@ import {
     FormMessage,
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
@@ -93,6 +93,12 @@ type StockMovement = {
     balance: number;
 };
 
+type LinkedItemState = {
+    id: string;
+    quantity: number;
+};
+
+
 export default function StocksPage() {
     const [stocks, setStocks] = useAtom(stocksAtom);
     const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
@@ -107,7 +113,7 @@ export default function StocksPage() {
     const [activeTab, setActiveTab] = useState("itemList");
     const [stockLevelFilter, setStockLevelFilter] = useState<"all" | "Raw Material" | "Finished Good">("all");
     const [selectedMainItemId, setSelectedMainItemId] = useState<string | null>(null);
-    const [relatedItemIds, setRelatedItemIds] = useState<string[]>([]);
+    const [relatedItemsState, setRelatedItemsState] = useState<LinkedItemState[]>([]);
 
     const form = useForm<StockItem>({
         resolver: zodResolver(itemSchema),
@@ -421,19 +427,32 @@ export default function StocksPage() {
     const handleMainItemSelect = (itemId: string) => {
         setSelectedMainItemId(itemId);
         const mainItem = stocks.find(s => s.id === itemId);
-        if (mainItem) {
-            setRelatedItemIds(mainItem.linkedItems?.map(li => li.id) || []);
+        if (mainItem && mainItem.linkedItems) {
+            setRelatedItemsState(mainItem.linkedItems);
         } else {
-            setRelatedItemIds([]);
+            setRelatedItemsState([]);
         }
     };
-    
+
     const handleRelatedItemToggle = (relatedId: string, isChecked: boolean | 'indeterminate') => {
-        setRelatedItemIds(prev => isChecked ? [...prev, relatedId] : prev.filter(id => id !== relatedId));
+        setRelatedItemsState(prev => {
+            const exists = prev.some(item => item.id === relatedId);
+            if (isChecked) {
+                return exists ? prev : [...prev, { id: relatedId, quantity: 1 }];
+            } else {
+                return prev.filter(item => item.id !== relatedId);
+            }
+        });
     };
 
-    const handleSelectAllRelated = (allIds: string[], isChecked: boolean | 'indeterminate') => {
-        setRelatedItemIds(isChecked ? allIds : []);
+    const handleRelatedItemQuantityChange = (relatedId: string, quantity: number) => {
+        setRelatedItemsState(prev => 
+            prev.map(item => item.id === relatedId ? { ...item, quantity: quantity > 0 ? quantity : 1 } : item)
+        );
+    };
+    
+    const handleSelectAllRelated = (allRelatedItems: StockItem[], isChecked: boolean | 'indeterminate') => {
+        setRelatedItemsState(isChecked ? allRelatedItems.map(item => ({ id: item.id!, quantity: 1 })) : []);
     };
     
     const handleSaveRelations = async () => {
@@ -441,17 +460,12 @@ export default function StocksPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'No main item selected.' });
             return;
         }
-        const mainItem = stocks.find(s => s.id === selectedMainItemId);
-        if (!mainItem) return;
 
-        // For simplicity, we assume qty is 1 when linking this way. BOM manager handles detailed qty.
-        const newLinkedItems = relatedItemIds.map(id => ({ id, quantity: 1 })); 
-        
         try {
             const docRef = doc(db, 'stocks', selectedMainItemId);
-            await updateDoc(docRef, { linkedItems: newLinkedItems });
+            await updateDoc(docRef, { linkedItems: relatedItemsState });
             
-            setStocks(prev => prev.map(s => s.id === selectedMainItemId ? { ...s, linkedItems: newLinkedItems } : s));
+            setStocks(prev => prev.map(s => s.id === selectedMainItemId ? { ...s, linkedItems: relatedItemsState } : s));
             
             toast({ title: 'Success', description: 'Item relationships have been updated.' });
         } catch (error) {
@@ -489,8 +503,7 @@ export default function StocksPage() {
         return searchMatch;
     });
 
-
-    const isAllRelatedSelected = relatedItems.length > 0 && relatedItemIds.length === relatedItems.length;
+    const isAllRelatedSelected = relatedItems.length > 0 && relatedItemsState.length === relatedItems.length;
 
   return (
     <>
@@ -708,27 +721,25 @@ export default function StocksPage() {
                     <CardDescription>Manage relationships between Finished Goods and Raw Materials.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="main-item-select">Select Main Item</Label>
-                            <Select onValueChange={handleMainItemSelect} value={selectedMainItemId || undefined}>
-                                <SelectTrigger id="main-item-select"><SelectValue placeholder="Select an item..." /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectLabel>Finished Goods</SelectLabel>
-                                        {stocks.filter(s => s.type === 'Finished Good').map(item => (
-                                            <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
-                                        ))}
-                                    </SelectGroup>
-                                    <SelectGroup>
-                                        <SelectLabel>Raw Materials</SelectLabel>
-                                        {stocks.filter(s => s.type === 'Raw Material').map(item => (
-                                            <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
-                                        ))}
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <div className="w-full md:w-1/2">
+                        <Label htmlFor="main-item-select">Select Main Item</Label>
+                        <Select onValueChange={handleMainItemSelect} value={selectedMainItemId || undefined}>
+                            <SelectTrigger id="main-item-select"><SelectValue placeholder="Select an item..." /></SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectLabel>Finished Goods</SelectLabel>
+                                    {stocks.filter(s => s.type === 'Finished Good').map(item => (
+                                        <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
+                                    ))}
+                                </SelectGroup>
+                                <SelectGroup>
+                                    <SelectLabel>Raw Materials</SelectLabel>
+                                    {stocks.filter(s => s.type === 'Raw Material').map(item => (
+                                        <SelectItem key={item.id} value={item.id!}>{item.name} ({item.itemCode})</SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {selectedMainItemId && (
@@ -736,34 +747,63 @@ export default function StocksPage() {
                              <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <Label>Link {relatedItemTypeLabel}</Label>
-                                    <p className="text-sm text-muted-foreground">Select all related items below.</p>
+                                    <p className="text-sm text-muted-foreground">Select and quantify all related items below.</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox
                                         id="select-all-related"
                                         checked={isAllRelatedSelected}
-                                        onCheckedChange={(checked) => handleSelectAllRelated(relatedItems.map(ri => ri.id!), checked)}
+                                        onCheckedChange={(checked) => handleSelectAllRelated(relatedItems, checked)}
                                     />
                                     <Label htmlFor="select-all-related" className="text-sm font-medium">Select All</Label>
                                 </div>
                             </div>
-                            <ScrollArea className="h-72 rounded-md border">
-                                <div className="p-4 space-y-2">
-                                    {filteredRelatedItems.map(item => (
-                                        <div key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
-                                            <Checkbox
-                                                id={`related-${item.id}`}
-                                                checked={relatedItemIds.includes(item.id!)}
-                                                onCheckedChange={(checked) => handleRelatedItemToggle(item.id!, checked)}
-                                            />
-                                            <div className="space-y-1 leading-none">
-                                                <Label htmlFor={`related-${item.id}`} className="font-normal">{item.name}</Label>
-                                                <p className="text-xs text-muted-foreground">{item.itemCode}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
+                            <div className="border rounded-md">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[50px]"></TableHead>
+                                            <TableHead>Item Code</TableHead>
+                                            <TableHead>Item Name</TableHead>
+                                            <TableHead className="w-[150px]">Quantity Needed</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredRelatedItems.map(item => {
+                                            const isChecked = relatedItemsState.some(ri => ri.id === item.id);
+                                            const currentQuantity = relatedItemsState.find(ri => ri.id === item.id)?.quantity || 1;
+                                            return (
+                                            <TableRow key={item.id}>
+                                                <TableCell>
+                                                    <Checkbox
+                                                        checked={isChecked}
+                                                        onCheckedChange={(checked) => handleRelatedItemToggle(item.id!, checked)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="font-mono">{item.itemCode}</TableCell>
+                                                <TableCell className="font-medium">{item.name}</TableCell>
+                                                <TableCell>
+                                                    <Input 
+                                                        type="number" 
+                                                        value={currentQuantity}
+                                                        onChange={(e) => handleRelatedItemQuantityChange(item.id!, parseInt(e.target.value))}
+                                                        className="h-8"
+                                                        min="1"
+                                                        disabled={!isChecked}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button variant="ghost" size="icon" onClick={() => openDialog(item)}>
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </div>
                     )}
                     <div className="flex justify-end">
@@ -777,12 +817,4 @@ export default function StocksPage() {
     </>
   );
 }
-
-
-
-
-
-
-
-
 
