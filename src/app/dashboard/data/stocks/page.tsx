@@ -46,7 +46,7 @@ import {
     FormMessage,
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle, Edit } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
@@ -75,12 +75,11 @@ const itemSchema = z.object({
         id: z.string(),
         quantity: z.coerce.number().int().positive(),
     })).optional(),
+    minimumLevel: z.coerce.number().optional(),
+    maximumLevel: z.coerce.number().optional(),
 });
 
-export type StockItem = z.infer<typeof itemSchema> & {
-    minimumLevel?: number;
-    maximumLevel?: number;
-};
+export type StockItem = z.infer<typeof itemSchema>;
 
 type StockMovement = {
     date: string;
@@ -260,6 +259,8 @@ export default function StocksPage() {
                 unitPrice: values.unitPrice,
                 stockLevel: values.stockLevel,
                 linkedItems: values.linkedItems || [],
+                minimumLevel: values.minimumLevel,
+                maximumLevel: values.maximumLevel,
             };
 
             if (editingItem && editingItem.id) {
@@ -510,12 +511,6 @@ export default function StocksPage() {
       <main className="p-4">
         <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold">Stocks</h1>
-             <Input
-                placeholder="Search items or refs..."
-                className="w-64"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
@@ -523,6 +518,14 @@ export default function StocksPage() {
                 <TabsTrigger value="stockLevel">Stock Level</TabsTrigger>
                 <TabsTrigger value="relatedItems">Related Items</TabsTrigger>
             </TabsList>
+            <div className="my-4">
+                 <Input
+                    placeholder="Search items or refs..."
+                    className="w-full md:w-1/3"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
         <TabsContent value="itemList">
             <Card>
             <CardHeader>
@@ -647,6 +650,8 @@ export default function StocksPage() {
                                                                 <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g., Walnut Wood Plank" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                                 <FormField control={form.control} name="unitPrice" render={({ field }) => <FormItem><FormLabel>Unit Price ({currency.code})</FormLabel><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} />
                                                                 <FormField control={form.control} name="stockLevel" render={({ field }) => <FormItem><FormLabel>Opening Stock</FormLabel><FormControl><Input type="number" placeholder="e.g. 100" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                                <FormField control={form.control} name="minimumLevel" render={({ field }) => <FormItem><FormLabel>Min Level</FormLabel><FormControl><Input type="number" placeholder="e.g., 10" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                                                <FormField control={form.control} name="maximumLevel" render={({ field }) => <FormItem><FormLabel>Max Level</FormLabel><FormControl><Input type="number" placeholder="e.g., 100" {...field} /></FormControl><FormMessage /></FormItem>}/>
                                                                 <BomManager control={form.control} stocks={stocks} itemType={itemType}/>
                                                             </>
                                                         )}
@@ -822,5 +827,6 @@ export default function StocksPage() {
     </>
   );
 }
+
 
 
