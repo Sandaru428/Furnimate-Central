@@ -53,7 +53,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAtom } from 'jotai';
 import { currencyAtom, stocksAtom } from '@/lib/store';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, query } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query, deleteDoc } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -203,6 +203,16 @@ export default function StocksPage() {
             });
         }
         setIsDialogOpen(true);
+    };
+
+    const handleDelete = async (itemId: string) => {
+        try {
+            await deleteDoc(doc(db, "stocks", itemId));
+            setStocks(stocks.filter(s => s.id !== itemId));
+            toast({ title: 'Stock Item Deleted', description: 'The item has been removed from stock.' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete stock item.' });
+        }
     };
 
     const filteredStocks = stocks.filter(
@@ -417,7 +427,7 @@ export default function StocksPage() {
                                     <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={() => openDialog(item)}>Edit</DropdownMenuItem>
-                                        <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
+                                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id!)}>Delete</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>
@@ -476,11 +486,12 @@ export default function StocksPage() {
                                 <TableHead className="text-right">Min Level</TableHead>
                                 <TableHead className="text-right">Max Level</TableHead>
                                 <TableHead className="text-right">Value</TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                            {loading ? (
-                                <TableRow><TableCell colSpan={7} className="text-center">Loading...</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="text-center">Loading...</TableCell></TableRow>
                             ) : filteredStockLevels.length > 0 ? (
                                 filteredStockLevels.map((item) => (
                                     <TableRow key={item.id}>
@@ -493,10 +504,19 @@ export default function StocksPage() {
                                         <TableCell className="text-right">{item.minimumLevel || '-'}</TableCell>
                                         <TableCell className="text-right">{item.maximumLevel || '-'}</TableCell>
                                         <TableCell className="text-right">{currency.code} {(item.unitPrice * item.stockLevel).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                        <TableCell>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => openDialog(item)}>Edit</DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id!)}>Delete</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
-                                <TableRow><TableCell colSpan={7} className="text-center">No items match your search.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="text-center">No items match your search.</TableCell></TableRow>
                             )}
                         </TableBody>
                      </Table>
