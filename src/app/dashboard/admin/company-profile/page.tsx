@@ -23,6 +23,7 @@ import { currencyAtom, companyProfileAtom } from '@/lib/store';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { doc, setDoc } from "firebase/firestore"; 
+import { toSentenceCase } from '@/lib/utils';
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -62,6 +63,7 @@ export default function CompanyProfilePage() {
         const newProfileData = {
             ...companyProfile, // start with existing profile
             ...values,         // override with form values
+            companyName: toSentenceCase(values.companyName),
             logo: newLogo,     // set the logo name
             id: profileId,     // ensure the ID is set
         };

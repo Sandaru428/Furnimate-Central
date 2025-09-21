@@ -53,6 +53,7 @@ import { format, parseISO } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAtom } from 'jotai';
 import { staffAtom, type Staff } from '@/lib/store';
+import { toSentenceCase } from '@/lib/utils';
 
 const staffSchema = z.object({
   id: z.string().optional(),
@@ -116,12 +117,12 @@ export default function StaffPage() {
   async function onSubmit(values: Staff) {
     try {
       const dataToSave: any = {
-        name: values.name,
+        name: toSentenceCase(values.name),
         nic: values.nic,
         contactNumber: values.contactNumber,
         whatsappNumber: values.whatsappNumber,
         email: values.email,
-        position: values.position,
+        position: toSentenceCase(values.position),
       };
       if (values.dateOfBirth) {
         dataToSave.dateOfBirth = new Date(values.dateOfBirth);
@@ -131,22 +132,24 @@ export default function StaffPage() {
         // Update
         const docRef = doc(db, 'staff', editingStaff.id);
         await updateDoc(docRef, dataToSave);
-        setStaff(prev => prev.map(c => c.id === editingStaff.id ? { ...c, ...values, dateOfBirth: values.dateOfBirth } as Staff : c));
+        setStaff(prev => prev.map(c => c.id === editingStaff.id ? { ...c, ...values, name: dataToSave.name, position: dataToSave.position, dateOfBirth: values.dateOfBirth } as Staff : c));
         toast({
           title: 'Staff Updated',
-          description: `${values.name} has been successfully updated.`,
+          description: `${dataToSave.name} has been successfully updated.`,
         });
       } else {
         // Create
         const docRef = await addDoc(collection(db, 'staff'), dataToSave);
         const newStaff: Staff = { 
           ...values, 
+          name: dataToSave.name,
+          position: dataToSave.position,
           id: docRef.id,
         };
         setStaff(prev => [newStaff, ...prev]);
         toast({
           title: 'Staff Added',
-          description: `${values.name} has been successfully added.`,
+          description: `${dataToSave.name} has been successfully added.`,
         });
       }
       form.reset();
@@ -194,8 +197,8 @@ export default function StaffPage() {
   const filteredStaff = staff.filter(
     (s) =>
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.email!.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.contactNumber!.toLowerCase().includes(searchTerm.toLowerCase())
+      (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.contactNumber || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (

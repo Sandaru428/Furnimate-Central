@@ -56,7 +56,7 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, query, deleteDoc } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
+import { cn, toSentenceCase } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseISO, format } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -259,7 +259,7 @@ export default function StocksPage() {
         try {
             const dataToSave = {
                 itemCode: values.itemCode,
-                name: values.name,
+                name: toSentenceCase(values.name),
                 type: values.type,
                 unitPrice: values.unitPrice,
                 stockLevel: values.stockLevel,
@@ -273,18 +273,18 @@ export default function StocksPage() {
                 // Update
                 const docRef = doc(db, 'stocks', editingItem.id);
                 await updateDoc(docRef, dataToSave as any);
-                setStocks(stocks.map(item => item.id === editingItem.id ? { ...item, ...values, id: item.id } : item).sort((a, b) => a.name.localeCompare(b.name)));
+                setStocks(stocks.map(item => item.id === editingItem.id ? { ...item, ...values, name: dataToSave.name, id: item.id } : item).sort((a, b) => a.name.localeCompare(b.name)));
                 toast({
                   title: 'Item Updated',
-                  description: `${values.name} has been successfully updated.`,
+                  description: `${dataToSave.name} has been successfully updated.`,
                 });
             } else {
                 // Create
                 const docRef = await addDoc(collection(db, 'stocks'), dataToSave);
-                setStocks(prev => [...prev, { ...values, id: docRef.id }].sort((a, b) => a.name.localeCompare(b.name)));
+                setStocks(prev => [...prev, { ...values, name: dataToSave.name, id: docRef.id }].sort((a, b) => a.name.localeCompare(b.name)));
                 toast({
                   title: 'Item Added',
-                  description: `${values.name} has been successfully added.`,
+                  description: `${dataToSave.name} has been successfully added.`,
                 });
             }
             form.reset();

@@ -52,6 +52,7 @@ import { collection, addDoc, getDocs, doc, updateDoc, query, writeBatch } from '
 import { format, parseISO } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toSentenceCase } from '@/lib/utils';
 
 const customerSchema = z.object({
   id: z.string().optional(),
@@ -115,7 +116,7 @@ export default function CustomersPage() {
   async function onSubmit(values: Customer) {
     try {
       const dataToSave: any = {
-        name: values.name,
+        name: toSentenceCase(values.name),
         email: values.email,
         phone: values.phone,
         whatsappNumber: values.whatsappNumber,
@@ -129,22 +130,23 @@ export default function CustomersPage() {
         // Update
         const docRef = doc(db, 'customers', editingCustomer.id);
         await updateDoc(docRef, dataToSave);
-        setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...values, dateOfBirth: values.dateOfBirth } : c).sort((a, b) => a.name.localeCompare(b.name)));
+        setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...values, name: dataToSave.name, dateOfBirth: values.dateOfBirth } : c).sort((a, b) => a.name.localeCompare(b.name)));
         toast({
           title: 'Customer Updated',
-          description: `${values.name} has been successfully updated.`,
+          description: `${dataToSave.name} has been successfully updated.`,
         });
       } else {
         // Create
         const docRef = await addDoc(collection(db, 'customers'), dataToSave);
         const newCustomer: Customer = { 
           ...values, 
+          name: dataToSave.name,
           id: docRef.id,
         };
         setCustomers(prev => [...prev, newCustomer].sort((a, b) => a.name.localeCompare(b.name)));
         toast({
           title: 'Customer Added',
-          description: `${values.name} has been successfully added.`,
+          description: `${dataToSave.name} has been successfully added.`,
         });
       }
       form.reset();

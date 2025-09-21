@@ -50,6 +50,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, query } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toSentenceCase } from '@/lib/utils';
 
 const supplierSchema = z.object({
     id: z.string().optional(),
@@ -109,12 +110,12 @@ export default function SuppliersPage() {
   async function onSubmit(values: Supplier) {
     try {
         const dataToSave = {
-            name: values.name,
-            contactPerson: values.contactPerson || '',
+            name: toSentenceCase(values.name),
+            contactPerson: values.contactPerson ? toSentenceCase(values.contactPerson) : '',
             email: values.email || '',
             whatsappNumber: values.whatsappNumber || '',
             contactNumber: values.contactNumber || '',
-            bankName: values.bankName || '',
+            bankName: values.bankName ? toSentenceCase(values.bankName) : '',
             accountNumber: values.accountNumber || '',
         };
 
@@ -122,18 +123,18 @@ export default function SuppliersPage() {
             // Update
             const docRef = doc(db, 'suppliers', editingSupplier.id);
             await updateDoc(docRef, dataToSave);
-            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...s, ...values, id: s.id } : s).sort((a, b) => a.name.localeCompare(b.name)));
+            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...s, ...values, id: s.id, name: dataToSave.name, contactPerson: dataToSave.contactPerson, bankName: dataToSave.bankName } : s).sort((a, b) => a.name.localeCompare(b.name)));
             toast({
               title: 'Supplier Updated',
-              description: `${values.name} has been successfully updated.`,
+              description: `${dataToSave.name} has been successfully updated.`,
             });
         } else {
             // Create
             const docRef = await addDoc(collection(db, 'suppliers'), dataToSave);
-            setSuppliers(prev => [...prev, { ...values, id: docRef.id }].sort((a, b) => a.name.localeCompare(b.name)));
+            setSuppliers(prev => [...prev, { ...values, id: docRef.id, name: dataToSave.name, contactPerson: dataToSave.contactPerson, bankName: dataToSave.bankName }].sort((a, b) => a.name.localeCompare(b.name)));
             toast({
               title: 'Supplier Added',
-              description: `${values.name} has been successfully added.`,
+              description: `${dataToSave.name} has been successfully added.`,
             });
         }
         form.reset();
