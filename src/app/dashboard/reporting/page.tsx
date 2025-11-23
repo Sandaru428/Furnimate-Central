@@ -24,7 +24,6 @@ import { Button } from '@/components/ui/button';
 import { CalendarIcon, Printer } from 'lucide-react';
 import { format, isWithinInterval, parseISO } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
   customersAtom,
   suppliersAtom,
@@ -37,7 +36,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const reportTypes = [
@@ -64,7 +63,7 @@ export default function ReportingPage() {
 
     useEffect(() => {
         const fetchData = async () => {
-            const collections = {
+            const collections: { [key: string]: (data: any) => void } = {
                 customers: setCustomers,
                 suppliers: setSuppliers,
                 purchaseOrders: setPurchaseOrders,
@@ -74,7 +73,8 @@ export default function ReportingPage() {
             };
 
             for (const [key, setter] of Object.entries(collections)) {
-                const querySnapshot = await getDocs(collection(db, key));
+                const q = query(collection(db, key));
+                const querySnapshot = await getDocs(q);
                 const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setter(data as any);
             }
@@ -132,11 +132,8 @@ export default function ReportingPage() {
           }
         `}
       </style>
-      <header className="flex items-center p-4 border-b no-print">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Reporting</h1>
-      </header>
       <main className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Reporting</h1>
         <Card className="no-print">
             <CardHeader>
                 <CardTitle>Date Range Report</CardTitle>
@@ -221,7 +218,7 @@ export default function ReportingPage() {
                                 <TableCell>{p.date}</TableCell>
                                 <TableCell className="font-mono">{p.orderId ? `${p.type === 'income' ? 'Sale Order: ' : 'Purchase Order: '}${p.orderId}` : p.description}</TableCell>
                                 <TableCell><Badge variant={p.type === 'income' ? 'default' : 'destructive'} className={cn(p.type === 'income' ? 'bg-green-600' : 'bg-red-600', 'text-white')}>{p.type}</Badge></TableCell>
-                                <TableCell className={cn("text-right", p.type === 'income' ? 'text-green-600' : 'text-red-600')}>{p.type === 'income' ? '+' : '-'}{currency.code} {p.amount.toFixed(2)}</TableCell>
+                                <TableCell className={cn("text-right", p.type === 'income' ? 'text-green-600' : 'text-red-600')}>{p.type === 'income' ? '+' : '-'}{currency.code} {p.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 <TableCell>{p.details}</TableCell>
                                 </TableRow>
                             )) : <TableRow><TableCell colSpan={5} className="text-center">No transactions in this period.</TableCell></TableRow>}
@@ -244,7 +241,7 @@ export default function ReportingPage() {
                                 <TableCell>{po.date}</TableCell>
                                 <TableCell className="font-mono">{po.id}</TableCell>
                                 <TableCell>{po.supplierName}</TableCell>
-                                <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{currency.code} {po.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 <TableCell><Badge>{po.status}</Badge></TableCell>
                                 </TableRow>
                             )) : <TableRow><TableCell colSpan={5} className="text-center">No purchase orders in this period.</TableCell></TableRow>}
@@ -267,7 +264,7 @@ export default function ReportingPage() {
                                 <TableCell>{so.date}</TableCell>
                                 <TableCell className="font-mono">{so.id}</TableCell>
                                 <TableCell>{so.customer}</TableCell>
-                                <TableCell className="text-right">{currency.code} {so.amount.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{currency.code} {so.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 <TableCell><Badge>{so.status}</Badge></TableCell>
                                 </TableRow>
                             )) : <TableRow><TableCell colSpan={5} className="text-center">No sale orders in this period.</TableCell></TableRow>}
@@ -290,7 +287,7 @@ export default function ReportingPage() {
                                 <TableCell>{q.date}</TableCell>
                                 <TableCell className="font-mono">{q.id}</TableCell>
                                 <TableCell>{q.customer}</TableCell>
-                                <TableCell className="text-right">{currency.code} {q.amount.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{currency.code} {q.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 <TableCell><Badge>{q.status}</Badge></TableCell>
                                 </TableRow>
                             )) : <TableRow><TableCell colSpan={5} className="text-center">No quotations in this period.</TableCell></TableRow>}

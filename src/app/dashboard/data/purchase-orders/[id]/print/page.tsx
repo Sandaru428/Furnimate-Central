@@ -1,13 +1,14 @@
 
+
 'use client';
 
 import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
-import { purchaseOrdersAtom, masterDataAtom, currencyAtom, companyProfileAtom } from '@/lib/store';
+import { purchaseOrdersAtom, stocksAtom, currencyAtom, companyProfileAtom } from '@/lib/store';
 import { Logo } from '@/components/icons/logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MasterDataItem } from '../../../master-data/page';
+import { StockItem } from '../../../stocks/page';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft } from 'lucide-react';
 
@@ -17,7 +18,7 @@ export default function PurchaseOrderPrintPage() {
     const { id } = params;
 
     const [purchaseOrders] = useAtom(purchaseOrdersAtom);
-    const [masterData] = useAtom(masterDataAtom);
+    const [stocks] = useAtom(stocksAtom);
     const [currency] = useAtom(currencyAtom);
     const [companyProfile] = useAtom(companyProfileAtom);
 
@@ -95,14 +96,14 @@ export default function PurchaseOrderPrintPage() {
                     </TableHeader>
                     <TableBody>
                         {po.lineItems.map((item: any) => {
-                            const itemDetails = masterData.find((md: MasterDataItem) => md.itemCode === item.itemId);
+                            const itemDetails = stocks.find((md: StockItem) => md.itemCode === item.itemId);
                             return (
                                 <TableRow key={item.itemId}>
                                     <TableCell>{item.itemId}</TableCell>
                                     <TableCell>{itemDetails?.name || 'N/A'}</TableCell>
                                     <TableCell className="text-right">{item.quantity}</TableCell>
-                                    {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {(item.unitPrice || 0).toFixed(2)}</TableCell>}
-                                    {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {(item.totalValue || 0).toFixed(2)}</TableCell>}
+                                    {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {(item.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>}
+                                    {po.status !== 'Draft' && <TableCell className="text-right">{currency.code} {(item.totalValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>}
                                 </TableRow>
                             );
                         })}
@@ -110,7 +111,7 @@ export default function PurchaseOrderPrintPage() {
                 </Table>
                 {po.status !== 'Draft' && (
                     <div className="text-right mt-4 pr-4 text-xl font-bold">
-                        Total: {currency.code} {po.totalAmount.toFixed(2)}
+                        Total: {currency.code} {po.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                 )}
                 <footer className="text-center text-xs text-muted-foreground mt-12 border-t pt-4">

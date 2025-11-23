@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -9,9 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
 import {
   DollarSign,
   Package,
@@ -20,6 +17,11 @@ import {
   BookOpenCheck,
   Server,
   Archive,
+  Gift,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  TrendingDown,
+  CircleArrowRight,
 } from 'lucide-react';
 import {
   Bar,
@@ -29,86 +31,65 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Pie,
+  PieChart,
+  Cell,
 } from 'recharts';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+
 import { useAtom } from 'jotai';
-import { currencyAtom, paymentsAtom, saleOrdersAtom, masterDataAtom } from '@/lib/store';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { currencyAtom, paymentsAtom, saleOrdersAtom, stocksAtom, customersAtom, staffAtom } from '@/lib/store';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
+import { useToast } from '@/hooks/use-toast';
+import type { StockItem } from './data/stocks/page';
+import { useRouter } from 'next/navigation';
+import { collection, getDocs, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Staff } from '@/lib/store';
 
-const developmentChecklist = [
-  {
-    heading: 'User Authentication & Roles',
-    items: [
-      {
-        id: 'auth-1',
-        label: 'Implement secure email-based login',
-        checked: true,
-      },
-      {
-        id: 'auth-2',
-        label: 'Define roles: Admin, Sales, Production, Customer, Supplier',
-        checked: true,
-      },
-    ],
-  },
-  {
-    heading: 'Admin Features',
-    items: [
-      { id: 'admin-1', label: 'Company Profile Management UI', checked: true },
-      {
-        id: 'admin-2',
-        label: 'Notification Template Engine UI',
-        checked: true,
-      },
-    ],
-  },
-  {
-    heading: 'Core System Features',
-    items: [
-      {
-        id: 'core-1',
-        label: 'Smart Reference Number Generator (Cloud Function)',
-        checked: true,
-      },
-      {
-        id: 'core-2',
-        label: 'GenAI Audit Flow for reference numbers',
-        checked: true,
-      },
-      { id: 'core-3', label: 'Progress Dashboard with KPIs', checked: true },
-    ],
-  },
-  {
-    heading: 'Data Management',
-    items: [
-      {
-        id: 'data-1',
-        label: 'Master Data Management for products and materials',
-        checked: true,
-      },
-      { id: 'data-2', label: 'Supplier and Customer data management', checked: true },
-    ],
-  },
-  {
-    heading: 'Sales Flow',
-    items: [
-      { id: 'sales-1', label: 'Quotation creation and management', checked: true },
-      { id: 'sales-2', label: 'Sale Order conversion and real-time tracking', checked: true },
-    ],
-  },
-];
+
+const CHART_COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
 
 export default function DashboardPage() {
   const [currency] = useAtom(currencyAtom);
   const [payments] = useAtom(paymentsAtom);
   const [saleOrders] = useAtom(saleOrdersAtom);
-  const [masterData] = useAtom(masterDataAtom);
-  const [isConnected, setIsConnected] = useState(false);
+  const [stocks] = useAtom(stocksAtom);
+  const [customers, setCustomers] = useAtom(customersAtom);
+  const [staff, setStaff] = useAtom(staffAtom);
+  const { toast } = useToast();
+  const router = useRouter();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const customersQuery = query(collection(db, "customers"));
+            const customersSnapshot = await getDocs(customersQuery);
+            const customersData = customersSnapshot.docs.map(doc => {
+                const data = doc.data();
+                return { 
+                    id: doc.id, 
+                    ...data,
+                    dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
+                }
+            });
+            setCustomers(customersData as any);
+
+            const staffQuery = query(collection(db, "staff"));
+            const staffSnapshot = await getDocs(staffQuery);
+            const staffData = staffSnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                     id: doc.id,
+                     ...data,
+                     dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
+                } as Staff
+            });
+            setStaff(staffData);
+        };
+        fetchData();
+    }, [setCustomers, setStaff]);
 
   const kpiData = useMemo(() => {
     const totalRevenue = payments
@@ -119,7 +100,7 @@ export default function DashboardPage() {
     
     const pendingShipments = saleOrders.filter(o => o.status === 'Processing').length;
     
-    const itemsToRestock = masterData.filter(item => item.stockLevel === 0).length;
+    const itemsToRestock = stocks.filter(item => item.stockLevel === 0).length;
 
     return [
       {
@@ -140,7 +121,7 @@ export default function DashboardPage() {
         title: 'Pending Shipments',
         amount: pendingShipments,
         valuePrefix: '',
-        change: `Orders in 'Processing' state`,
+        change: `Orders in \'Processing\' state`,
         icon: <Package className="text-muted-foreground" />,
       },
       {
@@ -152,13 +133,13 @@ export default function DashboardPage() {
         icon: <Archive className="text-muted-foreground" />,
       },
     ];
-  }, [payments, saleOrders, masterData]);
+  }, [payments, saleOrders, stocks]);
 
  const salesData = useMemo(() => {
     const monthlySales: { [key: string]: number } = {};
 
     saleOrders.forEach(order => {
-        const month = format(parseISO(order.date), 'MMM yyyy');
+        const month = format(new Date(order.date), 'MMM yyyy');
         if (!monthlySales[month]) {
             monthlySales[month] = 0;
         }
@@ -173,156 +154,297 @@ export default function DashboardPage() {
         .slice(-6); // Get last 6 months
  }, [saleOrders]);
 
+  const stockValueData = useMemo(() => {
+    const rawMaterialValue = stocks
+        .filter(item => item.type === 'Raw Material')
+        .reduce((acc, item) => acc + (item.stockLevel * item.unitPrice), 0);
+    
+    const finishedGoodValue = stocks
+        .filter(item => item.type === 'Finished Good')
+        .reduce((acc, item) => acc + (item.stockLevel * item.unitPrice), 0);
+    
+    return [
+        { name: 'Raw Materials', value: rawMaterialValue, fill: 'var(--color-raw)' },
+        { name: 'Finished Goods', value: finishedGoodValue, fill: 'var(--color-finished)' },
+    ];
+  }, [stocks]);
+
+  const stockChartConfig = {
+    value: {
+        label: "Value",
+    },
+    raw: { label: "Raw Materials", color: "hsl(var(--chart-1))" },
+    finished: { label: "Finished Goods", color: "hsl(var(--chart-2))" }
+  };
+
+  const rawMaterialsChartData = useMemo(() => 
+    stocks.filter(s => s.type === 'Raw Material' && s.stockLevel > 0).map(s => ({
+        name: s.name,
+        value: s.unitPrice * s.stockLevel,
+    })), [stocks]);
+    
+  const finishedGoodsChartData = useMemo(() => 
+    stocks.filter(s => s.type === 'Finished Good' && s.stockLevel > 0).map(s => ({
+        name: s.name,
+        value: s.unitPrice * s.stockLevel,
+    })), [stocks]);
+
+  const birthdayList = useMemo(() => {
+    const today = new Date();
+    const isBirthday = (dob: string | undefined) => {
+        if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) return false;
+        try {
+            const [year, month, day] = dob.split('-').map(Number);
+            const birthDate = new Date(Date.UTC(year, month - 1, day));
+            return birthDate.getUTCDate() === today.getUTCDate() && birthDate.getUTCMonth() === today.getUTCMonth();
+        } catch {
+            return false;
+        }
+    };
+    const birthdayCustomers = customers.filter(c => isBirthday((c as any).dateOfBirth)).map(c => ({...(c as any), type: 'Customer'}));
+    const birthdayStaff = staff.filter(s => isBirthday(s.dateOfBirth)).map(s => ({...s, type: 'Staff'}));
+
+    return [...birthdayCustomers, ...birthdayStaff];
+  }, [customers, staff]);
+  
+  useEffect(() => {
+    if (birthdayList.length > 0) {
+      birthdayList.forEach(person => {
+        toast({
+          title: `🎂 Happy Birthday, ${person.name}!`,
+          description: "Don't forget to send your wishes.",
+          duration: 10000,
+        });
+      });
+    }
+  }, [birthdayList, toast]);
+
+  const stockAlerts = useMemo(() => {
+    const lowStockRM = stocks.filter(s => s.type === 'Raw Material' && s.minimumLevel && s.stockLevel < s.minimumLevel);
+    const overStockRM = stocks.filter(s => s.type === 'Raw Material' && s.maximumLevel && s.stockLevel > s.maximumLevel);
+    const lowStockFG = stocks.filter(s => s.type === 'Finished Good' && s.minimumLevel && s.stockLevel < s.minimumLevel);
+    const overStockFG = stocks.filter(s => s.type === 'Finished Good' && s.maximumLevel && s.stockLevel > s.maximumLevel);
+    return { lowStockRM, overStockRM, lowStockFG, overStockFG };
+  }, [stocks]);
+
+
+  const handleSendWishes = (name: string) => {
+    // In a real app, this would trigger an email.
+    // For now, we'll just show a notification.
+    toast({
+        title: 'Wishes Sent!',
+        description: `Birthday wishes have been sent to ${name}.`
+    });
+  }
+
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-        <SidebarTrigger />
-        <h1 className="text-xl font-semibold ml-4">Dashboard</h1>
-      </header>
       <main className="p-4">
-        <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="development">Development</TabsTrigger>
-          </TabsList>
-          <TabsContent value="dashboard">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {kpiData.map((kpi) => (
-                <Card key={kpi.title}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      {kpi.title}
-                    </CardTitle>
-                    {kpi.icon}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                        {kpi.title === 'Total Revenue' 
-                            ? `${kpi.valuePrefix || ''}${currency.code} ${kpi.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                            : `${kpi.valuePrefix || ''}${kpi.amount.toLocaleString()}${kpi.valueSuffix || ''}`
-                        }
-                    </div>
-                    <p className="text-xs text-muted-foreground">{kpi.change}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            <div className="mt-4 grid gap-4 grid-cols-1">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Sales Overview</CardTitle>
-                        <CardDescription>A look at your sales performance over the last 6 months.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={salesData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis tickFormatter={(value) => `${currency.code} ${value.toLocaleString()}`} />
-                        <Tooltip formatter={(value: number) => `${currency.code} ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                        <Bar dataKey="sales" fill="hsl(var(--primary))" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Reporting</CardTitle>
-                        <CardDescription>Generate and view reports based on a selected date range.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col items-center justify-center text-center p-8 space-y-4">
-                            <BookOpenCheck className="h-16 w-16 text-muted-foreground" />
-                            <p>Select a date range to generate reports for sales, purchases, and more.</p>
-                            <Button asChild>
-                                <Link href="/dashboard/reporting">Go to Reporting</Link>
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-          </TabsContent>
-          <TabsContent value="development">
-            <Card>
-              <CardHeader>
-                <CardTitle>Development Workflow</CardTitle>
-                <CardDescription>
-                  A step-by-step checklist to track feature implementation and testing.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                    <h3 className="text-lg font-semibold mb-4">Data Seeding</h3>
-                     <div className="flex items-center space-x-2 p-4 border rounded-lg">
-                        <Switch id="dummy-data-switch" disabled />
-                        <Label htmlFor="dummy-data-switch">Enable Dummy Data</Label>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-2">
-                        Data is now being fetched from Firestore. This switch is disabled.
-                    </p>
+        <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {kpiData.map((kpi) => (
+            <Card key={kpi.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                    {kpi.title}
+                </CardTitle>
+                {kpi.icon}
+                </CardHeader>
+                <CardContent>
+                <div className="text-2xl font-bold">
+                    {kpi.title === 'Total Revenue' 
+                        ? `${kpi.valuePrefix || ''}${currency.code} ${kpi.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : `${kpi.valuePrefix || ''}${kpi.amount.toLocaleString()}${kpi.valueSuffix || ''}`
+                    }
                 </div>
-                
-                <Separator />
-
-                <div>
-                    <h3 className="text-lg font-semibold mb-4">Server Connection</h3>
-                     <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-4">
-                            <Server className="h-6 w-6 text-muted-foreground" />
-                            <div>
-                                <p className="font-medium">absiraivaws@gmail.com</p>
-                                {isConnected ? (
-                                    <Badge className="bg-green-600 text-white">Connected</Badge>
-                                ) : (
-                                    <Badge variant="destructive">Disconnected</Badge>
-                                )}
-                            </div>
-                        </div>
-                        <Button variant="outline" onClick={() => setIsConnected(!isConnected)}>
-                          {isConnected ? 'Disconnect' : 'Connect'}
-                        </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-2">
-                        Simulated server connection status for development purposes.
-                    </p>
-                </div>
-
-                <Separator />
-
-                {developmentChecklist.map((section, index) => (
-                  <div key={section.heading}>
-                    <h3 className="text-lg font-semibold mb-4">
-                      {section.heading}
-                    </h3>
-                    <div className="space-y-4">
-                      {section.items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center space-x-3"
-                        >
-                          <Checkbox
-                            id={item.id}
-                            checked={item.checked || false}
-                            disabled
-                          />
-                          <label
-                            htmlFor={item.id}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {item.label}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                    {index < developmentChecklist.length - 1 && (
-                      <Separator className="mt-6" />
-                    )}
-                  </div>
-                ))}
-              </CardContent>
+                <p className="text-xs text-muted-foreground">{kpi.change}</p>
+                </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+            ))}
+        </div>
+
+        {/* Stock Alerts */}
+        <div className="mt-4">
+            <h2 className="text-xl font-semibold mb-2">Stock Alerts</h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {stockAlerts.lowStockRM.length > 0 && (
+                    <Card className="border-destructive">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-destructive"><ArrowDownCircle /> Low Raw Materials</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm mb-4">The following items are below minimum stock levels.</p>
+                            <ul className="text-sm space-y-1 mb-4">
+                                {stockAlerts.lowStockRM.map(item => <li key={(item as any).id}>- {item.name} ({item.stockLevel})</li>)}
+                            </ul>
+                            <Button variant="destructive" className="w-full" onClick={() => router.push('/dashboard/data/purchase-orders')}>
+                                Create Purchase Order <CircleArrowRight className="ml-2 h-4 w-4"/>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+                {stockAlerts.overStockRM.length > 0 && (
+                     <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><ArrowUpCircle /> Overstocked Raw Materials</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm mb-4">Consider using these materials in production.</p>
+                            <ul className="text-sm space-y-1 mb-4">
+                                {stockAlerts.overStockRM.map(item => <li key={(item as any).id}>- {item.name} ({item.stockLevel})</li>)}
+                            </ul>
+                             <Button className="w-full" onClick={() => router.push('/dashboard/sales/orders')}>
+                                Plan Production <CircleArrowRight className="ml-2 h-4 w-4"/>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+                 {stockAlerts.lowStockFG.length > 0 && (
+                    <Card className="border-orange-500">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-orange-500"><TrendingDown /> Low Finished Goods</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm mb-4">These finished goods are running low.</p>
+                            <ul className="text-sm space-y-1 mb-4">
+                                {stockAlerts.lowStockFG.map(item => <li key={(item as any).id}>- {item.name} ({item.stockLevel})</li>)}
+                            </ul>
+                             <Button variant="outline" className="w-full border-orange-500 text-orange-500 hover:bg-orange-50" onClick={() => router.push('/dashboard/sales/orders')}>
+                                Increase Production <CircleArrowRight className="ml-2 h-4 w-4"/>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+                {stockAlerts.overStockFG.length > 0 && (
+                    <Card className="border-green-500">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-green-600"><TrendingUp /> Overstocked Finished Goods</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm mb-4">Consider a sale or promotion for these items.</p>
+                            <ul className="text-sm space-y-1 mb-4">
+                                {stockAlerts.overStockFG.map(item => <li key={(item as any).id}>- {item.name} ({item.stockLevel})</li>)}
+                            </ul>
+                            <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => router.push('/dashboard/sales/quotations')}>
+                                Create Quotation <CircleArrowRight className="ml-2 h-4 w-4"/>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+             {stockAlerts.lowStockRM.length === 0 && stockAlerts.overStockRM.length === 0 && stockAlerts.lowStockFG.length === 0 && stockAlerts.overStockFG.length === 0 && (
+                <p className="text-muted-foreground text-sm">No stock alerts at the moment. All inventory levels are normal.</p>
+            )}
+        </div>
+
+
+        <div className="mt-4 grid gap-4 grid-cols-1 lg:grid-cols-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Sales Overview</CardTitle>
+                    <CardDescription>A look at your sales performance over the last 6 months.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={salesData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis tickFormatter={(value) => `${currency.code} ${value.toLocaleString()}`} />
+                    <Tooltip formatter={(value: number) => `${currency.code} ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                    <Bar dataKey="sales" fill="hsl(var(--primary))" />
+                    </BarChart>
+                </ResponsiveContainer>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Birthday Wishes</CardTitle>
+                    <CardDescription>Send birthday wishes to staff and customers celebrating today.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {birthdayList.length > 0 ? (
+                        <ul className="space-y-3">
+                            {birthdayList.map(person => (
+                                <li key={(person as any).id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                                    <div className='flex items-center gap-3'>
+                                        <div className='bg-background p-2 rounded-full'>
+                                           <Gift className='h-5 w-5 text-primary' />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium">{(person as any).name}</p>
+                                            <p className="text-sm text-muted-foreground">{(person as any).type}</p>
+                                        </div>
+                                    </div>
+                                    <Button size="sm" onClick={() => handleSendWishes((person as any).name)}>Send Wishes</Button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                         <div className="flex flex-col items-center justify-center text-center p-8 space-y-4 h-full">
+                            <p>No birthdays today.</p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+        
+        <div className="mt-4 grid gap-4 grid-cols-1 xl:grid-cols-3">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Stock Value: Raw vs Finished</CardTitle>
+                    <CardDescription>Total value of raw materials vs. finished goods in stock.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={stockChartConfig} className="mx-auto aspect-square h-[250px]">
+                        <PieChart>
+                            <ChartTooltip formatter={(value, name) => `${(name as string)}: ${currency.code} ${Number(value).toLocaleString()}`} content={<ChartTooltipContent nameKey="name" />} />
+                            <Pie data={stockValueData} dataKey="value" nameKey="name" innerRadius={60} strokeWidth={5}>
+                                {stockValueData.map((entry) => (
+                                    <Cell key={entry.name} fill={entry.name === 'Raw Materials' ? 'var(--color-raw)' : 'var(--color-finished)'} />
+                                ))}
+                            </Pie>
+                            <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                        </PieChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Raw Material Stock Value</CardTitle>
+                    <CardDescription>Value breakdown of each raw material.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={{}} className="mx-auto aspect-square h-[250px]">
+                         <PieChart>
+                            <ChartTooltip formatter={(value, name) => `${(name as string)}: ${currency.code} ${Number(value).toLocaleString()}`} content={<ChartTooltipContent nameKey="name" />} />
+                             <Pie data={rawMaterialsChartData} dataKey="value" nameKey="name" innerRadius={60}>
+                                {rawMaterialsChartData.map((_, index) => (
+                                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                ))}
+                            </Pie>
+                         </PieChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Finished Good Stock Value</CardTitle>
+                    <CardDescription>Value breakdown of each finished good.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <ChartContainer config={{}} className="mx-auto aspect-square h-[250px]">
+                         <PieChart>
+                            <ChartTooltip formatter={(value, name) => `${(name as string)}: ${currency.code} ${Number(value).toLocaleString()}`} content={<ChartTooltipContent nameKey="name" />} />
+                             <Pie data={finishedGoodsChartData} dataKey="value" nameKey="name" innerRadius={60}>
+                                {finishedGoodsChartData.map((_, index) => (
+                                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                ))}
+                            </Pie>
+                         </PieChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+        </div>
       </main>
     </>
   );

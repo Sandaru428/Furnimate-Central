@@ -17,15 +17,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAtom } from 'jotai';
 import { paymentsAtom, currencyAtom, saleOrdersAtom, purchaseOrdersAtom } from '@/lib/store';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query } from 'firebase/firestore';
 import type { Payment } from '@/lib/store';
 import { Input } from '@/components/ui/input';
+import { format, parseISO } from 'date-fns';
 
 export default function CashBookPage() {
     const [payments, setPayments] = useAtom(paymentsAtom);
@@ -38,10 +38,15 @@ export default function CashBookPage() {
     useEffect(() => {
         const fetchAllData = async () => {
             setLoading(true);
+
+            const paymentsQuery = query(collection(db, "payments"));
+            const soQuery = query(collection(db, "saleOrders"));
+            const poQuery = query(collection(db, "purchaseOrders"));
+
             const [paymentsSnapshot, soSnapshot, poSnapshot] = await Promise.all([
-                getDocs(collection(db, "payments")),
-                getDocs(collection(db, "saleOrders")),
-                getDocs(collection(db, "purchaseOrders"))
+                getDocs(paymentsQuery),
+                getDocs(soQuery),
+                getDocs(poQuery)
             ]);
             
             const paymentsData = paymentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
@@ -96,11 +101,8 @@ export default function CashBookPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Cash Book</h1>
-      </header>
       <main className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Cash Book</h1>
         <Card>
           <CardHeader>
              <div className="flex justify-between items-center">
@@ -141,7 +143,7 @@ export default function CashBookPage() {
                 ) : filteredPayments.length > 0 ? (
                     filteredPayments.map((payment) => (
                     <TableRow key={payment.id}>
-                        <TableCell>{payment.date}</TableCell>
+                        <TableCell>{format(parseISO(payment.date), 'yyyy-MM-dd')}</TableCell>
                         <TableCell className="font-mono">
                             {payment.orderId 
                                 ? payment.orderId
@@ -155,7 +157,7 @@ export default function CashBookPage() {
                             </Badge>
                         </TableCell>
                         <TableCell className={cn("text-right", payment.type === 'income' ? 'text-green-600' : 'text-red-600')}>
-                            {payment.type === 'income' ? '+' : '-'}{currency.code} {payment.amount.toFixed(2)}
+                            {payment.type === 'income' ? '+' : '-'}{currency.code} {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>
                             <Badge variant="secondary">{payment.method}</Badge>

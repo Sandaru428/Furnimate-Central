@@ -1,10 +1,10 @@
 
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useAuth } from "@/hooks/use-auth";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog"
 
-const formSchema = z.object({
+const loginFormSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
@@ -34,19 +46,43 @@ const formSchema = z.object({
   }),
 });
 
+const forgotPasswordSchema = z.object({
+    email: z.string().email({
+        message: "Please enter a valid email address.",
+    }),
+});
+
 export function LoginForm() {
   const router = useRouter();
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const { handleSignIn, handlePasswordReset } = useAuth();
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  
+  const loginForm = useForm<z.infer<typeof loginFormSchema>>({
+    resolver: zodResolver(loginFormSchema),
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    // TODO: Re-enable Firebase authentication
-    router.push("/dashboard");
+  const forgotPasswordForm = useForm<z.infer<typeof forgotPasswordSchema>>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  async function onLoginSubmit(values: z.infer<typeof loginFormSchema>) {
+    const success = await handleSignIn(values.email, values.password);
+    if (success) {
+      router.push("/dashboard");
+    }
+  }
+
+  async function onForgotPasswordSubmit(values: z.infer<typeof forgotPasswordSchema>) {
+    await handlePasswordReset(values.email);
+    forgotPasswordForm.reset();
+    setIsResetDialogOpen(false);
   }
 
   return (
@@ -58,10 +94,10 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <Form {...loginForm}>
+          <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-6">
             <FormField
-              control={form.control}
+              control={loginForm.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
@@ -74,18 +110,50 @@ export function LoginForm() {
               )}
             />
             <FormField
-              control={form.control}
+              control={loginForm.control}
               name="password"
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center">
                     <FormLabel>Password</FormLabel>
-                    <Link
-                      href="#"
-                      className="ml-auto inline-block text-sm underline"
-                    >
-                      Forgot your password?
-                    </Link>
+                    <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="link" type="button" className="ml-auto inline-block text-sm underline">
+                                Forgot your password?
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <Form {...forgotPasswordForm}>
+                                <form onSubmit={forgotPasswordForm.handleSubmit(onForgotPasswordSubmit)}>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Reset Your Password</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Enter your email address and we will send you a link to reset your password.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <div className="py-4">
+                                        <FormField
+                                            control={forgotPasswordForm.control}
+                                            name="email"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Email</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="name@example.com" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+                                        <AlertDialogAction type="submit">Submit</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </form>
+                            </Form>
+                        </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} />
@@ -99,12 +167,6 @@ export function LoginForm() {
             </Button>
           </form>
         </Form>
-        <div className="mt-4 text-center text-sm">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="underline">
-            Sign up
-          </Link>
-        </div>
       </CardContent>
     </Card>
   );

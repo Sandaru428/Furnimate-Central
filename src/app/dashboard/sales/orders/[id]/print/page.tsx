@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
-import { saleOrdersAtom, quotationsAtom, masterDataAtom, currencyAtom, companyProfileAtom, paymentsAtom } from '@/lib/store';
+import { saleOrdersAtom, quotationsAtom, stocksAtom, currencyAtom, companyProfileAtom, paymentsAtom } from '@/lib/store';
 import { Logo } from '@/components/icons/logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ export default function SaleOrderPrintPage() {
 
     const [saleOrders] = useAtom(saleOrdersAtom);
     const [quotations] = useAtom(quotationsAtom);
-    const [masterData] = useAtom(masterDataAtom);
+    const [stocks] = useAtom(stocksAtom);
     const [payments] = useAtom(paymentsAtom);
     const [currency] = useAtom(currencyAtom);
     const [companyProfile] = useAtom(companyProfileAtom);
@@ -154,13 +155,13 @@ export default function SaleOrderPrintPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {originalQuotation.lineItems.map((item: any) => {
-                                        const itemDetails = masterData.find(md => md.itemCode === item.itemId);
+                                        const itemDetails = stocks.find(md => md.itemCode === item.itemId);
                                         return (
                                             <TableRow key={item.itemId}>
                                                 <TableCell>{itemDetails?.name || item.itemId}</TableCell>
                                                 <TableCell className="text-right">{item.quantity}</TableCell>
-                                                <TableCell className="text-right">{currency.code} {item.unitPrice.toFixed(2)}</TableCell>
-                                                <TableCell className="text-right">{currency.code} {item.totalValue.toFixed(2)}</TableCell>
+                                                <TableCell className="text-right">{currency.code} {item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                                <TableCell className="text-right">{currency.code} {item.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                             </TableRow>
                                         );
                                     })}
@@ -189,7 +190,7 @@ export default function SaleOrderPrintPage() {
                                             <TableCell>{payment.date}</TableCell>
                                             <TableCell>{payment.method}</TableCell>
                                             <TableCell>{payment.details}</TableCell>
-                                            <TableCell className="text-right">{currency.code} {payment.amount.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">{currency.code} {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -204,15 +205,15 @@ export default function SaleOrderPrintPage() {
                         <div className="space-y-2 text-right">
                             <div className="flex justify-between font-semibold text-lg">
                                 <span>Total Amount:</span>
-                                <span>{currency.code} {order.amount.toFixed(2)}</span>
+                                <span>{currency.code} {order.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Total Paid:</span>
-                                <span>{currency.code} {totalPaid.toFixed(2)}</span>
+                                <span>{currency.code} {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             <div className={cn("flex justify-between font-bold text-xl", amountDue > 0 ? 'text-red-600' : 'text-green-600')}>
                                 <span>Amount Due:</span>
-                                <span>{currency.code} {amountDue.toFixed(2)}</span>
+                                <span>{currency.code} {amountDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                         </div>
                     </div>
@@ -225,5 +226,4 @@ export default function SaleOrderPrintPage() {
         </>
     );
 }
-
     

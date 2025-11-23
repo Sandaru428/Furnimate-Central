@@ -46,17 +46,17 @@ import {
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toSentenceCase } from '@/lib/utils';
 
 const supplierSchema = z.object({
     id: z.string().optional(),
     name: z.string().min(1, "Supplier name is required"),
     contactPerson: z.string().optional(),
-    email: z.string().email("Invalid email address").optional(),
+    email: z.string().email("Invalid email address").optional().or(z.literal('')),
     whatsappNumber: z.string().optional(),
     contactNumber: z.string().optional(),
     bankName: z.string().optional(),
@@ -98,9 +98,10 @@ export default function SuppliersPage() {
   useEffect(() => {
     const fetchSuppliers = async () => {
         setLoading(true);
-        const querySnapshot = await getDocs(collection(db, "suppliers"));
+        const q = query(collection(db, "suppliers"));
+        const querySnapshot = await getDocs(q);
         const suppliersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier));
-        setSuppliers(suppliersData);
+        setSuppliers(suppliersData.sort((a, b) => a.name.localeCompare(b.name)));
         setLoading(false);
     };
     fetchSuppliers();
@@ -109,12 +110,12 @@ export default function SuppliersPage() {
   async function onSubmit(values: Supplier) {
     try {
         const dataToSave = {
-            name: values.name,
-            contactPerson: values.contactPerson || '',
+            name: toSentenceCase(values.name),
+            contactPerson: values.contactPerson ? toSentenceCase(values.contactPerson) : '',
             email: values.email || '',
             whatsappNumber: values.whatsappNumber || '',
             contactNumber: values.contactNumber || '',
-            bankName: values.bankName || '',
+            bankName: values.bankName ? toSentenceCase(values.bankName) : '',
             accountNumber: values.accountNumber || '',
         };
 
@@ -122,18 +123,18 @@ export default function SuppliersPage() {
             // Update
             const docRef = doc(db, 'suppliers', editingSupplier.id);
             await updateDoc(docRef, dataToSave);
-            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...s, ...values, id: s.id } : s));
+            setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? { ...s, ...values, id: s.id, name: dataToSave.name, contactPerson: dataToSave.contactPerson, bankName: dataToSave.bankName } : s).sort((a, b) => a.name.localeCompare(b.name)));
             toast({
               title: 'Supplier Updated',
-              description: `${values.name} has been successfully updated.`,
+              description: `${dataToSave.name} has been successfully updated.`,
             });
         } else {
             // Create
             const docRef = await addDoc(collection(db, 'suppliers'), dataToSave);
-            setSuppliers(prev => [{ ...values, id: docRef.id }, ...prev]);
+            setSuppliers(prev => [...prev, { ...values, id: docRef.id, name: dataToSave.name, contactPerson: dataToSave.contactPerson, bankName: dataToSave.bankName }].sort((a, b) => a.name.localeCompare(b.name)));
             toast({
               title: 'Supplier Added',
-              description: `${values.name} has been successfully added.`,
+              description: `${dataToSave.name} has been successfully added.`,
             });
         }
         form.reset();
@@ -184,128 +185,60 @@ export default function SuppliersPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Suppliers</h1>
-      </header>
       <main className="p-4">
+        <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">Suppliers</h1>
+            <div className="flex items-center gap-2">
+                <Input
+                    placeholder="Search suppliers..."
+                    className="w-64"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingSupplier(null); setIsDialogOpen(isOpen); }}>
+                    <DialogTrigger asChild>
+                        <Button onClick={() => openDialog(null)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add New Supplier
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
+                        <DialogHeader>
+                            <DialogTitle>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</DialogTitle>
+                        </DialogHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                                <ScrollArea className="flex-1 pr-6">
+                                    <div className="space-y-4 py-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Supplier Name</FormLabel><FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="contactPerson" render={({ field }) => <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="whatsappNumber" render={({ field }) => <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="contactNumber" render={({ field }) => <FormItem><FormLabel>Contact Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="bankName" render={({ field }) => <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="accountNumber" render={({ field }) => <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                        </div>
+                                    </div>
+                                </ScrollArea>
+                                <DialogFooter className="pt-4">
+                                    <DialogClose asChild>
+                                        <Button variant="outline">Cancel</Button>
+                                    </DialogClose>
+                                    <Button type="submit">{editingSupplier ? 'Save Changes' : 'Add Supplier'}</Button>
+                                </DialogFooter>
+                            </form>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </div>
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Supplier List</CardTitle>
-                    <CardDescription>
-                    Manage your supplier information.
-                    </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="Search suppliers..."
-                      className="w-64"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingSupplier(null); setIsDialogOpen(isOpen); }}>
-                        <DialogTrigger asChild>
-                            <Button onClick={() => openDialog(null)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add New Supplier
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
-                            <DialogHeader>
-                                <DialogTitle>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</DialogTitle>
-                            </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-                                    <ScrollArea className="flex-1 pr-6">
-                                        <div className="space-y-4 py-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField
-                                                  control={form.control}
-                                                  name="name"
-                                                  render={({ field }) => (
-                                                  <FormItem>
-                                                    <FormLabel>Supplier Name</FormLabel>
-                                                    <FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl>
-                                                    <FormMessage />
-                                                  </FormItem>
-                                                )}/>
-                                                <FormField
-                                                  control={form.control}
-                                                  name="contactPerson"
-                                                  render={({ field }) => (
-                                                  <FormItem>
-                                                    <FormLabel>Contact Person</FormLabel>
-                                                    <FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                  </FormItem>
-                                                )}/>
-                                                <FormField
-                                                  control={form.control}
-                                                  name="email"
-                                                  render={({ field }) => (
-                                                  <FormItem>
-                                                    <FormLabel>Email Address</FormLabel>
-                                                    <FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                  </FormItem>
-                                                )}/>
-                                                <FormField
-                                                  control={form.control}
-                                                  name="whatsappNumber"
-                                                  render={({ field }) => (
-                                                  <FormItem>
-                                                    <FormLabel>WhatsApp Number</FormLabel>
-                                                    <FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                  </FormItem>
-                                                )}/>
-                                                <FormField
-                                                  control={form.control}
-                                                  name="contactNumber"
-                                                  render={({ field }) => (
-                                                  <FormItem>
-                                                    <FormLabel>Contact Number</FormLabel>
-                                                    <FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                  </FormItem>
-                                                )}/>
-                                                <FormField
-                                                  control={form.control}
-                                                  name="bankName"
-                                                  render={({ field }) => (
-                                                  <FormItem>
-                                                    <FormLabel>Bank Name</FormLabel>
-                                                    <FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                  </FormItem>
-                                                )}/>
-                                                <FormField
-                                                  control={form.control}
-                                                  name="accountNumber"
-                                                  render={({ field }) => (
-                                                  <FormItem>
-                                                    <FormLabel>Account Number</FormLabel>
-                                                    <FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl>
-                                                    <FormMessage />
-                                                  </FormItem>
-                                                )}/>
-                                            </div>
-                                        </div>
-                                    </ScrollArea>
-                                    <DialogFooter className="pt-4">
-                                        <DialogClose asChild>
-                                            <Button variant="outline">Cancel</Button>
-                                        </DialogClose>
-                                        <Button type="submit">{editingSupplier ? 'Save Changes' : 'Add Supplier'}</Button>
-                                    </DialogFooter>
-                                </form>
-                            </Form>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
+            <CardTitle>Supplier List</CardTitle>
+            <CardDescription>
+            Manage your supplier information.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>

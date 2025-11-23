@@ -1,17 +1,19 @@
 
+'use client';
+
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Logo } from "@/components/icons/logo";
-import { SignUpForm } from "@/components/auth/signup-form";
+import { LoginForm } from "@/components/auth/login-form";
 
-export default function SignUpPage() {
+export function LoginView({ companyName }: { companyName: string }) {
   const loginBg = PlaceHolderImages.find(p => p.id === "login-background");
 
   return (
     <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-[350px] gap-6">
-            <SignUpForm />
+            <LoginForm />
         </div>
       </div>
       <div className="hidden bg-muted lg:block relative">
@@ -28,7 +30,7 @@ export default function SignUpPage() {
         <div className="relative h-full flex flex-col justify-between p-10 text-white">
             <div className="flex items-center gap-4 text-lg font-medium">
                 <Logo />
-                <span className="font-headline text-2xl">Furnimate Central</span>
+                <span className="font-headline text-2xl">{companyName}</span>
             </div>
             <div className="mt-auto">
                 <blockquote className="space-y-2">

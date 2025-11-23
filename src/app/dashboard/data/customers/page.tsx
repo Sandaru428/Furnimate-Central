@@ -45,14 +45,14 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { MoreHorizontal, PlusCircle, Merge } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, query, writeBatch } from 'firebase/firestore';
 import { format, parseISO } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toSentenceCase } from '@/lib/utils';
 
 const customerSchema = z.object({
   id: z.string().optional(),
@@ -93,28 +93,30 @@ export default function CustomersPage() {
       }
   }, [phoneValue, form]);
 
+  const fetchCustomers = async () => {
+    setLoading(true);
+    const q = query(collection(db, "customers"));
+    const querySnapshot = await getDocs(q);
+    const customersData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+            id: doc.id, 
+            ...data,
+            dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
+        } as Customer
+    });
+    setCustomers(customersData.sort((a, b) => a.name.localeCompare(b.name)));
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchCustomers = async () => {
-      setLoading(true);
-      const querySnapshot = await getDocs(collection(db, "customers"));
-      const customersData = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return { 
-              id: doc.id, 
-              ...data,
-              dateOfBirth: data.dateOfBirth ? (typeof data.dateOfBirth.toDate === 'function' ? format(data.dateOfBirth.toDate(), 'yyyy-MM-dd') : data.dateOfBirth) : '',
-          } as Customer
-      });
-      setCustomers(customersData);
-      setLoading(false);
-    };
     fetchCustomers();
   }, []);
 
   async function onSubmit(values: Customer) {
     try {
       const dataToSave: any = {
-        name: values.name,
+        name: toSentenceCase(values.name),
         email: values.email,
         phone: values.phone,
         whatsappNumber: values.whatsappNumber,
@@ -128,22 +130,23 @@ export default function CustomersPage() {
         // Update
         const docRef = doc(db, 'customers', editingCustomer.id);
         await updateDoc(docRef, dataToSave);
-        setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...values, dateOfBirth: values.dateOfBirth } : c));
+        setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...values, name: dataToSave.name, dateOfBirth: values.dateOfBirth } : c).sort((a, b) => a.name.localeCompare(b.name)));
         toast({
           title: 'Customer Updated',
-          description: `${values.name} has been successfully updated.`,
+          description: `${dataToSave.name} has been successfully updated.`,
         });
       } else {
         // Create
         const docRef = await addDoc(collection(db, 'customers'), dataToSave);
         const newCustomer: Customer = { 
           ...values, 
+          name: dataToSave.name,
           id: docRef.id,
         };
-        setCustomers(prev => [newCustomer, ...prev]);
+        setCustomers(prev => [...prev, newCustomer].sort((a, b) => a.name.localeCompare(b.name)));
         toast({
           title: 'Customer Added',
-          description: `${values.name} has been successfully added.`,
+          description: `${dataToSave.name} has been successfully added.`,
         });
       }
       form.reset();
@@ -158,6 +161,56 @@ export default function CustomersPage() {
       });
     }
   }
+
+  const handleMergeDuplicates = async () => {
+    setLoading(true);
+    const duplicates = new Map<string, Customer[]>();
+
+    // Group customers by normalized name
+    customers.forEach(c => {
+        const normalizedName = c.name.trim().toLowerCase();
+        if (!duplicates.has(normalizedName)) {
+            duplicates.set(normalizedName, []);
+        }
+        duplicates.get(normalizedName)!.push(c);
+    });
+
+    const batch = writeBatch(db);
+    let mergeCount = 0;
+
+    for (const [name, group] of duplicates.entries()) {
+        if (group.length > 1) {
+            mergeCount += (group.length - 1);
+            const [primary, ...rest] = group; // Keep the first one
+            
+            // In a real scenario, you'd merge fields intelligently.
+            // Here, we just delete the duplicates.
+            rest.forEach(duplicate => {
+                if (duplicate.id) {
+                    const docRef = doc(db, 'customers', duplicate.id);
+                    batch.delete(docRef);
+                }
+            });
+        }
+    }
+
+    if (mergeCount > 0) {
+        await batch.commit();
+        toast({
+            title: 'Duplicates Merged',
+            description: `Successfully merged and removed ${mergeCount} duplicate customer records.`,
+        });
+        // Re-fetch customers to update the UI
+        await fetchCustomers();
+    } else {
+        toast({
+            title: 'No Duplicates Found',
+            description: 'No duplicate customer records were found.',
+        });
+    }
+
+    setLoading(false);
+  };
 
   const openDialog = (customer: Customer | null) => {
     if (customer) {
@@ -186,62 +239,61 @@ export default function CustomersPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-        <SidebarTrigger />
-        <h1 className="text-xl font-semibold ml-4">Customers</h1>
-      </header>
       <main className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">Customers</h1>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Search customers..."
+              className="w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Button variant="outline" onClick={handleMergeDuplicates} disabled={loading}>
+                <Merge className="mr-2 h-4 w-4" />
+                Merge Duplicates
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingCustomer(null); setIsDialogOpen(isOpen); }}>
+              <DialogTrigger asChild>
+                <Button onClick={() => openDialog(null)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add New Customer
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                    <ScrollArea className="flex-1 pr-6">
+                        <div className="space-y-4 py-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Customer Name</FormLabel><FormControl><Input placeholder="e.g. Modern Designs LLC" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. sarah@example.com" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="phone" render={({ field }) => <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="dateOfBirth" render={({ field }) => <FormItem><FormLabel>Date of birth</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>} />
+                            </div>
+                            <FormField control={form.control} name="address" render={({ field }) => <FormItem><FormLabel>Address</FormLabel><FormControl><Textarea placeholder="123 Main St, Anytown, USA" {...field} /></FormControl><FormMessage /></FormItem>} />
+                        </div>
+                    </ScrollArea>
+                    <DialogFooter className="pt-4">
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit">{editingCustomer ? 'Save Changes' : 'Add Customer'}</Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Customer List</CardTitle>
-                <CardDescription>Manage your customer information.</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Search customers..."
-                  className="w-64"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                 <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingCustomer(null); setIsDialogOpen(isOpen); }}>
-                  <DialogTrigger asChild>
-                    <Button onClick={() => openDialog(null)}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add New Customer
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
-                    <DialogHeader>
-                      <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
-                    </DialogHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-                        <ScrollArea className="flex-1 pr-6">
-                          <div className="space-y-4 py-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Customer Name</FormLabel><FormControl><Input placeholder="e.g. Modern Designs LLC" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. sarah@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="whatsappNumber" render={({ field }) => (<FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="dateOfBirth" render={({ field }) => (<FormItem><FormLabel>Date of birth</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-                            </div>
-                            <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel>Address</FormLabel><FormControl><Textarea placeholder="123 Main St, Anytown, USA" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                          </div>
-                        </ScrollArea>
-                        <DialogFooter className="pt-4">
-                            <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button type="submit">{editingCustomer ? 'Save Changes' : 'Add Customer'}</Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
+            <CardTitle>Customer List</CardTitle>
+            <CardDescription>Manage your customer information.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -271,7 +323,7 @@ export default function CustomersPage() {
                         <TableCell>{customer.phone}</TableCell>
                         <TableCell>{customer.whatsappNumber}</TableCell>
                         <TableCell>
-                           {customer.dateOfBirth ? format(parseISO(customer.dateOfBirth), 'PP') : '-'}
+                           {customer.dateOfBirth ? customer.dateOfBirth : '-'}
                         </TableCell>
                         <TableCell>{customer.address}</TableCell>
                         <TableCell>

@@ -49,16 +49,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Printer, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
-import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, quotationsAtom } from '@/lib/store';
+import { paymentsAtom, Payment, currencyAtom, saleOrdersAtom, quotationsAtom, companyProfileAtom } from '@/lib/store';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, updateDoc, addDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, addDoc, query } from 'firebase/firestore';
 
 
 const paymentSchema = z.object({
@@ -112,15 +111,19 @@ export default function SaleOrdersPage() {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const soSnapshot = await getDocs(collection(db, "saleOrders"));
+
+            const soQuery = query(collection(db, "saleOrders"));
+            const soSnapshot = await getDocs(soQuery);
             const soData = soSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SaleOrder));
             setOrders(soData);
 
-            const paymentsSnapshot = await getDocs(collection(db, "payments"));
+            const paymentsQuery = query(collection(db, "payments"));
+            const paymentsSnapshot = await getDocs(paymentsQuery);
             const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
             setPayments(paymentsData);
 
-            const quotationsSnapshot = await getDocs(collection(db, "quotations"));
+            const quotationsQuery = query(collection(db, "quotations"));
+            const quotationsSnapshot = await getDocs(quotationsQuery);
             const quotationsData = quotationsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setQuotations(quotationsData as any);
             
@@ -179,7 +182,7 @@ export default function SaleOrdersPage() {
             toast({
                 variant: 'destructive',
                 title: 'Invalid Amount',
-                description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedOrder.amount - currentAmountPaid).toFixed(2)}`,
+                description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedOrder.amount - currentAmountPaid).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             });
             return;
         }
@@ -203,7 +206,7 @@ export default function SaleOrdersPage() {
         };
 
         const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);
-        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id}]);
+        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id} as Payment]);
 
         const totalPaid = currentAmountPaid + newPayment.amount;
 
@@ -217,7 +220,7 @@ export default function SaleOrdersPage() {
         } else {
              toast({
                 title: 'Installment Recorded',
-                description: `Payment of ${currency.code} ${values.amount.toFixed(2)} for sale order ${selectedOrder.id} recorded.`
+                description: `Payment of ${currency.code} ${values.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for sale order ${selectedOrder.id} recorded.`
             });
         }
 
@@ -228,7 +231,7 @@ export default function SaleOrdersPage() {
         const url = window.location.href;
         const shareData = {
             title: `Sale Order ${order.id}`,
-            text: `Check out this sale order for ${order.customer} for a total of ${currency.code} ${order.amount.toFixed(2)}.`,
+            text: `Check out this sale order for ${order.customer} for a total of ${currency.code} ${order.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
             url: url,
         };
         try {
@@ -256,21 +259,14 @@ export default function SaleOrdersPage() {
 
   return (
     <>
-        <header className="flex items-center p-4 border-b">
-            <SidebarTrigger />
-            <h1 className="text-xl font-semibold ml-4">Sale Orders</h1>
-        </header>
         <main className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Sale Orders</h1>
             <Card>
             <CardHeader>
-                <div className="flex justify-between items-center">
-                    <div>
-                        <CardTitle>Confirmed Sale Orders</CardTitle>
-                        <CardDescription>
-                            These are quotations that have been converted into sale orders.
-                        </CardDescription>
-                    </div>
-                </div>
+                <CardTitle>Confirmed Sale Orders</CardTitle>
+                <CardDescription>
+                    These are quotations that have been converted into sale orders.
+                </CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -305,7 +301,7 @@ export default function SaleOrdersPage() {
                                     <TableCell className="font-mono">{order.quotationId}</TableCell>
                                     <TableCell className="font-medium">{order.customer}</TableCell>
                                     <TableCell className="text-right">{totalQty}</TableCell>
-                                    <TableCell className="text-right">{currency.code} {order.amount.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right">{currency.code} {order.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                     <TableCell>
                                         <Badge variant={order.status === 'Paid' ? 'outline' : 'default'}>{order.status}</Badge>
                                     </TableCell>
@@ -355,7 +351,7 @@ export default function SaleOrdersPage() {
                     <DialogHeader>
                         <DialogTitle>Record Payment for {selectedOrder?.id}</DialogTitle>
                         <CardDescription>
-                            Total: {currency.code} {selectedOrder?.amount.toFixed(2)} | Paid: {currency.code} {amountPaid.toFixed(2)} | Remaining: {currency.code} {remainingAmount.toFixed(2)}
+                            Total: {currency.code} {selectedOrder?.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Paid: {currency.code} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Remaining: {currency.code} {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </CardDescription>
                     </DialogHeader>
                     <Form {...form}>
@@ -363,29 +359,29 @@ export default function SaleOrdersPage() {
                             <ScrollArea className="flex-1 pr-6">
                                 <div className="space-y-4 py-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField control={form.control} name="amount" render={({ field }) => (<FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                        <FormField control={form.control} name="method" render={({ field }) => (<FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => (<SelectItem key={method} value={method}>{method}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                                        <FormField control={form.control} name="amount" render={({ field }) => <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                        <FormField control={form.control} name="method" render={({ field }) => <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>}/>
                                     </div>
                                     {paymentMethod === 'Card' && (
-                                        <FormField control={form.control} name="cardLast4" render={({ field }) => (<FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={form.control} name="cardLast4" render={({ field }) => <FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem>}/>
                                     )}
                                     {paymentMethod === 'Online' && (
-                                        <>
+                                        <div className="space-y-4">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="fromBankName" render={({ field }) => (<FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="fromAccountNumber" render={({ field }) => (<FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="fromBankName" render={({ field }) => <FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                <FormField control={form.control} name="fromAccountNumber" render={({ field }) => <FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>} />
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="toBankName" render={({ field }) => (<FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="toAccountNumber" render={({ field }) => (<FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="toBankName" render={({ field }) => <FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                                <FormField control={form.control} name="toAccountNumber" render={({ field }) => <FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>} />
                                             </div>
-                                        </>
+                                        </div>
                                     )}
                                     {paymentMethod === 'Cheque' && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField control={form.control} name="chequeBank" render={({ field }) => (<FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                            <FormField control={form.control} name="chequeNumber" render={({ field }) => (<FormItem><FormLabel>Cheque Number</FormLabel><FormControl><Input placeholder="e.g. 987654" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                            <FormField control={form.control} name="chequeDate" render={({ field }) => (<FormItem><FormLabel>Cheque Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <FormField control={form.control} name="chequeBank" render={({ field }) => <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="chequeNumber" render={({ field }) => <FormItem><FormLabel>Cheque Number</FormLabel><FormControl><Input placeholder="e.g. 987654" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="chequeDate" render={({ field }) => <FormItem><FormLabel>Cheque Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>}/>
                                         </div>
                                     )}
                                     </div>

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -48,7 +49,6 @@ import {
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle, Trash2, Share2, Printer } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -56,11 +56,11 @@ import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useAtom } from 'jotai';
-import { currencyAtom, masterDataAtom, customersAtom, quotationsAtom, saleOrdersAtom } from '@/lib/store';
-import type { MasterDataItem } from '../../data/master-data/page';
+import { currencyAtom, stocksAtom, customersAtom, quotationsAtom, saleOrdersAtom, companyProfileAtom } from '@/lib/store';
+import type { StockItem } from '../../data/stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, writeBatch, where } from 'firebase/firestore';
 
 
 const lineItemSchema = z.object({
@@ -96,10 +96,10 @@ const statusVariant: {[key: string]: "default" | "secondary" | "destructive" | "
     'Converted': 'default'
 }
 
-const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], onAddItem: (item: z.infer<typeof lineItemSchema>) => void }) => {
+const AddItemForm = ({ stocks, onAddItem }: { stocks: StockItem[], onAddItem: (item: z.infer<typeof lineItemSchema>) => void }) => {
     const [selectedItemCode, setSelectedItemCode] = useState('');
     const [quantity, setQuantity] = useState<number | ''>('');
-    const item = masterData.find(i => i.itemCode === selectedItemCode);
+    const item = stocks.find(i => i.itemCode === selectedItemCode);
 
     const handleAddItem = () => {
         const numQuantity = Number(quantity);
@@ -124,8 +124,8 @@ const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], 
                         <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
                     <SelectContent>
-                        {masterData.filter(i => i.type === 'Finished Good').map(item => (
-                            <SelectItem key={item.itemCode} value={item.itemCode}>
+                        {stocks.filter(i => i.type === 'Finished Good').map(item => (
+                            <SelectItem key={item.id} value={item.itemCode}>
                                 {item.name} ({item.itemCode})
                             </SelectItem>
                         ))}
@@ -151,7 +151,7 @@ const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], 
 
 export default function QuotationsPage() {
     const [quotations, setQuotations] = useAtom(quotationsAtom);
-    const [masterData, setMasterData] = useAtom(masterDataAtom);
+    const [stocks, setStocks] = useAtom(stocksAtom);
     const [customers, setCustomers] = useAtom(customersAtom);
     const [, setSaleOrders] = useAtom(saleOrdersAtom);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -168,21 +168,30 @@ export default function QuotationsPage() {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const quotationsSnapshot = await getDocs(collection(db, "quotations"));
+
+            const quotationsQuery = query(collection(db, "quotations"));
+            const quotationsSnapshot = await getDocs(quotationsQuery);
             const quotationsData = quotationsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Quotation));
             setQuotations(quotationsData);
 
-            const masterDataSnapshot = await getDocs(collection(db, "masterData"));
-            const masterData = masterDataSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MasterDataItem));
-            setMasterData(masterData);
+            const stocksQuery = query(collection(db, "stocks"));
+            const stocksSnapshot = await getDocs(stocksQuery);
+            const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
+            
+            // De-duplicate stocks data
+            const uniqueStocks = Array.from(new Map(stocksData.map(item => [item.id, item])).values())
+                .sort((a, b) => a.name.localeCompare(b.name));
+            setStocks(uniqueStocks);
 
-            const customersSnapshot = await getDocs(collection(db, "customers"));
+
+            const customersQuery = query(collection(db, "customers"));
+            const customersSnapshot = await getDocs(customersQuery);
             const customersData = customersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setCustomers(customersData as any);
+            setCustomers(customersData.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any);
             setLoading(false);
         };
         fetchData();
-    }, [setQuotations, setMasterData, setCustomers]);
+    }, [setQuotations, setStocks, setCustomers]);
 
 
     const form = useForm<CreateQuotation>({
@@ -207,20 +216,21 @@ export default function QuotationsPage() {
             
              if (editingQuotation) {
                 // Update
-                const updatedQuotation: Quotation = {
+                const updatedQuotation: Omit<Quotation, 'id'> = {
                     ...editingQuotation,
                     ...values,
                     amount: totalAmount,
                     status: 'Draft',
                 };
                 
-                const { id, ...dataToSave } = updatedQuotation;
+                const { id, ...dataToSave } = updatedQuotation as any;
                 await updateDoc(doc(db, "quotations", editingQuotation.id), dataToSave);
-                setQuotations(quotations.map(q => q.id === editingQuotation.id ? updatedQuotation : q));
+                setQuotations(quotations.map(q => q.id === editingQuotation.id ? { ...updatedQuotation, id: q.id } as Quotation : q));
                 toast({ title: 'Quotation Updated', description: `Quotation ${editingQuotation.id} has been updated.` });
              } else {
                 // Create
-                const quoSnapshot = await getDocs(collection(db, "quotations"));
+                const quoQuery = query(collection(db, "quotations"));
+                const quoSnapshot = await getDocs(quoQuery);
                 const nextId = quoSnapshot.size > 0 ? Math.max(...quoSnapshot.docs.map(q => parseInt(q.id.split('-')[1]))) + 1 : 1;
                 const newQuotationId = `QUO-${String(nextId).padStart(3, '0')}`;
                 
@@ -231,7 +241,7 @@ export default function QuotationsPage() {
                     status: 'Draft',
                     lineItems: values.lineItems,
                     amount: totalAmount,
-                };
+                } as any;
                 
                 const { id, ...dataToSave } = newQuotation;
                 await setDoc(doc(db, "quotations", newQuotationId), dataToSave);
@@ -283,15 +293,29 @@ export default function QuotationsPage() {
         const quotation = quotations.find(q => q.id === quotationId);
         if (!quotation) return;
 
+        const batch = writeBatch(db);
         let insufficientStock = false;
+        const updatedStocks: StockItem[] = [];
+
         for (const item of quotation.lineItems) {
-            const masterItemDoc = await getDocs(collection(db, "masterData"));
-            const masterItem = masterItemDoc.docs.find(d => d.data().itemCode === item.itemId)?.data() as MasterDataItem | undefined;
-            if (!masterItem || masterItem.stockLevel < item.quantity) {
+            const stockItem = stocks.find(s => s.itemCode === item.itemId);
+            
+            if (!stockItem) {
                 insufficientStock = true;
-                toast({ variant: "destructive", title: 'Stock Unavailable', description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${masterItem?.stockLevel || 0}` });
+                toast({ variant: "destructive", title: 'Item Not Found', description: `Item with code ${item.itemId} not found.` });
                 break;
             }
+
+            if (stockItem.stockLevel < item.quantity) {
+                insufficientStock = true;
+                toast({ variant: "destructive", title: 'Stock Unavailable', description: `Not enough stock for ${item.itemId}. Required: ${item.quantity}, Available: ${stockItem.stockLevel}` });
+                break;
+            }
+            
+            const stockDocRef = doc(db, 'stocks', stockItem.id!);
+            const newStockLevel = stockItem.stockLevel - item.quantity;
+            batch.update(stockDocRef, { stockLevel: newStockLevel });
+            updatedStocks.push({ ...stockItem, stockLevel: newStockLevel });
         }
 
         if (insufficientStock) return;
@@ -306,13 +330,19 @@ export default function QuotationsPage() {
             status: 'Processing',
         };
         
-        await setDoc(doc(db, "saleOrders", newOrderId), newOrder);
+        const saleOrderRef = doc(db, "saleOrders", newOrderId);
+        batch.set(saleOrderRef, newOrder);
+
+        const quotationRef = doc(db, "quotations", quotationId);
+        batch.update(quotationRef, { status: 'Converted' });
+        
+        await batch.commit();
+
         setSaleOrders(prev => [newOrder, ...prev] as any);
-
-        await updateDoc(doc(db, "quotations", quotationId), { status: 'Converted' });
         setQuotations(quotations.map(q => q.id === quotationId ? { ...q, status: 'Converted' } : q ));
+        setStocks(currentStocks => currentStocks.map(s => updatedStocks.find(us => us.id === s.id) || s));
 
-        toast({ title: 'Quotation Converted to Sale Order', description: `Stock checked and available. Sale Order created from ${quotationId}.` });
+        toast({ title: 'Quotation Converted to Sale Order', description: `Stock allocated and sale order created from ${quotationId}.` });
         router.push('/dashboard/sales/orders');
     };
 
@@ -320,7 +350,7 @@ export default function QuotationsPage() {
         const url = window.location.href;
         const shareData = {
             title: `Quotation ${quote.id}`,
-            text: `Check out this quotation for ${quote.customer} for a total of ${currency.code} ${quote.amount.toFixed(2)}.`,
+            text: `Check out this quotation for ${quote.customer} for a total of ${currency.code} ${quote.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
             url: url,
         };
         try {
@@ -348,126 +378,121 @@ export default function QuotationsPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Quotations</h1>
-      </header>
       <main className="p-4">
+        <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">Quotations</h1>
+            <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    form.reset();
+                    remove();
+                    setEditingQuotation(null);
+                }
+                setIsDialogOpen(isOpen);
+            }}>
+                <DialogTrigger asChild>
+                    <Button onClick={() => openCreateOrEditDialog(null)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Create New Quotation
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.id}` : 'Create New Quotation'}</DialogTitle>
+                    </DialogHeader>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                            <ScrollArea className="flex-1 pr-6">
+                                <div className="space-y-4 py-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="customer"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Customer</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a customer" />
+                                                </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {customers.map(customer => (
+                                                        <SelectItem key={(customer as any).id} value={(customer as any).name}>
+                                                            {(customer as any).name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                    <div>
+                                        <FormLabel>Line Items</FormLabel>
+                                        <div className="space-y-2 mt-2">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Item</TableHead>
+                                                        <TableHead className="w-20">Qty</TableHead>
+                                                        <TableHead className="w-28 text-right">Unit Price</TableHead>
+                                                        <TableHead className="w-28 text-right">Total</TableHead>
+                                                        <TableHead className="w-10"></TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {fields.map((field, index) => {
+                                                        const itemDetails = stocks.find(i => i.itemCode === field.itemId);
+                                                        return (
+                                                        <TableRow key={field.id}>
+                                                            <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
+                                                            <TableCell>{field.quantity}</TableCell>
+                                                            <TableCell className="text-right">{currency.code} {field.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                                            <TableCell className="text-right">{currency.code} {field.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                                            <TableCell>
+                                                                <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
+                                                                    <Trash2 className="h-4 w-4 text-destructive"/>
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )})}
+                                                </TableBody>
+                                            </Table>
+                                            {fields.length === 0 && (
+                                                <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
+                                            )}
+                                            <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
+                                        </div>
+                                    </div>
+                                    
+                                    <AddItemForm stocks={stocks} onAddItem={append} />
+                                </div>
+                            </ScrollArea>
+                            <DialogFooter className="pt-4">
+                                <div className='w-full flex justify-between items-center'>
+                                    <div className="text-lg font-semibold">
+                                        Total: {currency.code} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <DialogClose asChild>
+                                            <Button variant="outline" type="button">Cancel</Button></DialogClose>
+                                        <Button type="submit">{editingQuotation ? 'Save Changes' : 'Create Quotation'}</Button>
+                                    </div>
+                                </div>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+        </div>
           <Card>
           <CardHeader>
-              <div className="flex justify-between items-center">
-                  <div>
-                      <CardTitle>Quotations</CardTitle>
-                      <CardDescription>
-                      Create and manage sales quotations for your customers.
-                      </CardDescription>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                      <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
-                          if (!isOpen) {
-                              form.reset();
-                              remove();
-                              setEditingQuotation(null);
-                          }
-                          setIsDialogOpen(isOpen);
-                      }}>
-                          <DialogTrigger asChild>
-                              <Button onClick={() => openCreateOrEditDialog(null)}>
-                                  <PlusCircle className="mr-2 h-4 w-4" />
-                                  Create New Quotation
-                              </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-                              <DialogHeader>
-                                  <DialogTitle>{editingQuotation ? `Edit Quotation ${editingQuotation.id}` : 'Create New Quotation'}</DialogTitle>
-                              </DialogHeader>
-                              <Form {...form}>
-                                  <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-                                      <ScrollArea className="flex-1 pr-6">
-                                          <div className="space-y-4 py-4">
-                                              <FormField
-                                                  control={form.control}
-                                                  name="customer"
-                                                  render={({ field }) => (
-                                                      <FormItem>
-                                                      <FormLabel>Customer</FormLabel>
-                                                      <Select onValueChange={field.onChange} value={field.value}>
-                                                          <FormControl>
-                                                          <SelectTrigger>
-                                                              <SelectValue placeholder="Select a customer" />
-                                                          </SelectTrigger>
-                                                          </FormControl>
-                                                          <SelectContent>
-                                                              {customers.map(customer => (
-                                                                  <SelectItem key={(customer as any).id} value={(customer as any).name}>
-                                                                      {(customer as any).name}
-                                                                  </SelectItem>
-                                                              ))}
-                                                          </SelectContent>
-                                                      </Select>
-                                                      <FormMessage />
-                                                      </FormItem>
-                                                  )}
-                                              />
-                                              <div>
-                                                  <FormLabel>Line Items</FormLabel>
-                                                  <div className="space-y-2 mt-2">
-                                                      <Table>
-                                                          <TableHeader>
-                                                              <TableRow>
-                                                                  <TableHead>Item</TableHead>
-                                                                  <TableHead className="w-20">Qty</TableHead>
-                                                                  <TableHead className="w-28 text-right">Unit Price</TableHead>
-                                                                  <TableHead className="w-28 text-right">Total</TableHead>
-                                                                  <TableHead className="w-10"></TableHead>
-                                                              </TableRow>
-                                                          </TableHeader>
-                                                          <TableBody>
-                                                              {fields.map((field, index) => {
-                                                                  const itemDetails = masterData.find(i => i.itemCode === field.itemId);
-                                                                  return (
-                                                                  <TableRow key={field.id}>
-                                                                      <TableCell className="font-medium">{itemDetails?.name || field.itemId}</TableCell>
-                                                                      <TableCell>{field.quantity}</TableCell>
-                                                                      <TableCell className="text-right">{currency.code} {field.unitPrice.toFixed(2)}</TableCell>
-                                                                      <TableCell className="text-right">{currency.code} {field.totalValue.toFixed(2)}</TableCell>
-                                                                      <TableCell>
-                                                                          <Button variant="ghost" size="icon" type="button" onClick={() => remove(index)}>
-                                                                              <Trash2 className="h-4 w-4 text-destructive"/>
-                                                                          </Button>
-                                                                      </TableCell>
-                                                                  </TableRow>
-                                                              )})}
-                                                          </TableBody>
-                                                      </Table>
-                                                      {fields.length === 0 && (
-                                                          <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p>
-                                                      )}
-                                                      <FormMessage>{form.formState.errors.lineItems?.root?.message || form.formState.errors.lineItems?.message}</FormMessage>
-                                                  </div>
-                                              </div>
-                                              
-                                              <AddItemForm masterData={masterData} onAddItem={append} />
-                                          </div>
-                                      </ScrollArea>
-                                      <DialogFooter className="pt-4">
-                                          <div className='w-full flex justify-between items-center'>
-                                              <div className="text-lg font-semibold">
-                                                  Total: {currency.code} {totalAmount.toFixed(2)}
-                                              </div>
-                                              <div className="flex gap-2">
-                                                  <DialogClose asChild>
-                                                      <Button variant="outline" type="button">Cancel</Button></DialogClose>
-                                                  <Button type="submit">{editingQuotation ? 'Save Changes' : 'Create Quotation'}</Button>
-                                              </div>
-                                          </div>
-                                      </DialogFooter>
-                                  </form>
-                              </Form>
-                          </DialogContent>
-                      </Dialog>
-                  </div>
-              </div>
+              <CardTitle>Quotations</CardTitle>
+              <CardDescription>
+              Create and manage sales quotations for your customers.
+              </CardDescription>
           </CardHeader>
           <CardContent>
               <Table>
@@ -494,7 +519,7 @@ export default function QuotationsPage() {
                           <TableCell className="text-right">
                             {quote.lineItems.reduce((acc, item) => acc + item.quantity, 0)}
                           </TableCell>
-                          <TableCell className="text-right">{currency.code} {quote.amount.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{currency.code} {quote.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                           <TableCell>
                           <Badge 
                               variant={statusVariant[quote.status] || 'secondary'}

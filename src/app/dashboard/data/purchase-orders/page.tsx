@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -49,7 +50,6 @@ import {
   } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, PlusCircle, Trash2, Share2, Printer } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -61,13 +61,14 @@ import {
     Payment, 
     currencyAtom,
     purchaseOrdersAtom,
-    masterDataAtom,
+    stocksAtom,
     suppliersAtom,
 } from '@/lib/store';
-import type { MasterDataItem } from '../master-data/page';
+import type { StockItem } from '../stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
+import { toSentenceCase } from '@/lib/utils';
 
 
 const lineItemSchema = z.object({
@@ -127,10 +128,10 @@ type CreatePurchaseOrder = z.infer<typeof createPurchaseOrderSchema>;
 type ReceiveItemsForm = z.infer<typeof receiveItemsSchema>;
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
-const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
+const AddItemForm = ({ stocks, onAddItem }: { stocks: StockItem[], onAddItem: (item: Omit<z.infer<typeof lineItemSchema>, 'unitPrice' | 'totalValue'>) => void }) => {
     const [selectedItemCode, setSelectedItemCode] = useState('');
     const [quantity, setQuantity] = useState<number | ''>('');
-    const item = masterData.find(i => i.itemCode === selectedItemCode);
+    const item = stocks.find(i => i.itemCode === selectedItemCode);
 
     const handleAddItem = () => {
         const numQuantity = Number(quantity);
@@ -153,7 +154,7 @@ const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], 
                         <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
                     <SelectContent>
-                        {masterData.map(item => (
+                        {stocks.filter(item => item.type === 'Raw Material').map(item => (
                             <SelectItem key={item.itemCode} value={item.itemCode}>
                                 {item.name} ({item.itemCode})
                             </SelectItem>
@@ -180,7 +181,7 @@ const AddItemForm = ({ masterData, onAddItem }: { masterData: MasterDataItem[], 
 
 export default function PurchaseOrdersPage() {
     const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
-    const [masterData, setMasterData] = useAtom(masterDataAtom);
+    const [stocks, setStocks] = useAtom(stocksAtom);
     const [suppliers, setSuppliers] = useAtom(suppliersAtom);
     const [payments, setPayments] = useAtom(paymentsAtom);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -197,25 +198,30 @@ export default function PurchaseOrdersPage() {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const poSnapshot = await getDocs(collection(db, "purchaseOrders"));
+
+            const poQuery = query(collection(db, "purchaseOrders"));
+            const poSnapshot = await getDocs(poQuery);
             const poData = poSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as PurchaseOrder));
             setPurchaseOrders(poData);
 
-            const masterDataSnapshot = await getDocs(collection(db, "masterData"));
-            const masterData = masterDataSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MasterDataItem));
-            setMasterData(masterData);
+            const stocksQuery = query(collection(db, "stocks"));
+            const stocksSnapshot = await getDocs(stocksQuery);
+            const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
+            setStocks(stocksData.sort((a, b) => a.name.localeCompare(b.name)));
 
-            const suppliersSnapshot = await getDocs(collection(db, "suppliers"));
+            const suppliersQuery = query(collection(db, "suppliers"));
+            const suppliersSnapshot = await getDocs(suppliersQuery);
             const suppliersData = suppliersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setSuppliers(suppliersData as any);
+            setSuppliers(suppliersData.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any);
             
-            const paymentsSnapshot = await getDocs(collection(db, "payments"));
+            const paymentsQuery = query(collection(db, "payments"));
+            const paymentsSnapshot = await getDocs(paymentsQuery);
             const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
             setPayments(paymentsData);
             setLoading(false);
         };
         fetchData();
-    }, [setPurchaseOrders, setMasterData, setSuppliers, setPayments]);
+    }, [setPurchaseOrders, setStocks, setSuppliers, setPayments]);
     
     const handlePrint = (poId: string) => {
         router.push(`/dashboard/data/purchase-orders/${poId}/print`);
@@ -244,7 +250,7 @@ export default function PurchaseOrdersPage() {
             cardLast4: '',
             fromBankName: '',
             fromAccountNumber: '',
-            toBankName: '',
+toBankName: '',
             toAccountNumber: '',
             chequeBank: '',
             chequeDate: '',
@@ -268,34 +274,38 @@ export default function PurchaseOrdersPage() {
 
 
     async function handleCreateOrUpdateSubmit(values: CreatePurchaseOrder) {
+        const dataToSave = {
+            ...values,
+            supplierName: toSentenceCase(values.supplierName),
+        };
+
         if (editingPO) {
             // Update logic
             const updatedLineItems = values.lineItems.map(item => ({...item, unitPrice: undefined, totalValue: undefined }));
-            const updatedPO: PurchaseOrder = { ...editingPO, ...values, lineItems: updatedLineItems, status: 'Draft', totalAmount: 0 };
+            const updatedPO: PurchaseOrder = { ...editingPO, ...dataToSave, lineItems: updatedLineItems, status: 'Draft', totalAmount: 0 };
             
             const poRef = doc(db, "purchaseOrders", editingPO.id);
-            const { id, ...dataToSave } = updatedPO;
-            await setDoc(poRef, dataToSave);
+            const { id, ...save } = updatedPO;
+            await setDoc(poRef, save);
             setPurchaseOrders(prevPOs => prevPOs.map(po => po.id === editingPO.id ? updatedPO : po ));
             toast({ title: 'Purchase Order Updated', description: `Purchase Order ${editingPO.id} has been updated.` });
         } else {
             // Create logic
             const poCollection = collection(db, "purchaseOrders");
-            const poSnapshot = await getDocs(poCollection);
+            const poSnapshot = await getDocs(query(poCollection));
             const nextId = poSnapshot.size > 0 ? Math.max(...poSnapshot.docs.map(d => parseInt(d.id.split('-')[1]))) + 1 : 1;
             const newPOId = `PO-${String(nextId).padStart(3, '0')}`;
             
             const newPO: PurchaseOrder = {
                 id: newPOId,
-                supplierName: values.supplierName,
+                ...dataToSave,
                 date: format(new Date(), 'yyyy-MM-dd'),
                 status: 'Draft',
-                lineItems: values.lineItems,
                 totalAmount: 0,
             };
             
-            const { id, ...dataToSave } = newPO;
-            await setDoc(doc(db, "purchaseOrders", newPOId), dataToSave);
+            const { id, ...save } = newPO;
+            await setDoc(doc(db, "purchaseOrders", newPOId), save);
             setPurchaseOrders([newPO, ...purchaseOrders]);
             toast({ title: 'Purchase Order Created', description: `Purchase Order ${newPO.id} has been saved as a draft.` });
         }
@@ -307,21 +317,36 @@ export default function PurchaseOrdersPage() {
     
     async function handleReceiveSubmit(values: ReceiveItemsForm) {
         if (!selectedPO) return;
+
         const totalAmount = values.lineItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
         const updatedPO = { ...selectedPO, status: 'Fulfilled' as const, totalAmount, lineItems: values.lineItems };
 
-        await updateDoc(doc(db, "purchaseOrders", selectedPO.id), updatedPO);
+        const { id, ...dataToSave } = updatedPO;
+        await updateDoc(doc(db, "purchaseOrders", selectedPO.id), dataToSave);
         setPurchaseOrders(prevPOs => prevPOs.map(po => po.id === selectedPO.id ? updatedPO : po ));
 
+        const batch = writeBatch(db);
+
         for (const receivedItem of values.lineItems) {
-            const itemDocRef = doc(db, "masterData", receivedItem.itemId);
-            const itemDoc = await getDocs(collection(db, "masterData"));
-            const currentItem = itemDoc.docs.find(d => d.id === receivedItem.itemId)?.data() as MasterDataItem | undefined;
-            if (currentItem) {
-                 await updateDoc(itemDocRef, { stockLevel: currentItem.stockLevel + receivedItem.quantity });
+            const stockItem = stocks.find(s => s.itemCode === receivedItem.itemId);
+            if (stockItem && stockItem.id) {
+                const itemDocRef = doc(db, 'stocks', stockItem.id);
+                const newStockLevel = (stockItem.stockLevel || 0) + receivedItem.quantity;
+                batch.update(itemDocRef, { stockLevel: newStockLevel });
             }
         }
         
+        await batch.commit();
+        
+        // Optimistically update local state as well
+        setStocks(currentStocks => currentStocks.map(stock => {
+            const received = values.lineItems.find(li => li.itemId === stock.itemCode);
+            if (received) {
+                return { ...stock, stockLevel: (stock.stockLevel || 0) + received.quantity };
+            }
+            return stock;
+        }));
+
         toast({ title: 'Purchase Order Fulfilled', description: `Stock for PO ${selectedPO.id} has been updated.` });
         setIsReceiveDialogOpen(false);
         setSelectedPO(null);
@@ -333,7 +358,7 @@ export default function PurchaseOrdersPage() {
         const currentAmountPaid = payments.filter(p => p.orderId === selectedPO.id).reduce((acc, p) => acc + p.amount, 0);
         
         if (values.amount > selectedPO.totalAmount - currentAmountPaid) {
-            toast({ variant: 'destructive', title: 'Invalid Amount', description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedPO.totalAmount - currentAmountPaid).toFixed(2)}`});
+            toast({ variant: 'destructive', title: 'Invalid Amount', description: `Payment exceeds remaining balance. Max payable: ${currency.code} ${(selectedPO.totalAmount - currentAmountPaid).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`});
             return;
         }
 
@@ -356,7 +381,7 @@ export default function PurchaseOrdersPage() {
         };
 
         const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);
-        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id}]);
+        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id} as Payment]);
 
         const totalPaid = currentAmountPaid + newPayment.amount;
 
@@ -365,7 +390,7 @@ export default function PurchaseOrdersPage() {
             setPurchaseOrders(prev => prev.map(o => o.id === selectedPO.id ? { ...o, status: 'Paid' } : o));
              toast({ title: 'Payment Complete', description: `Final payment for PO ${selectedPO.id} has been recorded.` });
         } else {
-             toast({ title: 'Installment Recorded', description: `Payment of ${currency.code} ${values.amount.toFixed(2)} for PO ${selectedPO.id} recorded.` });
+             toast({ title: 'Installment Recorded', description: `Payment of ${currency.code} ${values.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for PO ${selectedPO.id} recorded.` });
         }
         setIsPaymentDialogOpen(false);
     }
@@ -425,7 +450,7 @@ export default function PurchaseOrdersPage() {
         const url = window.location.href;
         const shareData = {
             title: `Purchase Order ${po.id}`,
-            text: `Check out this purchase order to ${po.supplierName} for ${currency.code} ${po.totalAmount.toFixed(2)}.`,
+            text: `Check out this purchase order to ${po.supplierName} for ${currency.code} ${po.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
             url: url,
         };
         try {
@@ -456,88 +481,83 @@ export default function PurchaseOrdersPage() {
 
   return (
     <>
-      <header className="flex items-center p-4 border-b">
-          <SidebarTrigger />
-          <h1 className="text-xl font-semibold ml-4">Purchase Orders</h1>
-      </header>
       <main className="p-4">
+        <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">Purchase Orders</h1>
+            <div className="flex items-center gap-2">
+                <Input placeholder="Search POs..." className="w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setEditingPO(null); createForm.reset(); createRemove(); } setIsCreateDialogOpen(isOpen); }}>
+                    <DialogTrigger asChild>
+                        <Button onClick={() => openCreateOrEditDialog(null)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Create New PO
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+                        <DialogHeader>
+                            <DialogTitle>{editingPO ? `Edit Purchase Order ${editingPO.id}` : 'Create New Purchase Order'}</DialogTitle>
+                        </DialogHeader>
+                        <Form {...createForm}>
+                            <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                                <ScrollArea className="flex-1 pr-6">
+                                    <div className="space-y-4 py-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField
+                                        control={createForm.control}
+                                        name="supplierName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Supplier</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a supplier" />
+                                                </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                {suppliers.map(supplier => (
+                                                    <SelectItem key={supplier.id} value={supplier.name}>
+                                                    {supplier.name}
+                                                    </SelectItem>
+                                                ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                        />
+                                    </div>
+                                        <div>
+                                            <FormLabel>Line Items</FormLabel>
+                                            <div className="space-y-2 mt-2">
+                                                {createFields.map((field, index) => { const itemDetails = stocks.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
+                                            </div>
+                                            {createFields.length === 0 && ( <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p> )}
+                                            <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
+                                        </div>
+                                        <AddItemForm stocks={stocks} onAddItem={createAppend} />
+                                    </div>
+                                </ScrollArea>
+                                <DialogFooter className="pt-4">
+                                    <div className="flex justify-end gap-2 w-full">
+                                        <DialogClose asChild>
+                                            <Button variant="outline" type="button">Cancel</Button>
+                                        </DialogClose>
+                                        <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
+                                    </div>
+                                </DialogFooter>
+                            </form>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </div>
           <Card>
           <CardHeader>
-              <div className="flex justify-between items-center">
-                  <div>
-                      <CardTitle>Purchase Orders</CardTitle>
-                      <CardDescription>
-                      Create and manage purchase orders for raw materials.
-                      </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                      <Input placeholder="Search POs..." className="w-64" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                      <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setEditingPO(null); createForm.reset(); createRemove(); } setIsCreateDialogOpen(isOpen); }}>
-                          <DialogTrigger asChild>
-                              <Button onClick={() => openCreateOrEditDialog(null)}>
-                                  <PlusCircle className="mr-2 h-4 w-4" />
-                                  Create New PO
-                              </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-                              <DialogHeader>
-                                  <DialogTitle>{editingPO ? `Edit Purchase Order ${editingPO.id}` : 'Create New Purchase Order'}</DialogTitle>
-                              </DialogHeader>
-                              <Form {...createForm}>
-                                  <form onSubmit={createForm.handleSubmit(handleCreateOrUpdateSubmit)} className="flex flex-col flex-1 overflow-hidden">
-                                      <ScrollArea className="flex-1 pr-6">
-                                          <div className="space-y-4 py-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                              <FormField
-                                              control={createForm.control}
-                                              name="supplierName"
-                                              render={({ field }) => (
-                                                  <FormItem>
-                                                  <FormLabel>Supplier</FormLabel>
-                                                  <Select onValueChange={field.onChange} value={field.value}>
-                                                      <FormControl>
-                                                      <SelectTrigger>
-                                                          <SelectValue placeholder="Select a supplier" />
-                                                      </SelectTrigger>
-                                                      </FormControl>
-                                                      <SelectContent>
-                                                      {suppliers.map(supplier => (
-                                                          <SelectItem key={supplier.id} value={supplier.name}>
-                                                          {supplier.name}
-                                                          </SelectItem>
-                                                      ))}
-                                                      </SelectContent>
-                                                  </Select>
-                                                  <FormMessage />
-                                                  </FormItem>
-                                              )}
-                                              />
-                                            </div>
-                                              <div>
-                                                  <FormLabel>Line Items</FormLabel>
-                                                  <div className="space-y-2 mt-2">
-                                                      {createFields.map((field, index) => { const itemDetails = masterData.find(i => i.itemCode === field.itemId); return ( <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md"> <div className="flex-1 font-medium">{itemDetails?.name || field.itemId}</div> <div className="w-20 text-sm">Qty: {field.quantity}</div> <Button variant="ghost" size="icon" type="button" onClick={() => createRemove(index)}> <Trash2 className="h-4 w-4 text-destructive"/> </Button> </div> )})}
-                                                  </div>
-                                                  {createFields.length === 0 && ( <p className="text-sm text-muted-foreground text-center p-4">No items added yet.</p> )}
-                                                  <FormMessage>{createForm.formState.errors.lineItems?.root?.message || createForm.formState.errors.lineItems?.message}</FormMessage>
-                                              </div>
-                                              <AddItemForm masterData={masterData} onAddItem={createAppend} />
-                                          </div>
-                                      </ScrollArea>
-                                      <DialogFooter className="pt-4">
-                                          <div className="flex justify-end gap-2 w-full">
-                                              <DialogClose asChild>
-                                                  <Button variant="outline" type="button">Cancel</Button>
-                                              </DialogClose>
-                                              <Button type="submit">{editingPO ? 'Save Changes' : 'Create PO'}</Button>
-                                          </div>
-                                      </DialogFooter>
-                                  </form>
-                              </Form>
-                          </DialogContent>
-                      </Dialog>
-                  </div>
-              </div>
+                <CardTitle>Purchase Orders</CardTitle>
+                <CardDescription>
+                Create and manage purchase orders for raw materials.
+                </CardDescription>
           </CardHeader>
           <CardContent>
               <Table>
@@ -564,7 +584,7 @@ export default function PurchaseOrdersPage() {
                           <TableCell>{po.date}</TableCell>
                           <TableCell className="font-mono">{po.id}</TableCell>
                           <TableCell className="font-medium">{po.supplierName}</TableCell>
-                          <TableCell className="text-right">{currency.code} {po.totalAmount.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{currency.code} {po.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                           <TableCell>
                           <Badge 
                               variant={statusVariant[po.status]}
@@ -576,13 +596,13 @@ export default function PurchaseOrdersPage() {
                           <TableCell>
                               <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" className="h-8 w-8 p-0"> <span className="sr-only">Open menu</span> <MoreHorizontal className="h-4 w-4" /> </Button>
+                                  <Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => openCreateOrEditDialog(po)} disabled={po.status !== 'Draft'}> View/Edit </DropdownMenuItem>
-                                  {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}> Mark as Sent </DropdownMenuItem> )}
-                                  {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}> Receive Items </DropdownMenuItem> )}
-                                  {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}> Add Payment </DropdownMenuItem> )}
+                                  <DropdownMenuItem onClick={() => openCreateOrEditDialog(po)} disabled={po.status !== 'Draft'}>View/Edit</DropdownMenuItem>
+                                  {po.status === 'Draft' && ( <DropdownMenuItem onClick={() => handleStatusChange(po.id, 'Sent')}>Mark as Sent</DropdownMenuItem> )}
+                                  {po.status === 'Sent' && ( <DropdownMenuItem onClick={() => openReceiveDialog(po)}>Receive Items</DropdownMenuItem> )}
+                                  {po.status === 'Fulfilled' && ( <DropdownMenuItem onClick={() => openPaymentDialog(po)}>Add Payment</DropdownMenuItem> )}
                                   {po.status === 'Paid' && ( <DropdownMenuItem disabled>Payment Complete</DropdownMenuItem> )}
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => handlePrint(po.id)}>
@@ -594,7 +614,7 @@ export default function PurchaseOrdersPage() {
                                       <span>Share</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}> Delete </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(po.id)} disabled={po.status !== 'Draft'}>Delete</DropdownMenuItem>
                                   </DropdownMenuContent>
                               </DropdownMenu>
                           </TableCell>
@@ -616,7 +636,7 @@ export default function PurchaseOrdersPage() {
       {/* Receive Items Dialog */}
       <Dialog open={isReceiveDialogOpen} onOpenChange={setIsReceiveDialogOpen}>
               <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
-                  <DialogHeader> <DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle> <CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription> </DialogHeader>
+                  <DialogHeader><DialogTitle>Receive Items for PO {selectedPO?.id}</DialogTitle><CardDescription>Enter the final unit price for each item to update stock and finalize the order.</CardDescription></DialogHeader>
                   <Form {...receiveForm}>
                       <form onSubmit={receiveForm.handleSubmit(handleReceiveSubmit)} className="flex flex-col flex-1 overflow-hidden">
                           <ScrollArea className="flex-1 pr-6">
@@ -625,7 +645,7 @@ export default function PurchaseOrdersPage() {
                                       <TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="w-24">Quantity</TableHead><TableHead className="w-40">Unit Price</TableHead><TableHead className="w-40 text-right">Total Value</TableHead></TableRow></TableHeader>
                                       <TableBody>
                                           {receiveFields.map((field, index) => {
-                                              const itemDetails = masterData.find(i => i.itemCode === field.itemId);
+                                              const itemDetails = stocks.find(i => i.itemCode === field.itemId);
                                               const quantity = receiveForm.watch(`lineItems.${index}.quantity`);
                                               const unitPrice = receiveForm.watch(`lineItems.${index}.unitPrice`);
                                               const totalValue = (quantity || 0) * (unitPrice || 0);
@@ -636,8 +656,8 @@ export default function PurchaseOrdersPage() {
                                                   <TableRow key={field.id}>
                                                       <TableCell className="font-medium">{itemDetails?.name}</TableCell>
                                                       <TableCell>{quantity}</TableCell>
-                                                      <TableCell><FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => (<FormItem><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>)} /></TableCell>
-                                                      <TableCell className="text-right font-mono">{currency.code} {totalValue.toFixed(2)}</TableCell>
+                                                      <TableCell><FormField control={receiveForm.control} name={`lineItems.${index}.unitPrice`} render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="e.g. 10.50" {...field} /></FormControl><FormMessage /></FormItem>} /></TableCell>
+                                                      <TableCell className="text-right font-mono">{currency.code} {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                                   </TableRow>
                                               );
                                           })}
@@ -645,7 +665,10 @@ export default function PurchaseOrdersPage() {
                                   </Table>
                               </div>
                           </ScrollArea>
-                          <DialogFooter className="pt-4"><DialogClose asChild><Button variant="outline" type="button">Cancel</Button></DialogClose><Button type="submit">Confirm & Receive Stock</Button></DialogFooter>
+                          <DialogFooter className="pt-4">
+                            <DialogClose asChild><Button variant="outline" type="button">Cancel</Button></DialogClose>
+                            <Button type="submit">Confirm & Receive Stock</Button>
+                          </DialogFooter>
                       </form>
                   </Form>
               </DialogContent>
@@ -657,7 +680,7 @@ export default function PurchaseOrdersPage() {
                   <DialogHeader>
                       <DialogTitle>Record Payment for PO {selectedPO?.id}</DialogTitle>
                       <CardDescription>
-                          Total: {currency.code} {selectedPO?.totalAmount.toFixed(2)} | Paid: {currency.code} {amountPaid.toFixed(2)} | Remaining: {currency.code} {remainingAmount.toFixed(2)}
+                          Total: {currency.code} {selectedPO?.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Paid: {currency.code} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Remaining: {currency.code} {remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </CardDescription>
                   </DialogHeader>
                   <Form {...paymentForm}>
@@ -665,30 +688,30 @@ export default function PurchaseOrdersPage() {
                           <ScrollArea className="flex-1 pr-6">
                               <div className="space-y-4 py-4">
                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <FormField control={paymentForm.control} name="amount" render={({ field }) => ( <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                      <FormField control={paymentForm.control} name="method" render={({ field }) => ( <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => ( <SelectItem key={method} value={method}>{method}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                                      <FormField control={paymentForm.control} name="amount" render={({ field }) => <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                      <FormField control={paymentForm.control} name="method" render={({ field }) => <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>}/>
                                   </div>
 
                                   {paymentMethod === 'Card' && (
-                                      <FormField control={paymentForm.control} name="cardLast4" render={({ field }) => ( <FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                      <FormField control={paymentForm.control} name="cardLast4" render={({ field }) => <FormItem><FormLabel>Last 4 Digits of Card</FormLabel><FormControl><Input placeholder="1234" maxLength={4} {...field} /></FormControl><FormMessage /></FormItem>}/>
                                   )}
                                   {paymentMethod === 'Online' && (
-                                      <>
+                                      <div className="space-y-4">
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                              <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => (<FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                              <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => (<FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                              <FormField control={paymentForm.control} name="fromBankName" render={({ field }) => <FormItem><FormLabel>From Bank</FormLabel><FormControl><Input placeholder="e.g. City Bank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                              <FormField control={paymentForm.control} name="fromAccountNumber" render={({ field }) => <FormItem><FormLabel>From Account</FormLabel><FormControl><Input placeholder="e.g. 1234567890" {...field} /></FormControl><FormMessage /></FormItem>} />
                                           </div>
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                              <FormField control={paymentForm.control} name="toBankName" render={({ field }) => (<FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                              <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => (<FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                              <FormField control={paymentForm.control} name="toBankName" render={({ field }) => <FormItem><FormLabel>To Bank</FormLabel><FormControl><Input placeholder="e.g. Our Bank" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                              <FormField control={paymentForm.control} name="toAccountNumber" render={({ field }) => <FormItem><FormLabel>To Account</FormLabel><FormControl><Input placeholder="e.g. 0987654321" {...field} /></FormControl><FormMessage /></FormItem>} />
                                           </div>
-                                      </>
+                                      </div>
                                   )}
                                   {paymentMethod === 'Cheque' && (
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                          <FormField control={paymentForm.control} name="chequeBank" render={({ field }) => ( <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                          <FormField control={paymentForm.control} name="chequeNumber" render={({ field }) => ( <FormItem><FormLabel>Cheque Number</FormLabel><FormControl><Input placeholder="e.g. 987654" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                          <FormField control={paymentForm.control} name="chequeDate" render={({ field }) => ( <FormItem><FormLabel>Cheque Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                          <FormField control={paymentForm.control} name="chequeBank" render={({ field }) => <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input placeholder="e.g. National Bank" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                          <FormField control={paymentForm.control} name="chequeNumber" render={({ field }) => <FormItem><FormLabel>Cheque Number</FormLabel><FormControl><Input placeholder="e.g. 987654" {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                          <FormField control={paymentForm.control} name="chequeDate" render={({ field }) => <FormItem><FormLabel>Cheque Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>}/>
                                       </div>
                                   )}
                               </div>
