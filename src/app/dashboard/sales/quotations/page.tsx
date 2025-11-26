@@ -320,7 +320,7 @@ export default function QuotationsPage() {
 
         if (insufficientStock) return;
 
-        const newOrderId = `ORD-${quotation.id.split('-')[1]}`;
+        const newOrderId = `SO-${quotation.id.split('-')[1]}`;
         const newOrder = {
             id: newOrderId,
             quotationId: quotation.id,
