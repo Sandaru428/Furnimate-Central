@@ -95,6 +95,7 @@ export default function DebitorsPage() {
   const [toDateOpen, setToDateOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+    const [customerFilter, setCustomerFilter] = useState<string>('all');
     const { toast } = useToast();
 
     const paymentForm = useForm<PaymentFormValues>({
@@ -147,9 +148,25 @@ export default function DebitorsPage() {
         return saleOrder?.customer || 'N/A';
     };
     
+    // Get unique customer names from credit income payments
+    const uniqueCustomerNames = useMemo(() => {
+        const creditIncomePayments = payments.filter(
+            payment => payment.method?.toLowerCase() === 'credit' && payment.type === 'income'
+        );
+        const names = creditIncomePayments
+            .map(payment => getNameForPayment(payment))
+            .filter(name => name && name !== 'N/A');
+        return Array.from(new Set(names)).sort();
+    }, [payments, saleOrders]);
+    
     const filteredPayments = useMemo(() => {
         let sortedPayments = [...payments]
             .filter(payment => payment.method?.toLowerCase() === 'credit' && payment.type === 'income');
+        
+        // Apply customer filter
+        if (customerFilter !== 'all') {
+            sortedPayments = sortedPayments.filter(payment => getNameForPayment(payment) === customerFilter);
+        }
         
         // Apply date filter
         const today = startOfDay(new Date());
@@ -193,7 +210,7 @@ export default function DebitorsPage() {
                 details.includes(lowercasedSearchTerm)
             );
         });
-    }, [payments, saleOrders, searchTerm, dateFilter]);
+    }, [payments, saleOrders, searchTerm, dateFilter, customerFilter]);
 
     const openPaymentDialog = (payment: Payment) => {
         setSelectedPayment(payment);
@@ -323,7 +340,23 @@ export default function DebitorsPage() {
                     </DropdownMenu>
                   </TableHead>
                   <TableHead>Reference</TableHead>
-                  <TableHead>Customer</TableHead>
+                  <TableHead>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 p-0 hover:bg-transparent">
+                          Customer {customerFilter !== 'all' && <span className="ml-1 text-xs text-muted-foreground">({customerFilter})</span>} <ChevronDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+                        {uniqueCustomerNames.map((name) => (
+                          <DropdownMenuItem key={name} onClick={() => setCustomerFilter(name)}>
+                            {name}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuItem onClick={() => setCustomerFilter('all')}>All</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Credit Amount</TableHead>
                   <TableHead className="text-right">Paid</TableHead>
