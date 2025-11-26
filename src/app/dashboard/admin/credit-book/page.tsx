@@ -80,6 +80,7 @@ export default function CreditBookPage() {
     const filteredPayments = useMemo(() => {
         const sortedPayments = [...payments]
             .filter(payment => payment.method?.toLowerCase() === 'credit')
+            .filter(payment => ((payment.amount || 0) - (payment.paidAmount || 0)) > 0)
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
         if (!searchTerm) {
@@ -159,7 +160,7 @@ export default function CreditBookPage() {
                             </Badge>
                         </TableCell>
                         <TableCell className={cn("text-right", payment.type === 'income' ? 'text-green-600' : 'text-red-600')}>
-                            {payment.type === 'income' ? '+' : '-'}{currency.code} {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {payment.type === 'income' ? '+' : '-'}{currency.code} {((payment.amount || 0) - (payment.paidAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>
                             <Badge variant="secondary">{payment.method}</Badge>
