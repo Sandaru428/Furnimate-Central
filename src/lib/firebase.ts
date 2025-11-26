@@ -4,13 +4,13 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  "projectId": "studio-6159115705-55b24",
-  "appId": "1:743515300267:web:240c7e5444f928009e72ee",
-  "storageBucket": "studio-6159115705-55b24.firebasestorage.app",
-  "apiKey": "AIzaSyAzxB6V0fZTks7O7VCHKbfaJcN85Kau4bQ",
-  "authDomain": "studio-6159115705-55b24.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "743515300267"
+  "projectId": "furnimate-central",
+  "appId": "1:355246282722:web:4ea2798d7e3c1d324e4bbb",
+  "storageBucket": "furnimate-central.firebasestorage.app",
+  "apiKey": "AIzaSyD6jPBR7SuXvV7Jv-bnpvZFoFk9sUNFS4Q",
+  "authDomain": "furnimate-central.firebaseapp.com",
+  "measurementId": "G-WJ00H55Y0B",
+  "messagingSenderId": "355246282722"
 };
 
 // Initialize Firebase
