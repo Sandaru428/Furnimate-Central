@@ -49,7 +49,7 @@ import { MoreHorizontal, PlusCircle, Merge } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, query, writeBatch } from 'firebase/firestore';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toSentenceCase } from '@/lib/utils';
@@ -73,6 +73,8 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [nameInputValue, setNameInputValue] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const form = useForm<Customer>({
     resolver: zodResolver(customerSchema),
@@ -215,9 +217,11 @@ export default function CustomersPage() {
   const openDialog = (customer: Customer | null) => {
     if (customer) {
         setEditingCustomer(customer);
+        setNameInputValue(customer.name || '');
         form.reset(customer);
     } else {
         setEditingCustomer(null);
+        setNameInputValue('');
         form.reset({
             name: '',
             email: '',
@@ -229,6 +233,16 @@ export default function CustomersPage() {
     }
     setIsDialogOpen(true);
   };
+
+  const handleNameInputChange = (value: string) => {
+    setNameInputValue(value);
+    form.setValue('name', value);
+    setShowSuggestions(value.length > 0 && !editingCustomer);
+  };
+
+  const filteredSuggestedCustomers = customers.filter(c => 
+    c.name.toLowerCase().includes(nameInputValue.toLowerCase())
+  ).slice(0, 5);
 
   const filteredCustomers = customers.filter(
     (customer) =>
@@ -269,7 +283,42 @@ export default function CustomersPage() {
                     <ScrollArea className="flex-1 pr-6">
                         <div className="space-y-4 py-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Customer Name</FormLabel><FormControl><Input placeholder="e.g. Modern Designs LLC" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                <FormField control={form.control} name="name" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Customer Name</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Input 
+                                                    placeholder="e.g. Modern Designs LLC" 
+                                                    value={nameInputValue}
+                                                    onChange={(e) => handleNameInputChange(e.target.value)}
+                                                    onFocus={() => setShowSuggestions(nameInputValue.length > 0 && !editingCustomer)}
+                                                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                                />
+                                                {showSuggestions && filteredSuggestedCustomers.length > 0 && (
+                                                    <div className="absolute z-50 w-fit min-w-full mt-1 bg-gray-900 border-2 border-primary/20 rounded-md shadow-lg p-3">
+                                                        <div className="text-sm font-medium mb-2 text-muted-foreground">Existing Customers:</div>
+                                                        {filteredSuggestedCustomers.map((customer) => (
+                                                            <div
+                                                                key={customer.id}
+                                                                className="py-2 px-2 border-b last:border-b-0"
+                                                            >
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium whitespace-nowrap">{customer.name}</span>
+                                                                    <span className="text-sm text-muted-foreground whitespace-nowrap">{customer.email}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        <div className="text-xs text-yellow-600 dark:text-yellow-500 mt-2 pt-2 border-t">
+                                                            ⚠️ Customer already exists. Consider not adding a duplicate.
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
                                 <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="e.g. sarah@example.com" {...field} /></FormControl><FormMessage /></FormItem>} />
                                 <FormField control={form.control} name="phone" render={({ field }) => <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />
                                 <FormField control={form.control} name="whatsappNumber" render={({ field }) => <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. 555-111-2222" {...field} /></FormControl><FormMessage /></FormItem>} />

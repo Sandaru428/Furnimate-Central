@@ -73,6 +73,8 @@ export default function SuppliersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [nameInputValue, setNameInputValue] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const form = useForm<Supplier>({
     resolver: zodResolver(supplierSchema),
@@ -152,6 +154,7 @@ export default function SuppliersPage() {
   const openDialog = (supplier: Supplier | null) => {
     if (supplier) {
         setEditingSupplier(supplier);
+        setNameInputValue(supplier.name || '');
         form.reset({
             name: supplier.name || '',
             contactPerson: supplier.contactPerson || '',
@@ -163,6 +166,7 @@ export default function SuppliersPage() {
         });
     } else {
         setEditingSupplier(null);
+        setNameInputValue('');
         form.reset({
             name: '',
             contactPerson: '',
@@ -175,6 +179,16 @@ export default function SuppliersPage() {
     }
     setIsDialogOpen(true);
   };
+
+  const handleNameInputChange = (value: string) => {
+    setNameInputValue(value);
+    form.setValue('name', value);
+    setShowSuggestions(value.length > 0 && !editingSupplier);
+  };
+
+  const filteredSuggestedSuppliers = suppliers.filter(s => 
+    s.name.toLowerCase().includes(nameInputValue.toLowerCase())
+  ).slice(0, 5);
 
   const filteredSuppliers = suppliers.filter(
     (supplier) =>
@@ -211,7 +225,44 @@ export default function SuppliersPage() {
                                 <ScrollArea className="flex-1 pr-6">
                                     <div className="space-y-4 py-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Supplier Name</FormLabel><FormControl><Input placeholder="e.g. Timber Co." {...field} /></FormControl><FormMessage /></FormItem>}/>
+                                            <FormField control={form.control} name="name" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Supplier Name</FormLabel>
+                                                    <FormControl>
+                                                        <div className="relative">
+                                                            <Input 
+                                                                placeholder="e.g. Timber Co." 
+                                                                value={nameInputValue}
+                                                                onChange={(e) => handleNameInputChange(e.target.value)}
+                                                                onFocus={() => setShowSuggestions(nameInputValue.length > 0 && !editingSupplier)}
+                                                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                                            />
+                                                            {showSuggestions && filteredSuggestedSuppliers.length > 0 && (
+                                                                <div className="absolute z-50 w-fit min-w-full mt-1 bg-gray-900 border-2 border-primary/20 rounded-md shadow-lg p-3">
+                                                                    <div className="text-sm font-medium mb-2 text-muted-foreground">Existing Suppliers:</div>
+                                                                    {filteredSuggestedSuppliers.map((supplier) => (
+                                                                        <div
+                                                                            key={supplier.id}
+                                                                            className="py-2 px-2 border-b last:border-b-0"
+                                                                        >
+                                                                            <div className="flex flex-col">
+                                                                                <span className="font-medium whitespace-nowrap">{supplier.name}</span>
+                                                                                {supplier.contactPerson && (
+                                                                                    <span className="text-sm text-muted-foreground whitespace-nowrap">{supplier.contactPerson}</span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                    <div className="text-xs text-yellow-600 dark:text-yellow-500 mt-2 pt-2 border-t">
+                                                                        ⚠️ Supplier already exists. Consider not adding a duplicate.
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}/>
                                             <FormField control={form.control} name="contactPerson" render={({ field }) => <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl><FormMessage /></FormItem>}/>
                                             <FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input placeholder="e.g. contact@timberco.com" {...field} /></FormControl><FormMessage /></FormItem>}/>
                                             <FormField control={form.control} name="whatsappNumber" render={({ field }) => <FormItem><FormLabel>WhatsApp Number</FormLabel><FormControl><Input placeholder="e.g. +1 555-123-4567" {...field} /></FormControl><FormMessage /></FormItem>}/>
