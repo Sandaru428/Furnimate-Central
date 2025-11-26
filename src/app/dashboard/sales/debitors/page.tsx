@@ -301,12 +301,12 @@ export default function DebitorsPage() {
   return (
     <>
       <main className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Sales on Credit</h1>
+        <h1 className="text-2xl font-bold mb-4">Debitors</h1>
         <Card>
           <CardHeader>
              <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Sales on Credit</CardTitle>
+                    <CardTitle>Debitors</CardTitle>
                     <CardDescription>
                         A record of all credit sales transactions, including order-related payments and other income.
                     </CardDescription>
