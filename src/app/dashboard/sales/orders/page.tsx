@@ -105,7 +105,7 @@ export default function SaleOrdersPage() {
 	const [loading, setLoading] = useState(true);
 
 	const handlePrint = (orderId: string) => {
-		router.push(`/dashboard/sales/orders/${orderId}/print`);
+		window.open(`/dashboard/sales/orders/${orderId}/print`, '_blank');
 	};
 
 	useEffect(() => {

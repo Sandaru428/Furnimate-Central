@@ -2,32 +2,75 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
-import { quotationsAtom, stocksAtom, currencyAtom, companyProfileAtom } from '@/lib/store';
+import { currencyAtom, companyProfileAtom } from '@/lib/store';
 import { Logo } from '@/components/icons/logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { StockItem } from '../../../../data/stocks/page';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, collection, getDocs, query } from 'firebase/firestore';
+
+type Quotation = {
+    id: string;
+    customer: string;
+    date: string;
+    status: string;
+    amount: number;
+    lineItems: Array<{
+        itemId: string;
+        quantity: number;
+        unitPrice: number;
+        totalValue: number;
+    }>;
+};
 
 export default function QuotationPrintPage() {
     const params = useParams();
     const router = useRouter();
     const { id } = params;
 
-    const [quotations] = useAtom(quotationsAtom);
-    const [stocks] = useAtom(stocksAtom);
+    const [quotation, setQuotation] = useState<Quotation | null>(null);
+    const [stocks, setStocks] = useState<StockItem[]>([]);
+    const [loading, setLoading] = useState(true);
     const [currency] = useAtom(currencyAtom);
     const [companyProfile] = useAtom(companyProfileAtom);
 
-    const quotation = useMemo(() => {
-        return quotations.find(q => q.id === id);
-    }, [id, quotations]);
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                
+                // Fetch the quotation
+                const quotationDoc = await getDoc(doc(db, "quotations", id as string));
+                if (quotationDoc.exists()) {
+                    setQuotation({ ...quotationDoc.data(), id: quotationDoc.id } as Quotation);
+                }
+
+                // Fetch stocks
+                const stocksQuery = query(collection(db, "stocks"));
+                const stocksSnapshot = await getDocs(stocksQuery);
+                const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
+                setStocks(stocksData);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [id]);
+
+    if (loading) {
+        return <div className="p-8">Loading...</div>;
+    }
 
     if (!quotation) {
-        return <div className="p-8">Loading or Quotation not found...</div>;
+        return <div className="p-8">Quotation not found...</div>;
     }
 
     return (

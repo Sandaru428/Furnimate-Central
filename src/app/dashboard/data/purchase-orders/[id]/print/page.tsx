@@ -2,32 +2,75 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
-import { purchaseOrdersAtom, stocksAtom, currencyAtom, companyProfileAtom } from '@/lib/store';
+import { currencyAtom, companyProfileAtom } from '@/lib/store';
 import { Logo } from '@/components/icons/logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StockItem } from '../../../stocks/page';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, collection, getDocs, query } from 'firebase/firestore';
+
+type PurchaseOrder = {
+    id: string;
+    supplierName: string;
+    date: string;
+    totalAmount: number;
+    status: 'Draft' | 'Sent' | 'Fulfilled' | 'Paid';
+    lineItems: Array<{
+        itemId: string;
+        quantity: number;
+        unitPrice?: number;
+        totalValue?: number;
+    }>;
+};
 
 export default function PurchaseOrderPrintPage() {
     const params = useParams();
     const router = useRouter();
     const { id } = params;
 
-    const [purchaseOrders] = useAtom(purchaseOrdersAtom);
-    const [stocks] = useAtom(stocksAtom);
+    const [po, setPo] = useState<PurchaseOrder | null>(null);
+    const [stocks, setStocks] = useState<StockItem[]>([]);
+    const [loading, setLoading] = useState(true);
     const [currency] = useAtom(currencyAtom);
     const [companyProfile] = useAtom(companyProfileAtom);
 
-    const po = useMemo(() => {
-        return purchaseOrders.find(p => p.id === id);
-    }, [id, purchaseOrders]);
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                
+                // Fetch the purchase order
+                const poDoc = await getDoc(doc(db, "purchaseOrders", id as string));
+                if (poDoc.exists()) {
+                    setPo({ ...poDoc.data(), id: poDoc.id } as PurchaseOrder);
+                }
+
+                // Fetch stocks
+                const stocksQuery = query(collection(db, "stocks"));
+                const stocksSnapshot = await getDocs(stocksQuery);
+                const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
+                setStocks(stocksData);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [id]);
+
+    if (loading) {
+        return <div className="p-8">Loading...</div>;
+    }
 
     if (!po) {
-        return <div className="p-8">Loading or Purchase Order not found...</div>;
+        return <div className="p-8">Purchase Order not found...</div>;
     }
 
     return (

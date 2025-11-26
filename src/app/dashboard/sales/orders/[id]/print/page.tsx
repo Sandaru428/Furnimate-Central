@@ -2,42 +2,100 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
-import { saleOrdersAtom, quotationsAtom, stocksAtom, currencyAtom, companyProfileAtom, paymentsAtom } from '@/lib/store';
+import { currencyAtom, companyProfileAtom } from '@/lib/store';
 import { Logo } from '@/components/icons/logo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Payment } from '@/lib/store';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+
+type StockItem = {
+    id: string;
+    itemCode: string;
+    name: string;
+    [key: string]: any;
+};
+
+type SaleOrder = {
+    id: string;
+    customer: string;
+    date: string;
+    amount: number;
+    status: string;
+    quotationId: string;
+    [key: string]: any;
+};
+
+type Quotation = {
+    id: string;
+    lineItems: Array<{
+        itemId: string;
+        quantity: number;
+        unitPrice: number;
+        totalValue: number;
+    }>;
+    [key: string]: any;
+};
 
 export default function SaleOrderPrintPage() {
     const params = useParams();
     const router = useRouter();
     const { id } = params;
 
-    const [saleOrders] = useAtom(saleOrdersAtom);
-    const [quotations] = useAtom(quotationsAtom);
-    const [stocks] = useAtom(stocksAtom);
-    const [payments] = useAtom(paymentsAtom);
+    const [order, setOrder] = useState<SaleOrder | null>(null);
+    const [originalQuotation, setOriginalQuotation] = useState<Quotation | null>(null);
+    const [stocks, setStocks] = useState<StockItem[]>([]);
+    const [orderPayments, setOrderPayments] = useState<Payment[]>([]);
+    const [loading, setLoading] = useState(true);
     const [currency] = useAtom(currencyAtom);
     const [companyProfile] = useAtom(companyProfileAtom);
 
-    const order = useMemo(() => {
-        return saleOrders.find(o => o.id === id);
-    }, [id, saleOrders]);
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                
+                // Fetch the sale order
+                const orderDoc = await getDoc(doc(db, "saleOrders", id as string));
+                if (orderDoc.exists()) {
+                    const orderData = { ...orderDoc.data(), id: orderDoc.id } as SaleOrder;
+                    setOrder(orderData);
+                    
+                    // Fetch the quotation
+                    if (orderData.quotationId) {
+                        const quotationDoc = await getDoc(doc(db, "quotations", orderData.quotationId));
+                        if (quotationDoc.exists()) {
+                            setOriginalQuotation({ ...quotationDoc.data(), id: quotationDoc.id } as Quotation);
+                        }
+                    }
+                    
+                    // Fetch payments for this order
+                    const paymentsQuery = query(collection(db, "payments"), where("orderId", "==", id));
+                    const paymentsSnapshot = await getDocs(paymentsQuery);
+                    const paymentsData = paymentsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payment));
+                    setOrderPayments(paymentsData);
+                }
 
-    const originalQuotation = useMemo(() => {
-        if (!order) return null;
-        return quotations.find(q => q.id === order.quotationId);
-    }, [order, quotations]);
+                // Fetch stocks
+                const stocksQuery = query(collection(db, "stocks"));
+                const stocksSnapshot = await getDocs(stocksQuery);
+                const stocksData = stocksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StockItem));
+                setStocks(stocksData);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const orderPayments = useMemo(() => {
-        if (!order) return [];
-        return payments.filter((p: Payment) => p.orderId === order.id);
-    }, [order, payments]);
+        fetchData();
+    }, [id]);
 
     const totalPaid = useMemo(() => {
         return orderPayments.reduce((acc, p) => acc + p.amount, 0);
@@ -67,9 +125,12 @@ export default function SaleOrderPrintPage() {
         window.print();
     };
 
+    if (loading) {
+        return <div className="p-8">Loading...</div>;
+    }
 
     if (!order) {
-        return <div className="p-8">Loading or Sale Order not found...</div>;
+        return <div className="p-8">Sale Order not found...</div>;
     }
 
     return (

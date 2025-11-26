@@ -224,7 +224,7 @@ export default function PurchaseOrdersPage() {
     }, [setPurchaseOrders, setStocks, setSuppliers, setPayments]);
     
     const handlePrint = (poId: string) => {
-        router.push(`/dashboard/data/purchase-orders/${poId}/print`);
+        window.open(`/dashboard/data/purchase-orders/${poId}/print`, '_blank');
     };
 
     const createForm = useForm<CreatePurchaseOrder>({

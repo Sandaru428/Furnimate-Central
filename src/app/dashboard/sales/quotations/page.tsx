@@ -162,7 +162,7 @@ export default function QuotationsPage() {
     const [loading, setLoading] = useState(true);
 
     const handlePrint = (quoteId: string) => {
-        router.push(`/dashboard/sales/quotations/${quoteId}/print`);
+        window.open(`/dashboard/sales/quotations/${quoteId}/print`, '_blank');
     };
 
     useEffect(() => {
