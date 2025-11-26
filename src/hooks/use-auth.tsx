@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { onAuthStateChanged, type User, sendPasswordResetEmail, signOut as firebaseSignOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, secondaryAuth } from "@/lib/firebase";
 import { useToast } from "./use-toast";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
@@ -24,6 +24,7 @@ type AuthContextType = {
   handleSignIn: (email: string, pass: string) => Promise<boolean>;
   handlePasswordReset: (email: string) => Promise<void>;
   handleSignOut: () => Promise<void>;
+  createUserAccount: (email: string) => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -149,8 +150,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const createUserAccount = async (email: string): Promise<boolean> => {
+    try {
+      if (!secondaryAuth) {
+        throw new Error('Secondary auth not initialized');
+      }
+      // Generate a random temporary password
+      const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+      // Create user with secondary auth instance (won't affect current session)
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, tempPassword);
+      // Sign out from secondary auth immediately
+      await firebaseSignOut(secondaryAuth);
+      // Send password reset email using main auth (doesn't require being signed in)
+      await sendPasswordResetEmail(auth, email);
+      return true;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error Creating User Account",
+        description: error.message,
+      });
+      return false;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, authProfile, loading, handleSignIn, handlePasswordReset, handleSignOut }}>
+    <AuthContext.Provider value={{ user, authProfile, loading, handleSignIn, handlePasswordReset, handleSignOut, createUserAccount }}>
       {children}
     </AuthContext.Provider>
   );

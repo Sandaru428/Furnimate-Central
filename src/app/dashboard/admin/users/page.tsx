@@ -98,7 +98,7 @@ export default function UsersPage() {
   const [editingRole, setEditingRole] = useState<UserRoleDef | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
-  const { handlePasswordReset } = useAuth();
+  const { handlePasswordReset, createUserAccount } = useAuth();
   const [loading, setLoading] = useState(true);
 
   const userForm = useForm<User>({
@@ -205,10 +205,19 @@ export default function UsersPage() {
         setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...values, accessOptions: selectedRole.accessOptions } : u));
         toast({ title: 'User Updated' });
       } else {
-        // Create
+        // Create - First create Firebase Auth account and send reset email
+        const accountCreated = await createUserAccount(values.email);
+        if (!accountCreated) {
+          return; // Exit if account creation failed
+        }
+        
+        // Then save to Firestore
         const docRef = await addDoc(collection(db, 'users'), dataToSave);
         setUsers(prev => [{ ...values, id: docRef.id, accessOptions: selectedRole.accessOptions }, ...prev]);
-        toast({ title: 'User Added' });
+        toast({ 
+          title: 'User Added', 
+          description: `User created successfully. A password reset email has been sent to ${values.email}.` 
+        });
       }
       userForm.reset();
       setEditingUser(null);
