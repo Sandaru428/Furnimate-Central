@@ -37,6 +37,7 @@ const menuConfig = {
             'notification-templates': { icon: FileText, label: 'Notification Templates', href: '/dashboard/admin/notification-templates' },
             'cash-book': { icon: BookUser, label: 'Cash Book', href: '/dashboard/admin/cash-book' },
             'bank-book': { icon: BookUser, label: 'Bank Book', href: '/dashboard/admin/bank-book' },
+            'credit-book': { icon: BookUser, label: 'Credit Book', href: '/dashboard/admin/credit-book' },
         }
     },
     data: {
