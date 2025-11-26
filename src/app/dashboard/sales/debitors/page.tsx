@@ -50,12 +50,14 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query, addDoc, updateDoc, doc } from 'firebase/firestore';
 import type { Payment } from '@/lib/store';
 import { Input } from '@/components/ui/input';
-import { format, parseISO } from 'date-fns';
-import { MoreHorizontal } from 'lucide-react';
+import { format, parseISO, startOfDay, startOfWeek, startOfMonth, isAfter, isSameDay } from 'date-fns';
+import { MoreHorizontal, ChevronDown, CalendarIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { generatePaymentReferenceNumber } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const paymentSchema = z.object({
     amount: z.coerce.number().positive("Amount must be a positive number."),
@@ -85,8 +87,13 @@ export default function DebitorsPage() {
     const [saleOrders, setSaleOrders] = useAtom(saleOrdersAtom);
     const [currency] = useAtom(currencyAtom);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'custom' | 'all'>('all');
+  const [isCustomDateDialogOpen, setIsCustomDateDialogOpen] = useState(false);
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
+  const [fromDateOpen, setFromDateOpen] = useState(false);
+  const [toDateOpen, setToDateOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
     const { toast } = useToast();
 
@@ -141,13 +148,34 @@ export default function DebitorsPage() {
     };
     
     const filteredPayments = useMemo(() => {
-        const sortedPayments = [...payments]
-            .filter(payment => payment.method?.toLowerCase() === 'credit' && payment.type === 'income')
-            .sort((a, b) => {
-                const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
-                if (dateCompare !== 0) return dateCompare;
-                return (b.referenceNumber || '').localeCompare(a.referenceNumber || '');
+        let sortedPayments = [...payments]
+            .filter(payment => payment.method?.toLowerCase() === 'credit' && payment.type === 'income');
+        
+        // Apply date filter
+        const today = startOfDay(new Date());
+        if (dateFilter === 'today') {
+            sortedPayments = sortedPayments.filter(payment => isSameDay(parseISO(payment.date), today));
+        } else if (dateFilter === 'week') {
+            const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+            sortedPayments = sortedPayments.filter(payment => isAfter(parseISO(payment.date), weekStart) || isSameDay(parseISO(payment.date), weekStart));
+        } else if (dateFilter === 'month') {
+            const monthStart = startOfMonth(today);
+            sortedPayments = sortedPayments.filter(payment => isAfter(parseISO(payment.date), monthStart) || isSameDay(parseISO(payment.date), monthStart));
+        } else if (dateFilter === 'custom' && customDateRange.from && customDateRange.to) {
+            sortedPayments = sortedPayments.filter(payment => {
+                const paymentDate = startOfDay(parseISO(payment.date));
+                const fromDate = startOfDay(customDateRange.from!);
+                const toDate = startOfDay(customDateRange.to!);
+                return (isAfter(paymentDate, fromDate) || isSameDay(paymentDate, fromDate)) &&
+                       (isAfter(toDate, paymentDate) || isSameDay(paymentDate, toDate));
             });
+        }
+        
+        sortedPayments = sortedPayments.sort((a, b) => {
+            const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dateCompare !== 0) return dateCompare;
+            return (b.referenceNumber || '').localeCompare(a.referenceNumber || '');
+        });
         
         if (!searchTerm) {
             return sortedPayments;
@@ -165,7 +193,7 @@ export default function DebitorsPage() {
                 details.includes(lowercasedSearchTerm)
             );
         });
-    }, [payments, saleOrders, searchTerm]);
+    }, [payments, saleOrders, searchTerm, dateFilter]);
 
     const openPaymentDialog = (payment: Payment) => {
         setSelectedPayment(payment);
@@ -278,7 +306,22 @@ export default function DebitorsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
+                  <TableHead>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 p-0 hover:bg-transparent">
+                          Date {dateFilter !== 'all' && <span className="ml-1 text-xs text-muted-foreground">({dateFilter === 'today' ? 'Today' : dateFilter === 'week' ? 'This Week' : dateFilter === 'month' ? 'This Month' : 'Custom'})</span>} <ChevronDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => setDateFilter('today')}>Today</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDateFilter('week')}>This Week</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDateFilter('month')}>This Month</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setIsCustomDateDialogOpen(true)}>Custom</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDateFilter('all')}>All</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Type</TableHead>
@@ -410,6 +453,69 @@ export default function DebitorsPage() {
                   </form>
               </Form>
           </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCustomDateDialogOpen} onOpenChange={setIsCustomDateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Date Range</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">From Date</label>
+              <Popover open={fromDateOpen} onOpenChange={setFromDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customDateRange.from ? format(customDateRange.from, 'PPP') : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={customDateRange.from}
+                    onSelect={(date) => {
+                      setCustomDateRange(prev => ({ ...prev, from: date }));
+                      setFromDateOpen(false);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">To Date</label>
+              <Popover open={toDateOpen} onOpenChange={setToDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customDateRange.to ? format(customDateRange.to, 'PPP') : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={customDateRange.to}
+                    onSelect={(date) => {
+                      setCustomDateRange(prev => ({ ...prev, to: date }));
+                      setToDateOpen(false);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCustomDateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (customDateRange.from && customDateRange.to) {
+                setDateFilter('custom');
+                setIsCustomDateDialogOpen(false);
+              }
+            }}>Apply Filter</Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   );

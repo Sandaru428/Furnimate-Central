@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -45,12 +45,14 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, ChevronDown, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAtom } from 'jotai';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { paymentsAtom, currencyAtom, Payment } from '@/lib/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format } from 'date-fns';
+import { format, startOfDay, startOfWeek, startOfMonth, isAfter, isSameDay, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn, generatePaymentReferenceNumber } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -91,6 +93,11 @@ export default function IncomeExpensesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'custom' | 'all'>('all');
+  const [isCustomDateDialogOpen, setIsCustomDateDialogOpen] = useState(false);
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
+  const [fromDateOpen, setFromDateOpen] = useState(false);
+  const [toDateOpen, setToDateOpen] = useState(false);
 
   useEffect(() => {
     const fetchPayments = async () => {
@@ -261,13 +268,35 @@ export default function IncomeExpensesPage() {
     }
   }
   
-  const adHocTransactions = payments
-    .filter(p => !p.orderId)
-    .sort((a, b) => {
+  const adHocTransactions = useMemo(() => {
+    let filtered = payments.filter(p => !p.orderId);
+    
+    // Apply date filter
+    const today = startOfDay(new Date());
+    if (dateFilter === 'today') {
+      filtered = filtered.filter(payment => isSameDay(parseISO(payment.date), today));
+    } else if (dateFilter === 'week') {
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+      filtered = filtered.filter(payment => isAfter(parseISO(payment.date), weekStart) || isSameDay(parseISO(payment.date), weekStart));
+    } else if (dateFilter === 'month') {
+      const monthStart = startOfMonth(today);
+      filtered = filtered.filter(payment => isAfter(parseISO(payment.date), monthStart) || isSameDay(parseISO(payment.date), monthStart));
+    } else if (dateFilter === 'custom' && customDateRange.from && customDateRange.to) {
+      filtered = filtered.filter(payment => {
+        const paymentDate = startOfDay(parseISO(payment.date));
+        const fromDate = startOfDay(customDateRange.from!);
+        const toDate = startOfDay(customDateRange.to!);
+        return (isAfter(paymentDate, fromDate) || isSameDay(paymentDate, fromDate)) &&
+               (isAfter(toDate, paymentDate) || isSameDay(paymentDate, toDate));
+      });
+    }
+    
+    return filtered.sort((a, b) => {
       const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
       if (dateCompare !== 0) return dateCompare;
       return (b.referenceNumber || '').localeCompare(a.referenceNumber || '');
     });
+  }, [payments, dateFilter]);
 
   return (
     <>
@@ -341,7 +370,22 @@ export default function IncomeExpensesPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Date</TableHead>
+                            <TableHead>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 p-0 hover:bg-transparent">
+                                            Date {dateFilter !== 'all' && <span className="ml-1 text-xs text-muted-foreground">({dateFilter === 'today' ? 'Today' : dateFilter === 'week' ? 'This Week' : dateFilter === 'month' ? 'This Month' : 'Custom'})</span>} <ChevronDown className="ml-1 h-3 w-3" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                        <DropdownMenuItem onClick={() => setDateFilter('today')}>Today</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setDateFilter('week')}>This Week</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setDateFilter('month')}>This Month</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setIsCustomDateDialogOpen(true)}>Custom</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setDateFilter('all')}>All</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableHead>
                             <TableHead>Reference No.</TableHead>
                             <TableHead>Description</TableHead>
                             <TableHead>Type</TableHead>
@@ -398,6 +442,69 @@ export default function IncomeExpensesPage() {
             </CardContent>
         </Card>
       </main>
+
+      <Dialog open={isCustomDateDialogOpen} onOpenChange={setIsCustomDateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Date Range</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">From Date</label>
+              <Popover open={fromDateOpen} onOpenChange={setFromDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customDateRange.from ? format(customDateRange.from, 'PPP') : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={customDateRange.from}
+                    onSelect={(date) => {
+                      setCustomDateRange(prev => ({ ...prev, from: date }));
+                      setFromDateOpen(false);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">To Date</label>
+              <Popover open={toDateOpen} onOpenChange={setToDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customDateRange.to ? format(customDateRange.to, 'PPP') : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={customDateRange.to}
+                    onSelect={(date) => {
+                      setCustomDateRange(prev => ({ ...prev, to: date }));
+                      setToDateOpen(false);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCustomDateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (customDateRange.from && customDateRange.to) {
+                setDateFilter('custom');
+                setIsCustomDateDialogOpen(false);
+              }
+            }}>Apply Filter</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
