@@ -26,38 +26,47 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
 const menuConfig = {
-    dashboard: { icon: Home, label: 'Dashboard', href: '/dashboard' },
-    development: { icon: Server, label: 'Development', href: '/dashboard/development'},
-    reporting: { icon: BookOpenCheck, label: 'Reporting', href: '/dashboard/reporting' },
+    
     admin: {
         label: 'Admin',
         items: {
-            'company-profile': { icon: Settings, label: 'Company Profile', href: '/dashboard/admin/company-profile' },
+            dashboard: { icon: Home, label: 'Dashboard', href: '/dashboard' },
+            staff: { icon: UserRound, label: 'Staff', href: '/dashboard/data/staff' },
             users: { icon: UserCog, label: 'Users', href: '/dashboard/admin/users' },
+            reporting: { icon: BookOpenCheck, label: 'Reporting', href: '/dashboard/reporting' },
             'notification-templates': { icon: FileText, label: 'Notification Templates', href: '/dashboard/admin/notification-templates' },
+            'company-profile': { icon: Settings, label: 'Company Profile', href: '/dashboard/admin/company-profile' },
+        }
+    },
+
+    cashManagement: {
+        label: 'Cash Management',
+        items: {
+            'income-expenses': { icon: Landmark, label: 'Income & Expenses', href: '/dashboard/data/income-expenses' },
             'cash-book': { icon: BookUser, label: 'Cash Book', href: '/dashboard/admin/cash-book' },
             'bank-book': { icon: BookUser, label: 'Bank Book', href: '/dashboard/admin/bank-book' },
             'credit-book': { icon: BookUser, label: 'Credit Book', href: '/dashboard/admin/credit-book' },
         }
     },
+
     data: {
-        label: 'Data Management',
+        label: 'Purchase',
         items: {
-            'income-expenses': { icon: Landmark, label: 'Income & Expenses', href: '/dashboard/data/income-expenses' },
+            
             'stocks': { icon: Database, label: 'Stocks', href: '/dashboard/data/stocks' },
-            staff: { icon: UserRound, label: 'Staff', href: '/dashboard/data/staff' },
             suppliers: { icon: Building, label: 'Suppliers', href: '/dashboard/data/suppliers' },
-            customers: { icon: Users, label: 'Customers', href: '/dashboard/data/customers' },
             'purchase-orders': { icon: ClipboardList, label: 'Purchase Orders', href: '/dashboard/data/purchase-orders' },
-            'purchase-on-credit': { icon: ClipboardList, label: 'Purchase on Credit', href: '/dashboard/data/purchase-on-credit' },
+            'purchase-on-credit': { icon: ClipboardList, label: 'Creditors', href: '/dashboard/data/purchase-on-credit' },
         }
     },
+    
     sales: {
         label: 'Sales',
         items: {
+            customers: { icon: Users, label: 'Customers', href: '/dashboard/data/customers' },
             quotations: { icon: FileQuestion, label: 'Quotations', href: '/dashboard/sales/quotations' },
             orders: { icon: ShoppingCart, label: 'Sale Orders', href: '/dashboard/sales/orders' },
-            'sales-on-credit': { icon: ShoppingCart, label: 'Sale On Credit', href: '/dashboard/sales/sales-on-credit' },
+            'sales-on-credit': { icon: ShoppingCart, label: 'Debtors', href: '/dashboard/sales/sales-on-credit' },
         }
     }
 };
@@ -125,30 +134,6 @@ export default function DashboardLayout({
                 </SidebarHeader>
                 <SidebarContent>
                     <SidebarMenu>
-                         {hasAccess('dashboard', authProfile, loading) && (
-                            <SidebarMenuItem>
-                                <SidebarMenuButton href={menuConfig.dashboard.href}>
-                                    <menuConfig.dashboard.icon />
-                                    {menuConfig.dashboard.label}
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                         )}
-                         {hasAccess('development', authProfile, loading) && (
-                            <SidebarMenuItem>
-                                <SidebarMenuButton href={menuConfig.development.href}>
-                                    <menuConfig.development.icon />
-                                    {menuConfig.development.label}
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                         )}
-                         {hasAccess('reporting', authProfile, loading) && (
-                            <SidebarMenuItem>
-                                <SidebarMenuButton href={menuConfig.reporting.href}>
-                                    <menuConfig.reporting.icon />
-                                    {menuConfig.reporting.label}
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                         )}
 
                         {/* Admin Group */}
                         <SidebarGroup>
