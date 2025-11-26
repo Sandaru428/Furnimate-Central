@@ -68,7 +68,7 @@ import type { StockItem } from '../stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, writeBatch, where } from 'firebase/firestore';
-import { toSentenceCase } from '@/lib/utils';
+import { toSentenceCase, generatePaymentReferenceNumber } from '@/lib/utils';
 
 
 const lineItemSchema = z.object({
@@ -370,6 +370,7 @@ toBankName: '',
             default: details = 'N/A';
         }
 
+        const referenceNumber = await generatePaymentReferenceNumber();
         const newPayment: Omit<Payment, 'id'> = {
             orderId: selectedPO.id,
             description: `Payment for ${selectedPO.id}`,
@@ -379,6 +380,7 @@ toBankName: '',
             details: details,
             type: 'expense',
             paidAmount: values.method === 'Credit' ? 0 : undefined,
+            referenceNumber: referenceNumber,
         };
 
         const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);

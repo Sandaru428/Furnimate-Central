@@ -240,6 +240,7 @@ export default function SaleOrderPrintPage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Date</TableHead>
+                                        <TableHead>Reference No.</TableHead>
                                         <TableHead>Method</TableHead>
                                         <TableHead>Details</TableHead>
                                         <TableHead className="text-right">Amount Paid</TableHead>
@@ -249,6 +250,7 @@ export default function SaleOrderPrintPage() {
                                     {orderPayments.map(payment => (
                                         <TableRow key={payment.id}>
                                             <TableCell>{payment.date}</TableCell>
+                                            <TableCell className="font-mono text-xs">{payment.referenceNumber || 'N/A'}</TableCell>
                                             <TableCell>{payment.method}</TableCell>
                                             <TableCell>{payment.details}</TableCell>
                                             <TableCell className="text-right">{currency.code} {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>

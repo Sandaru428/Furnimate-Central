@@ -55,6 +55,7 @@ import { MoreHorizontal } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { generatePaymentReferenceNumber } from '@/lib/utils';
 
 const paymentSchema = z.object({
     amount: z.coerce.number().positive("Amount must be a positive number."),
@@ -207,6 +208,7 @@ export default function DebitorsPage() {
         }
 
         // Create a new payment record for the actual payment
+        const referenceNumber = await generatePaymentReferenceNumber();
         const newPayment: Omit<Payment, 'id'> = {
             orderId: selectedPayment.orderId,
             description: selectedPayment.description,
@@ -215,6 +217,7 @@ export default function DebitorsPage() {
             method: values.method,
             details: details,
             type: 'income',
+            referenceNumber: referenceNumber,
         };
 
         const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);
@@ -297,11 +300,8 @@ export default function DebitorsPage() {
                         return (
                             <TableRow key={payment.id}>
                                 <TableCell>{format(parseISO(payment.date), 'yyyy-MM-dd')}</TableCell>
-                                <TableCell className="font-mono">
-                                    {payment.orderId 
-                                        ? payment.orderId
-                                        : 'Ad-hoc'
-                                    }
+                                <TableCell className="font-mono text-xs">
+                                    {payment.referenceNumber || 'N/A'}
                                 </TableCell>
                                 <TableCell className="font-medium">{getNameForPayment(payment)}</TableCell>
                                 <TableCell>

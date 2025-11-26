@@ -52,7 +52,7 @@ import { paymentsAtom, currencyAtom, Payment } from '@/lib/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, generatePaymentReferenceNumber } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, query, doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -159,6 +159,7 @@ export default function IncomeExpensesPage() {
             });
         } else {
             // Create
+            const referenceNumber = await generatePaymentReferenceNumber();
             const newPayment: Omit<Payment, 'id'> = {
                 description: values.description,
                 date: format(new Date(), 'yyyy-MM-dd'),
@@ -166,6 +167,7 @@ export default function IncomeExpensesPage() {
                 method: values.method,
                 details: details,
                 type: values.type,
+                referenceNumber: referenceNumber,
             };
             const docRef = await addDoc(collection(db, 'payments'), newPayment);
             setPayments(prev => [{...newPayment, id: docRef.id} as Payment, ...prev]);
@@ -305,6 +307,7 @@ export default function IncomeExpensesPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Date</TableHead>
+                            <TableHead>Reference No.</TableHead>
                             <TableHead>Description</TableHead>
                             <TableHead>Type</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
@@ -314,7 +317,7 @@ export default function IncomeExpensesPage() {
                     <TableBody>
                         {loading ? (
                              <TableRow>
-                                <TableCell colSpan={5} className="text-center">
+                                <TableCell colSpan={6} className="text-center">
                                     Loading...
                                 </TableCell>
                             </TableRow>
@@ -322,6 +325,7 @@ export default function IncomeExpensesPage() {
                             adHocTransactions.map((payment) => (
                             <TableRow key={payment.id}>
                                 <TableCell>{payment.date}</TableCell>
+                                <TableCell className="font-mono text-xs">{payment.referenceNumber || 'N/A'}</TableCell>
                                 <TableCell className="font-medium">{payment.description}</TableCell>
                                 <TableCell>
                                     <Badge variant={payment.type === 'income' ? 'default' : 'destructive'} className={cn(payment.type === 'income' ? 'bg-green-600' : 'bg-red-600', 'text-white')}>
@@ -349,7 +353,7 @@ export default function IncomeExpensesPage() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center">
+                                <TableCell colSpan={6} className="text-center">
                                     No ad-hoc transactions found.
                                 </TableCell>
                             </TableRow>

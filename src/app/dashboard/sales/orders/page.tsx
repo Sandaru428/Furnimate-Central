@@ -58,6 +58,7 @@ import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, updateDoc, addDoc, query } from 'firebase/firestore';
+import { generatePaymentReferenceNumber } from '@/lib/utils';
 
 
 const paymentSchema = z.object({
@@ -195,6 +196,7 @@ export default function SaleOrdersPage() {
 			default: details = 'N/A';
 		}
 
+		const referenceNumber = await generatePaymentReferenceNumber();
 		const newPayment: Omit<Payment, 'id'> = {
 			orderId: selectedOrder.id,
 			description: `Payment for ${selectedOrder.id}`,
@@ -203,6 +205,7 @@ export default function SaleOrdersPage() {
 			method: values.method,
 			details: details,
 			type: 'income',
+			referenceNumber: referenceNumber,
 		};
 
 		const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);

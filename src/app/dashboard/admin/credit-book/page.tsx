@@ -147,11 +147,8 @@ export default function CreditBookPage() {
                     filteredPayments.map((payment) => (
                     <TableRow key={payment.id}>
                         <TableCell>{format(parseISO(payment.date), 'yyyy-MM-dd')}</TableCell>
-                        <TableCell className="font-mono">
-                            {payment.orderId 
-                                ? payment.orderId
-                                : 'Ad-hoc'
-                            }
+                        <TableCell className="font-mono text-xs">
+                            {payment.referenceNumber || 'N/A'}
                         </TableCell>
                         <TableCell className="font-medium">{getNameForPayment(payment)}</TableCell>
                         <TableCell>

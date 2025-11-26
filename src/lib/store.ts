@@ -13,6 +13,7 @@ export type Payment = {
     details: string;
     type: 'income' | 'expense';
     paidAmount?: number; // Only for Credit payments - tracks how much has been paid
+    referenceNumber?: string; // Format: YYYYMMDDxxxxxx (e.g., 20251126000001)
 };
 
 export type Currency = {
