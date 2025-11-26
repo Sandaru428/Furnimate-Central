@@ -335,8 +335,9 @@ export default function CreditorsPage() {
                   <TableHead>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 p-0 hover:bg-transparent">
-                          Date {dateFilter !== 'all' && <span className="ml-1 text-xs text-muted-foreground">({dateFilter === 'today' ? 'Today' : dateFilter === 'week' ? 'This Week' : dateFilter === 'month' ? 'This Month' : 'Custom'})</span>} <ChevronDown className="ml-1 h-3 w-3" />
+                        <Button variant="ghost" className="h-8 p-0 hover:bg-transparent flex flex-col items-start">
+                          <span>Date <ChevronDown className="ml-1 h-3 w-3 inline" /></span>
+                          {dateFilter !== 'all' && <span className="text-xs text-muted-foreground font-normal">({dateFilter === 'today' ? 'Today' : dateFilter === 'week' ? 'This Week' : dateFilter === 'month' ? 'This Month' : 'Custom'})</span>}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
@@ -352,8 +353,9 @@ export default function CreditorsPage() {
                   <TableHead>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 p-0 hover:bg-transparent">
-                          Name {nameFilter !== 'all' && <span className="ml-1 text-xs text-muted-foreground">({nameFilter})</span>} <ChevronDown className="ml-1 h-3 w-3" />
+                        <Button variant="ghost" className="h-8 p-0 hover:bg-transparent flex flex-col items-start">
+                          <span>Name <ChevronDown className="ml-1 h-3 w-3 inline" /></span>
+                          {nameFilter !== 'all' && <span className="text-xs text-muted-foreground font-normal">({nameFilter})</span>}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
