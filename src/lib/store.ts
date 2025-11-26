@@ -33,6 +33,7 @@ export type CompanyProfile = {
 
 export type AuthProfile = {
     id: string;
+    companyId: string;
     name: string;
     email: string;
     role: UserRole;

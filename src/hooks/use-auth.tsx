@@ -46,7 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!querySnapshot.empty) {
             const userDocData = querySnapshot.docs[0].data() as Omit<AuthProfile, 'id'>;
             const userDocId = querySnapshot.docs[0].id;
-            const userDoc = { ...userDocData, id: userDocId };
+            const userDoc = { 
+              ...userDocData, 
+              id: userDocId,
+              companyId: userDocData.companyId || 'main' // Default to 'main' if not set
+            };
             
             // Fetch the role to get the latest access options
             const rolesQuery = query(collection(db, "userRoles"), where("name", "==", userDoc.role));

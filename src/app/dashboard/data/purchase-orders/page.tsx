@@ -67,7 +67,7 @@ import {
 import type { StockItem } from '../stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, writeBatch, where } from 'firebase/firestore';
 import { toSentenceCase } from '@/lib/utils';
 
 
