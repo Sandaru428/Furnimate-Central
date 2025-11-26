@@ -9,9 +9,10 @@ export type Payment = {
     description: string; // Used for ad-hoc entries
     date: string;
     amount: number;
-    method: 'Cash' | 'Card' | 'Online' | 'QR' | 'Cheque';
+    method: 'Cash' | 'Card' | 'Online' | 'QR' | 'Cheque' | 'Credit' | string;
     details: string;
     type: 'income' | 'expense';
+    paidAmount?: number; // Only for Credit payments - tracks how much has been paid
 };
 
 export type Currency = {
@@ -33,6 +34,7 @@ export type CompanyProfile = {
 
 export type AuthProfile = {
     id: string;
+    companyId: string;
     name: string;
     email: string;
     role: UserRole;

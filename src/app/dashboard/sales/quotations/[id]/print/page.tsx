@@ -94,7 +94,7 @@ export default function QuotationPrintPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {quotation.lineItems.map(item => {
+                        {quotation.lineItems.map((item: { itemId: string; quantity: number; unitPrice: number; totalValue: number }) => {
                             const itemDetails = stocks.find((md: StockItem) => md.itemCode === item.itemId);
                             return (
                                 <TableRow key={item.itemId}>

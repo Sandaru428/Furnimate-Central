@@ -36,6 +36,7 @@ const menuConfig = {
             users: { icon: UserCog, label: 'Users', href: '/dashboard/admin/users' },
             'notification-templates': { icon: FileText, label: 'Notification Templates', href: '/dashboard/admin/notification-templates' },
             'cash-book': { icon: BookUser, label: 'Cash Book', href: '/dashboard/admin/cash-book' },
+            'bank-book': { icon: BookUser, label: 'Bank Book', href: '/dashboard/admin/bank-book' },
         }
     },
     data: {
@@ -47,6 +48,7 @@ const menuConfig = {
             suppliers: { icon: Building, label: 'Suppliers', href: '/dashboard/data/suppliers' },
             customers: { icon: Users, label: 'Customers', href: '/dashboard/data/customers' },
             'purchase-orders': { icon: ClipboardList, label: 'Purchase Orders', href: '/dashboard/data/purchase-orders' },
+            'purchase-on-credit': { icon: ClipboardList, label: 'Purchase on Credit', href: '/dashboard/data/purchase-on-credit' },
         }
     },
     sales: {

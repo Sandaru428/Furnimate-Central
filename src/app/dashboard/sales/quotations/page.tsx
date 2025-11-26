@@ -517,7 +517,7 @@ export default function QuotationsPage() {
                           <TableCell className="font-mono">{quote.id}</TableCell>
                           <TableCell className="font-medium">{quote.customer}</TableCell>
                           <TableCell className="text-right">
-                            {quote.lineItems.reduce((acc, item) => acc + item.quantity, 0)}
+                            {quote.lineItems.reduce((acc: number, item: { itemId: string; quantity: number; unitPrice: number; totalValue: number }) => acc + item.quantity, 0)}
                           </TableCell>
                           <TableCell className="text-right">{currency.code} {quote.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                           <TableCell>

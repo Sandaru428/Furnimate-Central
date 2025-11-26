@@ -347,7 +347,7 @@ export default function StocksPage() {
         setSelectedMainItemId(itemId);
         const mainItem = stocks.find(s => s.id === itemId);
         if (mainItem && mainItem.linkedItems) {
-            setRelatedItemsState(mainItem.linkedItems.map(li => ({ id: li.id, quantity: li.quantity })));
+            setRelatedItemsState(mainItem.linkedItems.map((li: LinkedItemState) => ({ id: li.id, quantity: li.quantity })));
         } else {
             setRelatedItemsState([]);
         }

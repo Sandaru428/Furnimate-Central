@@ -67,7 +67,7 @@ import {
 import type { StockItem } from '../stocks/page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, query, writeBatch, where } from 'firebase/firestore';
 import { toSentenceCase } from '@/lib/utils';
 
 
@@ -103,7 +103,7 @@ const receiveItemsSchema = z.object({
 
 const paymentSchema = z.object({
     amount: z.coerce.number().positive("Amount must be a positive number."),
-    method: z.enum(['Cash', 'Card', 'Online', 'QR', 'Cheque']),
+    method: z.enum(['Cash', 'Card', 'Online', 'QR', 'Cheque', 'Credit']),
     cardLast4: z.string().optional(),
     fromBankName: z.string().optional(),
     fromAccountNumber: z.string().optional(),
@@ -378,6 +378,7 @@ toBankName: '',
             method: values.method,
             details: details,
             type: 'expense',
+            paidAmount: values.method === 'Credit' ? 0 : undefined,
         };
 
         const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);
@@ -689,7 +690,7 @@ toBankName: '',
                               <div className="space-y-4 py-4">
                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       <FormField control={paymentForm.control} name="amount" render={({ field }) => <FormItem><FormLabel>Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>}/>
-                                      <FormField control={paymentForm.control} name="method" render={({ field }) => <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque'].map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>}/>
+                                      <FormField control={paymentForm.control} name="method" render={({ field }) => <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a payment method" /></SelectTrigger></FormControl><SelectContent>{['Cash', 'Card', 'Online', 'QR', 'Cheque', 'Credit'].map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>}/>
                                   </div>
 
                                   {paymentMethod === 'Card' && (

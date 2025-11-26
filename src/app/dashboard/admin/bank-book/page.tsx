@@ -79,7 +79,7 @@ export default function CashBookPage() {
     
     const filteredPayments = useMemo(() => {
         const sortedPayments = [...payments]
-            .filter(payment => payment.method?.toLowerCase() === 'cash')
+            .filter(payment => payment.method?.toLowerCase() !== 'cash')
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
         if (!searchTerm) {

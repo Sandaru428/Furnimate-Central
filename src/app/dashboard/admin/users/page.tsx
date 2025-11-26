@@ -73,7 +73,12 @@ const userSchema = z.object({
 const roleSchema = z.object({
     id: z.string().optional(),
     name: z.string().min(1, "Role name is required"),
-    accessOptions: z.array(z.string()),
+    accessOptions: z.array(z.enum([
+      'dashboard', 'development', 'reporting', 'company-profile', 
+      'notification-templates', 'cash-book', 'income-expenses', 
+      'stocks', 'staff', 'suppliers', 'customers', 
+      'purchase-orders', 'quotations', 'sale-orders', 'users'
+    ] as const)),
 });
 
 type User = z.infer<typeof userSchema>;
