@@ -27,7 +27,7 @@ import type { Payment } from '@/lib/store';
 import { Input } from '@/components/ui/input';
 import { format, parseISO } from 'date-fns';
 
-export default function CashBookPage() {
+export default function BankBookPage() {
     const [payments, setPayments] = useAtom(paymentsAtom);
     const [saleOrders, setSaleOrders] = useAtom(saleOrdersAtom);
     const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
@@ -79,7 +79,7 @@ export default function CashBookPage() {
     
     const filteredPayments = useMemo(() => {
         const sortedPayments = [...payments]
-            .filter(payment => payment.method?.toLowerCase() !== 'cash')
+            .filter(payment => payment.method?.toLowerCase() !== 'cash' && payment.method?.toLowerCase() !== 'credit')
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
         if (!searchTerm) {
@@ -104,12 +104,12 @@ export default function CashBookPage() {
   return (
     <>
       <main className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Cash Book</h1>
+        <h1 className="text-2xl font-bold mb-4">Bank Book</h1>
         <Card>
           <CardHeader>
              <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Cash Book</CardTitle>
+                    <CardTitle>Bank Book</CardTitle>
                     <CardDescription>
                         A record of all financial transactions, including order-related payments and other income/expenses.
                     </CardDescription>
