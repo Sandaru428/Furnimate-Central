@@ -96,6 +96,7 @@ export default function CreditorsPage() {
   const [toDateOpen, setToDateOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [nameFilter, setNameFilter] = useState<string>('all');
   const { toast } = useToast();    const paymentForm = useForm<PaymentFormValues>({
         resolver: zodResolver(paymentSchema),
         defaultValues: {
@@ -156,9 +157,25 @@ export default function CreditorsPage() {
         }
     };
     
+    // Get unique supplier names from credit expense payments
+    const uniqueSupplierNames = useMemo(() => {
+        const creditExpensePayments = payments.filter(
+            payment => payment.method?.toLowerCase() === 'credit' && payment.type === 'expense'
+        );
+        const names = creditExpensePayments
+            .map(payment => getNameForPayment(payment))
+            .filter(name => name && name !== 'N/A');
+        return Array.from(new Set(names)).sort();
+    }, [payments, purchaseOrders]);
+    
     const filteredPayments = useMemo(() => {
         let sortedPayments = [...payments]
             .filter(payment => payment.method?.toLowerCase() === 'credit' && payment.type === 'expense');
+        
+        // Apply name filter
+        if (nameFilter !== 'all') {
+            sortedPayments = sortedPayments.filter(payment => getNameForPayment(payment) === nameFilter);
+        }
         
         // Apply date filter
         const today = startOfDay(new Date());
@@ -202,7 +219,7 @@ export default function CreditorsPage() {
                 details.includes(lowercasedSearchTerm)
             );
         });
-    }, [payments, saleOrders, purchaseOrders, searchTerm, dateFilter]);
+    }, [payments, purchaseOrders, searchTerm, dateFilter, nameFilter]);
 
     const openPaymentDialog = (payment: Payment) => {
         setSelectedPayment(payment);
@@ -293,12 +310,12 @@ export default function CreditorsPage() {
   return (
     <>
       <main className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Purchase on Credit</h1>
+        <h1 className="text-2xl font-bold mb-4">Creditors</h1>
         <Card>
           <CardHeader>
              <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Purchase on Credit</CardTitle>
+                    <CardTitle>Creditors</CardTitle>
                     <CardDescription>
                         A record of all credit transactions, including order-related payments and other income/expenses.
                     </CardDescription>
@@ -332,7 +349,23 @@ export default function CreditorsPage() {
                     </DropdownMenu>
                   </TableHead>
                   <TableHead>Reference</TableHead>
-                  <TableHead>Name</TableHead>
+                  <TableHead>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 p-0 hover:bg-transparent">
+                          Name {nameFilter !== 'all' && <span className="ml-1 text-xs text-muted-foreground">({nameFilter})</span>} <ChevronDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+                        {uniqueSupplierNames.map((name) => (
+                          <DropdownMenuItem key={name} onClick={() => setNameFilter(name)}>
+                            {name}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuItem onClick={() => setNameFilter('all')}>All</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Credit Amount</TableHead>
                   <TableHead className="text-right">Paid</TableHead>
