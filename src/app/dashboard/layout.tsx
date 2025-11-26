@@ -39,7 +39,7 @@ const menuConfig = {
         }
     },
 
-    cashManagement: {
+    cash: {
         label: 'Cash Management',
         items: {
             'income-expenses': { icon: Landmark, label: 'Income & Expenses', href: '/dashboard/data/income-expenses' },
@@ -139,6 +139,20 @@ export default function DashboardLayout({
                         <SidebarGroup>
                             <SidebarGroupLabel>{menuConfig.admin.label}</SidebarGroupLabel>
                             {Object.entries(menuConfig.admin.items).map(([key, item]) => 
+                                hasAccess(key as MainTab, authProfile, loading) && (
+                                <SidebarMenuItem key={key}>
+                                    <SidebarMenuButton href={item.href}>
+                                        <item.icon />
+                                        {item.label}
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            ))}
+                        </SidebarGroup>
+
+                        {/* Cash Management Group */}
+                        <SidebarGroup>
+                            <SidebarGroupLabel>{menuConfig.cash.label}</SidebarGroupLabel>
+                            {Object.entries(menuConfig.cash.items).map(([key, item]) => 
                                 hasAccess(key as MainTab, authProfile, loading) && (
                                 <SidebarMenuItem key={key}>
                                     <SidebarMenuButton href={item.href}>
