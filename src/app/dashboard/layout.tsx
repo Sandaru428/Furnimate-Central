@@ -56,7 +56,7 @@ const menuConfig = {
             'stocks': { icon: Database, label: 'Stocks', href: '/dashboard/data/stocks' },
             suppliers: { icon: Building, label: 'Suppliers', href: '/dashboard/data/suppliers' },
             'purchase-orders': { icon: ClipboardList, label: 'Purchase Orders', href: '/dashboard/data/purchase-orders' },
-            'purchase-on-credit': { icon: ClipboardList, label: 'Creditors', href: '/dashboard/data/purchase-on-credit' },
+            creditors: { icon: ClipboardList, label: 'Creditors', href: '/dashboard/data/creditors' },
         }
     },
     
@@ -66,7 +66,7 @@ const menuConfig = {
             customers: { icon: Users, label: 'Customers', href: '/dashboard/data/customers' },
             quotations: { icon: FileQuestion, label: 'Quotations', href: '/dashboard/sales/quotations' },
             orders: { icon: ShoppingCart, label: 'Sale Orders', href: '/dashboard/sales/orders' },
-            'sales-on-credit': { icon: ShoppingCart, label: 'Debtors', href: '/dashboard/sales/sales-on-credit' },
+            debtors: { icon: ShoppingCart, label: 'Debitors', href: '/dashboard/sales/debitors' },
         }
     }
 };

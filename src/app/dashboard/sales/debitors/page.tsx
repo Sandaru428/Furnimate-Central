@@ -79,7 +79,7 @@ const paymentSchema = z.object({
 
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
-export default function SalesOnCreditPage() {
+export default function DebitorsPage() {
     const [payments, setPayments] = useAtom(paymentsAtom);
     const [saleOrders, setSaleOrders] = useAtom(saleOrdersAtom);
     const [currency] = useAtom(currencyAtom);

@@ -79,7 +79,7 @@ const paymentSchema = z.object({
 
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
-export default function PurchaseOnCreditPage() {
+export default function CreditorsPage() {
     const [payments, setPayments] = useAtom(paymentsAtom);
     const [saleOrders, setSaleOrders] = useAtom(saleOrdersAtom);
     const [purchaseOrders, setPurchaseOrders] = useAtom(purchaseOrdersAtom);
@@ -152,7 +152,7 @@ export default function PurchaseOnCreditPage() {
     
     const filteredPayments = useMemo(() => {
         const sortedPayments = [...payments]
-            .filter(payment => payment.method?.toLowerCase() === 'credit')
+            .filter(payment => payment.method?.toLowerCase() === 'credit' && payment.type === 'expense')
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
         if (!searchTerm) {
