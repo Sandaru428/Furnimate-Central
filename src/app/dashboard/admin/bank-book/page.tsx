@@ -46,6 +46,7 @@ export default function BankBookPage() {
     const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
     const [fromDateOpen, setFromDateOpen] = useState(false);
     const [toDateOpen, setToDateOpen] = useState(false);
+    const [typeFilter, setTypeFilter] = useState<'income' | 'expense' | 'all'>('all');
 
     useEffect(() => {
         const fetchAllData = async () => {
@@ -93,6 +94,11 @@ export default function BankBookPage() {
         let sortedPayments = [...payments]
             .filter(payment => payment.method?.toLowerCase() !== 'cash' && payment.method?.toLowerCase() !== 'credit');
         
+        // Apply type filter
+        if (typeFilter !== 'all') {
+            sortedPayments = sortedPayments.filter(payment => payment.type === typeFilter);
+        }
+        
         // Apply date filter
         const today = startOfDay(new Date());
         if (dateFilter === 'today') {
@@ -135,7 +141,7 @@ export default function BankBookPage() {
                 details.includes(lowercasedSearchTerm)
             );
         });
-    }, [payments, saleOrders, purchaseOrders, searchTerm, dateFilter]);
+    }, [payments, saleOrders, purchaseOrders, searchTerm, dateFilter, typeFilter]);
 
 
   return (
@@ -181,7 +187,20 @@ export default function BankBookPage() {
                   </TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 p-0 hover:bg-transparent">
+                          Type {typeFilter !== 'all' && <span className="ml-1 text-xs text-muted-foreground">({typeFilter === 'income' ? 'Income' : 'Expense'})</span>} <ChevronDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => setTypeFilter('income')}>Income</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTypeFilter('expense')}>Expense</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTypeFilter('all')}>All</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Payment Method</TableHead>
                   <TableHead>Details</TableHead>
