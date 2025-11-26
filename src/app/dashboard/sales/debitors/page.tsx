@@ -143,7 +143,11 @@ export default function DebitorsPage() {
     const filteredPayments = useMemo(() => {
         const sortedPayments = [...payments]
             .filter(payment => payment.method?.toLowerCase() === 'credit' && payment.type === 'income')
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            .sort((a, b) => {
+                const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+                if (dateCompare !== 0) return dateCompare;
+                return (b.referenceNumber || '').localeCompare(a.referenceNumber || '');
+            });
         
         if (!searchTerm) {
             return sortedPayments;
@@ -221,7 +225,7 @@ export default function DebitorsPage() {
         };
 
         const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);
-        setPayments(prev => [...prev, {...newPayment, id: paymentDocRef.id} as Payment]);
+        setPayments(prev => [{...newPayment, id: paymentDocRef.id} as Payment, ...prev]);
 
         // Update the credit payment's paidAmount
         const newPaidAmount = currentPaidAmount + values.amount;

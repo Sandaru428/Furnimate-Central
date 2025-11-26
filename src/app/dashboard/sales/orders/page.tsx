@@ -209,7 +209,7 @@ export default function SaleOrdersPage() {
 		};
 
 		const paymentDocRef = await addDoc(collection(db, 'payments'), newPayment);
-		setPayments(prev => [...prev, { ...newPayment, id: paymentDocRef.id } as Payment]);
+		setPayments(prev => [{ ...newPayment, id: paymentDocRef.id } as Payment, ...prev]);
 
 		const totalPaid = currentAmountPaid + newPayment.amount;
 

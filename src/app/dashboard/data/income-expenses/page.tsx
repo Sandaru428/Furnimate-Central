@@ -191,15 +191,46 @@ export default function IncomeExpensesPage() {
   const openDialog = (transaction: Payment | null) => {
     if (transaction) {
         setEditingTransaction(transaction);
-        // This is a simplified reset. A real implementation might need to parse details back into form fields.
-        form.reset({
+        
+        // Parse details back into form fields based on payment method
+        let parsedFields: any = {
             id: transaction.id,
             type: transaction.type,
             description: transaction.description,
             amount: transaction.amount,
             method: transaction.method,
-            // You might need more complex logic here to parse details back into individual fields
-        });
+            cardLast4: '',
+            fromBankName: '',
+            fromAccountNumber: '',
+            toBankName: '',
+            toAccountNumber: '',
+            chequeBank: '',
+            chequeDate: '',
+            chequeNumber: '',
+        };
+
+        // Parse details string based on method
+        if (transaction.method === 'Card' && transaction.details) {
+            const match = transaction.details.match(/Card ending in (\d{4})/);
+            if (match) parsedFields.cardLast4 = match[1];
+        } else if (transaction.method === 'Online' && transaction.details) {
+            const match = transaction.details.match(/From (.+?) \((.+?)\) to (.+?) \((.+?)\)/);
+            if (match) {
+                parsedFields.fromBankName = match[1];
+                parsedFields.fromAccountNumber = match[2];
+                parsedFields.toBankName = match[3];
+                parsedFields.toAccountNumber = match[4];
+            }
+        } else if (transaction.method === 'Cheque' && transaction.details) {
+            const match = transaction.details.match(/(.+?) Cheque #(.+?), dated (.+)/);
+            if (match) {
+                parsedFields.chequeBank = match[1];
+                parsedFields.chequeNumber = match[2];
+                parsedFields.chequeDate = match[3];
+            }
+        }
+
+        form.reset(parsedFields);
     } else {
         setEditingTransaction(null);
         form.reset({
@@ -232,7 +263,11 @@ export default function IncomeExpensesPage() {
   
   const adHocTransactions = payments
     .filter(p => !p.orderId)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => {
+      const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+      if (dateCompare !== 0) return dateCompare;
+      return (b.referenceNumber || '').localeCompare(a.referenceNumber || '');
+    });
 
   return (
     <>

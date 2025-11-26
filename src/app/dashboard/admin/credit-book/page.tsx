@@ -81,7 +81,11 @@ export default function CreditBookPage() {
         const sortedPayments = [...payments]
             .filter(payment => payment.method?.toLowerCase() === 'credit')
             .filter(payment => ((payment.amount || 0) - (payment.paidAmount || 0)) > 0)
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            .sort((a, b) => {
+                const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+                if (dateCompare !== 0) return dateCompare;
+                return (b.referenceNumber || '').localeCompare(a.referenceNumber || '');
+            });
         
         if (!searchTerm) {
             return sortedPayments;
