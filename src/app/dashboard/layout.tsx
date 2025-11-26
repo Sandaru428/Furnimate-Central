@@ -48,6 +48,7 @@ const menuConfig = {
             suppliers: { icon: Building, label: 'Suppliers', href: '/dashboard/data/suppliers' },
             customers: { icon: Users, label: 'Customers', href: '/dashboard/data/customers' },
             'purchase-orders': { icon: ClipboardList, label: 'Purchase Orders', href: '/dashboard/data/purchase-orders' },
+            'purchase-on-credit': { icon: ClipboardList, label: 'Purchase on Credit', href: '/dashboard/data/purchase-on-credit' },
         }
     },
     sales: {
