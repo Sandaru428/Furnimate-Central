@@ -56,6 +56,7 @@ const menuConfig = {
         items: {
             quotations: { icon: FileQuestion, label: 'Quotations', href: '/dashboard/sales/quotations' },
             orders: { icon: ShoppingCart, label: 'Sale Orders', href: '/dashboard/sales/orders' },
+            'sales-on-credit': { icon: ShoppingCart, label: 'Sale On Credit', href: '/dashboard/sales/sales-on-credit' },
         }
     }
 };
