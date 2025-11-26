@@ -47,6 +47,7 @@ export default function BankBookPage() {
     const [fromDateOpen, setFromDateOpen] = useState(false);
     const [toDateOpen, setToDateOpen] = useState(false);
     const [typeFilter, setTypeFilter] = useState<'income' | 'expense' | 'all'>('all');
+    const [methodFilter, setMethodFilter] = useState<'card' | 'online' | 'qr' | 'cheque' | 'all'>('all');
 
     useEffect(() => {
         const fetchAllData = async () => {
@@ -99,6 +100,11 @@ export default function BankBookPage() {
             sortedPayments = sortedPayments.filter(payment => payment.type === typeFilter);
         }
         
+        // Apply method filter
+        if (methodFilter !== 'all') {
+            sortedPayments = sortedPayments.filter(payment => payment.method?.toLowerCase() === methodFilter);
+        }
+        
         // Apply date filter
         const today = startOfDay(new Date());
         if (dateFilter === 'today') {
@@ -141,7 +147,7 @@ export default function BankBookPage() {
                 details.includes(lowercasedSearchTerm)
             );
         });
-    }, [payments, saleOrders, purchaseOrders, searchTerm, dateFilter, typeFilter]);
+    }, [payments, saleOrders, purchaseOrders, searchTerm, dateFilter, typeFilter, methodFilter]);
 
 
   return (
@@ -202,7 +208,22 @@ export default function BankBookPage() {
                     </DropdownMenu>
                   </TableHead>
                   <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Payment Method</TableHead>
+                  <TableHead>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 p-0 hover:bg-transparent">
+                          Payment Method {methodFilter !== 'all' && <span className="ml-1 text-xs text-muted-foreground">({methodFilter === 'card' ? 'Card' : methodFilter === 'online' ? 'Online' : methodFilter === 'qr' ? 'QR' : 'Cheque'})</span>} <ChevronDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => setMethodFilter('card')}>Card</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setMethodFilter('online')}>Online</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setMethodFilter('qr')}>QR</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setMethodFilter('cheque')}>Cheque</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setMethodFilter('all')}>All</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableHead>
                   <TableHead>Details</TableHead>
                 </TableRow>
               </TableHeader>
