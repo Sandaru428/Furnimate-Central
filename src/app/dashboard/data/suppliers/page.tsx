@@ -131,7 +131,24 @@ export default function SuppliersPage() {
               description: `${dataToSave.name} has been successfully updated.`,
             });
         } else {
-            // Create
+            // Create - Check for duplicate email
+            if (dataToSave.email) {
+                const existingSupplier = suppliers.find(s => 
+                    s.email && s.email.toLowerCase() === dataToSave.email.toLowerCase()
+                );
+                if (existingSupplier) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Supplier already exists',
+                        description: `A supplier with email ${dataToSave.email} already exists.`,
+                    });
+                    setIsDialogOpen(false);
+                    form.reset();
+                    setEditingSupplier(null);
+                    setNameInputValue('');
+                    return;
+                }
+            }
             const docRef = await addDoc(collection(db, 'suppliers'), dataToSave);
             setSuppliers(prev => [...prev, { ...values, id: docRef.id, name: dataToSave.name, contactPerson: dataToSave.contactPerson, bankName: dataToSave.bankName }].sort((a, b) => a.name.localeCompare(b.name)));
             toast({

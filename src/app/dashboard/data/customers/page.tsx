@@ -138,7 +138,22 @@ export default function CustomersPage() {
           description: `${dataToSave.name} has been successfully updated.`,
         });
       } else {
-        // Create
+        // Create - Check for duplicate email
+        const existingCustomer = customers.find(c => 
+            c.email.toLowerCase() === dataToSave.email.toLowerCase()
+        );
+        if (existingCustomer) {
+            toast({
+                variant: 'destructive',
+                title: 'Customer already exists',
+                description: `A customer with email ${dataToSave.email} already exists.`,
+            });
+            setIsDialogOpen(false);
+            form.reset();
+            setEditingCustomer(null);
+            setNameInputValue('');
+            return;
+        }
         const docRef = await addDoc(collection(db, 'customers'), dataToSave);
         const newCustomer: Customer = { 
           ...values, 
