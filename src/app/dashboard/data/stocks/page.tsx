@@ -696,7 +696,9 @@ export default function StocksPage() {
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onClick={() => openDialog(item)}>Edit</DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleViewRelatedItems(item)}>Related Items</DropdownMenuItem>
+                                                    {item.type === 'Finished Good' && (
+                                                        <DropdownMenuItem onClick={() => handleViewRelatedItems(item)}>Related Items</DropdownMenuItem>
+                                                    )}
                                                     <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id!)}>Delete</DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
