@@ -164,56 +164,6 @@ export default function CustomersPage() {
     }
   }
 
-  const handleMergeDuplicates = async () => {
-    setLoading(true);
-    const duplicates = new Map<string, Customer[]>();
-
-    // Group customers by normalized name
-    customers.forEach(c => {
-        const normalizedName = c.name.trim().toLowerCase();
-        if (!duplicates.has(normalizedName)) {
-            duplicates.set(normalizedName, []);
-        }
-        duplicates.get(normalizedName)!.push(c);
-    });
-
-    const batch = writeBatch(db);
-    let mergeCount = 0;
-
-    for (const [name, group] of duplicates.entries()) {
-        if (group.length > 1) {
-            mergeCount += (group.length - 1);
-            const [primary, ...rest] = group; // Keep the first one
-            
-            // In a real scenario, you'd merge fields intelligently.
-            // Here, we just delete the duplicates.
-            rest.forEach(duplicate => {
-                if (duplicate.id) {
-                    const docRef = doc(db, 'customers', duplicate.id);
-                    batch.delete(docRef);
-                }
-            });
-        }
-    }
-
-    if (mergeCount > 0) {
-        await batch.commit();
-        toast({
-            title: 'Duplicates Merged',
-            description: `Successfully merged and removed ${mergeCount} duplicate customer records.`,
-        });
-        // Re-fetch customers to update the UI
-        await fetchCustomers();
-    } else {
-        toast({
-            title: 'No Duplicates Found',
-            description: 'No duplicate customer records were found.',
-        });
-    }
-
-    setLoading(false);
-  };
-
   const openDialog = (customer: Customer | null) => {
     if (customer) {
         setEditingCustomer(customer);
@@ -263,10 +213,6 @@ export default function CustomersPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Button variant="outline" onClick={handleMergeDuplicates} disabled={loading}>
-                <Merge className="mr-2 h-4 w-4" />
-                Merge Duplicates
-            </Button>
             <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingCustomer(null); setIsDialogOpen(isOpen); }}>
               <DialogTrigger asChild>
                 <Button onClick={() => openDialog(null)}>
