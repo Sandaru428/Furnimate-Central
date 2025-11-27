@@ -17,11 +17,11 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
   } from "@/components/ui/sidebar";
-import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck, Landmark, UserCog, UserRound, Server } from "lucide-react";
+import { Home, Settings, FileText, Database, Users, Building, FileQuestion, ShoppingCart, ClipboardList, BookUser, BookOpenCheck, Landmark, UserCog, UserRound, Server, ChevronDown, ChevronUp } from "lucide-react";
 import { DashboardHeader } from '@/components/dashboard-header';
 import { MAIN_TABS, MainTab, AuthProfile } from '@/lib/roles';
 import { useAuth } from '@/hooks/use-auth';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -94,6 +94,19 @@ export default function DashboardLayout({
     const router = useRouter();
     const { toast } = useToast();
     const inactivityTimer = useRef<NodeJS.Timeout>();
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+        admin: true,
+        cash: false,
+        data: false,
+        sales: false,
+    });
+
+    const toggleGroup = (groupKey: string) => {
+        setExpandedGroups(prev => ({
+            ...prev,
+            [groupKey]: !prev[groupKey]
+        }));
+    };
 
     const resetInactivityTimer = () => {
         if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
@@ -137,58 +150,78 @@ export default function DashboardLayout({
 
                         {/* Admin Group */}
                         <SidebarGroup>
-                            <SidebarGroupLabel>{menuConfig.admin.label}</SidebarGroupLabel>
-                            {Object.entries(menuConfig.admin.items).map(([key, item]) => 
-                                hasAccess(key as MainTab, authProfile, loading) && (
-                                <SidebarMenuItem key={key}>
-                                    <SidebarMenuButton href={item.href}>
-                                        <item.icon />
-                                        {item.label}
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            <SidebarGroupLabel className="flex items-center justify-between cursor-pointer text-base font-semibold py-3 px-2 rounded-md hover:bg-sidebar-accent/80 transition-colors duration-200" onClick={() => toggleGroup('admin')}>
+                                <span>{menuConfig.admin.label}</span>
+                                {expandedGroups.admin ? <ChevronUp className="h-4 w-4 transition-transform duration-200" /> : <ChevronDown className="h-4 w-4 transition-transform duration-200" />}
+                            </SidebarGroupLabel>
+                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expandedGroups.admin ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                {Object.entries(menuConfig.admin.items).map(([key, item]) => 
+                                    hasAccess(key as MainTab, authProfile, loading) && (
+                                    <SidebarMenuItem key={key}>
+                                        <SidebarMenuButton href={item.href}>
+                                            <item.icon />
+                                            {item.label}
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </div>
                         </SidebarGroup>
 
                         {/* Cash Management Group */}
                         <SidebarGroup>
-                            <SidebarGroupLabel>{menuConfig.cash.label}</SidebarGroupLabel>
-                            {Object.entries(menuConfig.cash.items).map(([key, item]) => 
-                                hasAccess(key as MainTab, authProfile, loading) && (
-                                <SidebarMenuItem key={key}>
-                                    <SidebarMenuButton href={item.href}>
-                                        <item.icon />
-                                        {item.label}
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            <SidebarGroupLabel className="flex items-center justify-between cursor-pointer text-base font-semibold py-3 px-2 rounded-md hover:bg-sidebar-accent/80 transition-colors duration-200" onClick={() => toggleGroup('cash')}>
+                                <span>{menuConfig.cash.label}</span>
+                                {expandedGroups.cash ? <ChevronUp className="h-4 w-4 transition-transform duration-200" /> : <ChevronDown className="h-4 w-4 transition-transform duration-200" />}
+                            </SidebarGroupLabel>
+                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expandedGroups.cash ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                {Object.entries(menuConfig.cash.items).map(([key, item]) => 
+                                    hasAccess(key as MainTab, authProfile, loading) && (
+                                    <SidebarMenuItem key={key}>
+                                        <SidebarMenuButton href={item.href}>
+                                            <item.icon />
+                                            {item.label}
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </div>
                         </SidebarGroup>
                         
                         {/* Data Management Group */}
                         <SidebarGroup>
-                            <SidebarGroupLabel>{menuConfig.data.label}</SidebarGroupLabel>
-                            {Object.entries(menuConfig.data.items).map(([key, item]) => 
-                                hasAccess(key as MainTab, authProfile, loading) && (
-                                <SidebarMenuItem key={key}>
-                                    <SidebarMenuButton href={item.href}>
-                                        <item.icon />
-                                        {item.label}
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            <SidebarGroupLabel className="flex items-center justify-between cursor-pointer text-base font-semibold py-3 px-2 rounded-md hover:bg-sidebar-accent/80 transition-colors duration-200" onClick={() => toggleGroup('data')}>
+                                <span>{menuConfig.data.label}</span>
+                                {expandedGroups.data ? <ChevronUp className="h-4 w-4 transition-transform duration-200" /> : <ChevronDown className="h-4 w-4 transition-transform duration-200" />}
+                            </SidebarGroupLabel>
+                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expandedGroups.data ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                {Object.entries(menuConfig.data.items).map(([key, item]) => 
+                                    hasAccess(key as MainTab, authProfile, loading) && (
+                                    <SidebarMenuItem key={key}>
+                                        <SidebarMenuButton href={item.href}>
+                                            <item.icon />
+                                            {item.label}
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </div>
                         </SidebarGroup>
                         
                         {/* Sales Group */}
                         <SidebarGroup>
-                            <SidebarGroupLabel>{menuConfig.sales.label}</SidebarGroupLabel>
-                            {Object.entries(menuConfig.sales.items).map(([key, item]) => 
-                                hasAccess(key as MainTab, authProfile, loading) && (
-                                <SidebarMenuItem key={key}>
-                                    <SidebarMenuButton href={item.href}>
-                                        <item.icon />
-                                        {item.label}
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            <SidebarGroupLabel className="flex items-center justify-between cursor-pointer text-base font-semibold py-3 px-2 rounded-md hover:bg-sidebar-accent/80 transition-colors duration-200" onClick={() => toggleGroup('sales')}>
+                                <span>{menuConfig.sales.label}</span>
+                                {expandedGroups.sales ? <ChevronUp className="h-4 w-4 transition-transform duration-200" /> : <ChevronDown className="h-4 w-4 transition-transform duration-200" />}
+                            </SidebarGroupLabel>
+                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expandedGroups.sales ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                {Object.entries(menuConfig.sales.items).map(([key, item]) => 
+                                    hasAccess(key as MainTab, authProfile, loading) && (
+                                    <SidebarMenuItem key={key}>
+                                        <SidebarMenuButton href={item.href}>
+                                            <item.icon />
+                                            {item.label}
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </div>
                         </SidebarGroup>
                     </SidebarMenu>
                 </SidebarContent>
